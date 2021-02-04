@@ -1,0 +1,14 @@
+{
+    "type": "mysql",
+    "host": "localhost",
+    "port": 3306,
+    "username": "root",
+    "password": "1230",
+    "database": "exonchat",
+    "entities": ["dist/entity/**/*.entity{.ts,.js}"],
+    "migrations": ["dist/migration/**/*{.ts,.js}"],
+    "cli": {
+        "migrationsDir": "migration"
+    },
+    "synchronize": true
+}

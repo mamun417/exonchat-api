@@ -13,21 +13,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         ConfigModule.forRoot({
             isGlobal: true,
         }),
-        TypeOrmModule.forRoot({
-            type: 'mysql',
-            host: 'localhost',
-            port: 3306,
-            username: 'root',
-            password: '1230',
-            database: 'exonchat',
-            entities: [__dirname + '/**/*.entity{.ts,.js}'],
-            migrationsTableName: 'migrations',
-            migrations: ['migration/*.ts'],
-            cli: {
-                migrationsDir: 'migration',
-            },
-            synchronize: true,
-        }),
+        TypeOrmModule.forRoot(),
         // MongooseModule.forRoot('mongodb://localhost/exonchat'),
         EventsModule,
     ],
