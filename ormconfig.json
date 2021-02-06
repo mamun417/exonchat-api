@@ -5,10 +5,12 @@
     "username": "root",
     "password": "1230",
     "database": "exonchat",
-    "entities": ["dist/entity/**/*.entity{.ts,.js}"],
-    "migrations": ["dist/migration/**/*{.ts,.js}"],
+    "entities": ["dist/database/entity/**/*.entity{.ts,.js}"],
+    "migrations": ["dist/database/migration/**/*{.ts,.js}"],
     "cli": {
         "migrationsDir": "migration"
     },
+    "seeds": ["dist/database/seed/**/*.seed{.ts,.js}"],
+    "factories": ["dist/database/factory/**/*.factory{.ts,.js}"],
     "synchronize": true
 }

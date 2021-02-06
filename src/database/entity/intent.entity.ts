@@ -24,11 +24,13 @@ export class Intents {
     ai_id: number;
 
     @Column({
+        type: 'float',
         nullable: true,
     })
-    confidence: string;
+    confidence: number;
 
     @Column({
+        type: 'longtext',
         nullable: true,
     })
     description: string;
@@ -37,11 +39,11 @@ export class Intents {
         type: 'timestamp',
         default: () => 'CURRENT_TIMESTAMP',
     })
-    createdAt: string;
+    created_at: string;
 
     @Column({
         type: 'timestamp',
         default: () => 'CURRENT_TIMESTAMP',
     })
-    updatedAt: string;
+    updated_at: string;
 }
