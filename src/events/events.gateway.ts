@@ -25,13 +25,93 @@ export class EventsGateway
     // user is webchat user
     // agent is those who handles chat
 
-    private usersToARoom: any = {}; // users who are in tabs with same session
+    private clientsToARoom: any = {}; // users who are in tabs with same session
+    private roomsInAConversation: any = {};
     private apiToAgents: any = {};
 
     @SubscribeMessage('agents-online')
     async agentsOnline(@MessageBody() data: any): Promise<number> {
         // this.server.emit('agents-online to client');
         return data;
+    }
+
+    @SubscribeMessage('joined_conversation')
+    async joinedConversation(
+        @MessageBody() data: number,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        // this.server.emit('msg to client');
+        const queryParams = client?.handshake?.query;
+
+        if (
+            !queryParams ||
+            !queryParams.client_type ||
+            !queryParams.ses_id ||
+            !queryParams.api_key
+        ) {
+            this.server.to(client.id).emit('error', {
+                type: 'warning',
+                step: 'at_join_conversation',
+                reason: 'handshake params are not set properly',
+            });
+        }
+
+        // call join conversation api and get msg. there will handle join limit also
+        // if done
+        if (this.roomsInAConversation.hasOwnProperty(queryParams.conv_id)) {
+            this.roomsInAConversation[queryParams.conv_id].room_ids.push(
+                queryParams.ses_id,
+            );
+        }
+
+        // if api error
+        // this.server.to(client.id).emit('error', {
+        //     type: 'warning',
+        //     step: 'at_join_conversation',
+        //     reason: 'err.msg',
+        // });
+
+        return;
+    }
+
+    @SubscribeMessage('leaved_conversation')
+    async leavedConversation(
+        @MessageBody() data: number,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        // this.server.emit('msg to client');
+        const queryParams = client?.handshake?.query;
+
+        if (
+            !queryParams ||
+            !queryParams.client_type ||
+            !queryParams.ses_id ||
+            !queryParams.api_key
+        ) {
+            this.server.to(client.id).emit('error', {
+                type: 'warning',
+                step: 'at_leave_conversation',
+                reason: 'handshake params are not set properly',
+            });
+        }
+
+        // call leave conversation api and get msg
+        // if done
+        if (this.roomsInAConversation.hasOwnProperty(queryParams.conv_id)) {
+            _.remove(
+                this.roomsInAConversation[queryParams.conv_id].room_ids,
+                (item: any) => item === queryParams.ses_id,
+            );
+        }
+
+        // if api error
+        // this.server.to(client.id).emit('error', {
+        //     type: 'warning',
+        //     step: 'at_leave_conversation',
+        //     reason: 'err.msg',
+        // });
+
+        return;
     }
 
     @SubscribeMessage('message')
@@ -51,7 +131,7 @@ export class EventsGateway
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
         this.server
-            .in(this.usersToARoom[client.id])
+            .in(this.clientsToARoom[client.id])
             .emit('exonchat_msg_to_user', {
                 msg: data.msg,
                 sentByClient: true,
@@ -74,7 +154,24 @@ export class EventsGateway
         // check the token from client.handshake.query.[token && sessId] and get assigned room which is conversation_id
         // let roomName = room_name
         // this.client.join(roomName)
-        const roomName = client?.handshake?.query?.sesId;
+
+        const queryParams = client?.handshake?.query;
+
+        if (
+            !queryParams ||
+            !queryParams.client_type ||
+            !queryParams.ses_id ||
+            !queryParams.api_key ||
+            !queryParams.conv_id
+        ) {
+            this.server.to(client.id).emit('error', {
+                type: 'warning',
+                step: 'at_connect',
+                reason: 'handshake params are not set properly',
+            });
+        }
+
+        const roomName = queryParams.ses_id;
 
         // make these like {
         // 'sesid<clients browser assigned-id>: {
@@ -84,18 +181,22 @@ export class EventsGateway
         // }
         // }
 
-        if (
-            client?.handshake?.query?.client_type === 'user' &&
-            !this.usersToARoom.hasOwnProperty(roomName)
-        ) {
-            this.usersToARoom[roomName] = [];
+        if (!this.clientsToARoom.hasOwnProperty(roomName)) {
+            this.clientsToARoom[roomName] = {
+                client_ids: [],
+                client_type: queryParams.client_type,
+            };
+
+            this.roomsInAConversation[queryParams.conv_id] = {
+                room_ids: [roomName],
+            };
         }
 
-        if (!this.usersToARoom[roomName].includes(client.id)) {
-            this.usersToARoom[roomName].push(client.id);
+        if (!this.clientsToARoom[roomName].client_ids.includes(client.id)) {
+            this.clientsToARoom[roomName].client_ids.push(client.id);
         }
 
-        console.log(this.usersToARoom);
+        console.log(this.clientsToARoom);
 
         //if agent
         // save to this.apiToAgents = client.id
@@ -105,21 +206,38 @@ export class EventsGateway
         console.log(`Client disconnected: ${client.id}`);
         // console.log(client?.handshake?.query);
 
-        const roomName = client?.handshake?.query?.sesId;
+        const queryParams = client?.handshake?.query;
 
         if (
-            client?.handshake?.query?.client_type === 'user' &&
-            this.usersToARoom.hasOwnProperty(roomName)
+            !queryParams ||
+            !queryParams.client_type ||
+            !queryParams.ses_id ||
+            !queryParams.api_key ||
+            !queryParams.conv_id
         ) {
-            const tempUsersInARoom = this.usersToARoom[roomName];
-            _.remove(
-                this.usersToARoom[roomName],
-                (user: any) => user === client.id,
-            );
-
-            this.usersToARoom[roomName] = tempUsersInARoom;
+            this.server.to(client.id).emit('error', {
+                type: 'warning',
+                step: 'at_disconnect',
+                reason: 'handshake params are not set properly',
+            });
         }
 
-        console.log(this.usersToARoom);
+        const roomName = queryParams.ses_id;
+
+        if (this.clientsToARoom.hasOwnProperty(roomName)) {
+            _.remove(
+                this.clientsToARoom[roomName].client_ids,
+                (item: any) => item === client.id,
+            );
+
+            if (!this.clientsToARoom[roomName].client_ids.length) {
+                delete this.clientsToARoom[roomName];
+
+                delete this.roomsInAConversation[queryParams.conv_id];
+                // call conversation close api
+            }
+        }
+
+        console.log(this.clientsToARoom);
     }
 }
