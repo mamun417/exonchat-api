@@ -1,6 +1,6 @@
-import { Intents } from '../entity/intent.entity';
 import * as Faker from 'faker';
 import { define } from 'typeorm-seeding';
+import { Intents } from '../entity/intent.entity';
 
 define(Intents, (faker: typeof Faker) => {
     const intent = new Intents();
@@ -10,7 +10,7 @@ define(Intents, (faker: typeof Faker) => {
         ? faker.random.number()
         : null;
     intent.ai_id = faker.random.number();
-    intent.confidence = faker.random.number({
+    intent.confidence1 = faker.random.number({
         min: 0,
         max: 1,
         precision: 0.0001,

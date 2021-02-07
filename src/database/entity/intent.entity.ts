@@ -27,7 +27,7 @@ export class Intents {
         type: 'float',
         nullable: true,
     })
-    confidence: number;
+    confidence1: number;
 
     @Column({
         type: 'longtext',

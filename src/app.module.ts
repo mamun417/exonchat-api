@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { EventsModule } from './events/events.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MessageModule } from './api/message/message.module';
 
 @Module({
     imports: [
@@ -16,6 +17,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         TypeOrmModule.forRoot(),
         // MongooseModule.forRoot('mongodb://localhost/exonchat'),
         EventsModule,
+        MessageModule,
     ],
     controllers: [AppController],
     providers: [AppService],
