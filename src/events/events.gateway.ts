@@ -54,6 +54,8 @@ export class EventsGateway
                 step: 'at_join_conversation',
                 reason: 'handshake params are not set properly',
             });
+
+            return;
         }
 
         // call join conversation api and get msg. there will handle join limit also
@@ -93,6 +95,8 @@ export class EventsGateway
                 step: 'at_leave_conversation',
                 reason: 'handshake params are not set properly',
             });
+
+            return;
         }
 
         // call leave conversation api and get msg
@@ -165,10 +169,12 @@ export class EventsGateway
             !queryParams.conv_id
         ) {
             this.server.to(client.id).emit('error', {
-                type: 'warning',
+                type: 'error',
                 step: 'at_connect',
                 reason: 'handshake params are not set properly',
             });
+
+            return;
         }
 
         const roomName = queryParams.ses_id;
@@ -216,10 +222,12 @@ export class EventsGateway
             !queryParams.conv_id
         ) {
             this.server.to(client.id).emit('error', {
-                type: 'warning',
+                type: 'error',
                 step: 'at_disconnect',
                 reason: 'handshake params are not set properly',
             });
+
+            return;
         }
 
         const roomName = queryParams.ses_id;

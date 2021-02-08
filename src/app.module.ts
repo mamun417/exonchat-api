@@ -12,7 +12,7 @@ import { EventsModule } from './events/events.module';
         ConfigModule.forRoot({
             isGlobal: true,
         }),
-        MongooseModule.forRoot('mongodb://localhost/exonchat'),
+        // MongooseModule.forRoot('mongodb://localhost/exonchat'),
         EventsModule,
     ],
     controllers: [AppController],
