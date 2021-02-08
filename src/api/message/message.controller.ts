@@ -4,6 +4,8 @@ import { Messages } from './message.entity';
 // import { CreateCatDto } from './dto/create-cat.dto'; // request
 // import { Cat } from './interfaces/cat.interface'; // transform
 
+import { v4 } from 'uuid';
+
 @Controller('messages')
 export class MessageController {
     constructor(private messagesService: MessageService) {}
@@ -15,7 +17,14 @@ export class MessageController {
 
     @Get()
     async findAll(): Promise<Messages[]> {
-        return this.messagesService.findAll();
+        const x = await this.messagesService.findAll();
+
+        x.map((i) => {
+            console.log(i);
+            i.id = v4(i.id);
+        });
+
+        return x;
     }
 
     @Get(':id')
