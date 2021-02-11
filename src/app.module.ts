@@ -8,6 +8,7 @@ import { EventsModule } from './events/events.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessagesModule } from './api/messages/messages.module';
 import { ConversationsModule } from './api/conversations/conversations.module';
+import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
 
 @Module({
     imports: [
@@ -18,6 +19,7 @@ import { ConversationsModule } from './api/conversations/conversations.module';
         EventsModule,
         MessagesModule,
         ConversationsModule,
+        ChatClientsModule,
     ],
     controllers: [AppController],
     providers: [AppService],
