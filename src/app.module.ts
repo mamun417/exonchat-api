@@ -9,6 +9,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessagesModule } from './api/messages/messages.module';
 import { ConversationsModule } from './api/conversations/conversations.module';
 import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
+import { SubscribersModule } from './api/subscribers/subscribers.module';
 
 @Module({
     imports: [
@@ -20,6 +21,7 @@ import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
         MessagesModule,
         ConversationsModule,
         ChatClientsModule,
+        SubscribersModule,
     ],
     controllers: [AppController],
     providers: [AppService],

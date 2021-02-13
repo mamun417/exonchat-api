@@ -3,7 +3,15 @@ import { Connection } from 'typeorm';
 import { Conversation } from '../../api/conversations/entities/conversation.entity';
 
 export default class CreateConversations implements Seeder {
+    public count = 1;
+
+    public constructor(count = 1) {
+        this.count = count;
+    }
+
     public async run(factory: Factory, connection: Connection): Promise<any> {
-        await factory(Conversation)().createMany(1);
+        console.log('\n ---------------Creating conversation----------------');
+
+        await factory(Conversation)().createMany(this.count);
     }
 }
