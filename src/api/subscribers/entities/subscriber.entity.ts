@@ -1,4 +1,15 @@
-import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+    BeforeInsert,
+    Column,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    OneToMany,
+    PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Conversation } from '../../conversations/entities/conversation.entity';
+import { ChatAgent } from '../../chat-agents/entities/chat-agent.entity';
+import { ChatClient } from '../../chat-clients/entities/chat-client.entity';
 
 @Entity()
 export class Subscriber {
@@ -28,6 +39,12 @@ export class Subscriber {
         default: () => 'CURRENT_TIMESTAMP',
     })
     updated_at: string;
+
+    @OneToMany((type) => ChatAgent, (chat_agent) => chat_agent.subscriber)
+    chat_agents: ChatAgent[];
+
+    @OneToMany((type) => ChatClient, (chat_client) => chat_client.subscriber)
+    chat_clients: ChatClient[];
 
     // @BeforeInsert()
     // async setPassword(password: string) {

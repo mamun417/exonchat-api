@@ -9,19 +9,19 @@ export default class CreateMessages implements Seeder {
 
         // await factory(Message)().createMany(200);
         // const messageIds = messages.map((message: Message) => message.id);
-        const conversation: Conversation[] = await factory(
-            Conversation,
-        )().createMany(2);
-
-        await factory(Message)()
-            .map(async (message: Message) => {
-                message.conversation_id =
-                    conversation[
-                        Math.floor(Math.random() * conversation.length)
-                    ].id;
-
-                return message;
-            })
-            .createMany(5);
+        // const conversation: Conversation[] = await factory(
+        //     Conversation,
+        // )().createMany(2);
+        //
+        // await factory(Message)()
+        //     .map(async (message: Message) => {
+        //         message.conversation_id =
+        //             conversation[
+        //                 Math.floor(Math.random() * conversation.length)
+        //             ].id;
+        //
+        //         return message;
+        //     })
+        //     .createMany(5);
     }
 }

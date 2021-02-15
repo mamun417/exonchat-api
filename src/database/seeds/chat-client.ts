@@ -6,6 +6,6 @@ export default class CreateChatClients implements Seeder {
     public async run(factory: Factory, connection: Connection): Promise<any> {
         console.log('\n ---------------Creating chat client----------------');
 
-        await factory(ChatClient)().createMany(1);
+        // await factory(ChatClient)().createMany(1);
     }
 }

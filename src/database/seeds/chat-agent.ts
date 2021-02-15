@@ -14,6 +14,6 @@ export default class CreateChatAgents implements Seeder {
 
         // console.log(subscribers);
 
-        await factory(ChatAgent)().createMany(5);
+        // await factory(ChatAgent)().createMany(5);
     }
 }

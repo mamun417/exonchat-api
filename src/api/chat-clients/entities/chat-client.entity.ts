@@ -1,4 +1,12 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+    Column,
+    Entity,
+    JoinColumn,
+    ManyToOne,
+    PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Subscriber } from '../../subscribers/entities/subscriber.entity';
+import { ChatAgent } from '../../chat-agents/entities/chat-agent.entity';
 
 export enum ChatClientTypes {
     CLIENT = 'client',
@@ -49,6 +57,7 @@ export class ChatClient {
 
     @Column({
         type: 'uuid',
+        nullable: true,
     })
     agent_id: string;
 
@@ -68,4 +77,12 @@ export class ChatClient {
         default: () => 'CURRENT_TIMESTAMP',
     })
     updated_at: string;
+
+    @ManyToOne((type) => Subscriber, (subscriber) => subscriber.chat_clients)
+    @JoinColumn({ name: 'subscriber_id' })
+    subscriber: Subscriber;
+
+    @ManyToOne((type) => ChatAgent, (chat_agent) => chat_agent.chat_agents)
+    @JoinColumn({ name: 'agent_id' })
+    chat_agent: ChatAgent;
 }

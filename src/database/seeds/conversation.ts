@@ -5,6 +5,6 @@ import { Conversation } from '../../api/conversations/entities/conversation.enti
 export default class CreateConversations implements Seeder {
     public async run(factory: Factory, connection: Connection): Promise<any> {
         console.log('\n ---------------Creating conversation----------------');
-        await factory(Conversation)().createMany(1);
+        // await factory(Conversation)().createMany(1);
     }
 }
