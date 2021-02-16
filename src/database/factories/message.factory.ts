@@ -10,6 +10,5 @@ define(Message, (faker: typeof Faker) => {
     message.sender = faker.lorem.word();
     message.sender_type = faker.lorem.word();
 
-    message.conversation = factory(Conversation)() as any;
     return message;
 });

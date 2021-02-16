@@ -1,26 +1,17 @@
 import { Factory, Seeder } from 'typeorm-seeding';
 import { Connection } from 'typeorm';
-import CreateConversations from './conversation';
-import CreateMessages from './message';
-import CreateSubscribers from './subscriber';
-import CreateChatAgents from './chat-agent';
 import { Subscriber } from '../../api/subscribers/entities/subscriber.entity';
 import { ChatAgent } from '../../api/chat-agents/entities/chat-agent.entity';
 
 import * as _ from 'lodash';
 import { ChatClient } from '../../api/chat-clients/entities/chat-client.entity';
+import { Conversation } from '../../api/conversations/entities/conversation.entity';
+import { Message } from '../../api/messages/entities/message.entity';
 
 export default class CreateDatabase implements Seeder {
     public ids = {};
 
     public async run(factory: Factory, connection: Connection): Promise<any> {
-        // const subscribers = await new CreateSubscribers().run(
-        //     factory,
-        //     connection,
-        // );
-
-        // await new CreateChatAgents().run(factory, connection);
-
         await this.hasRelations(factory, [
             {
                 model: Subscriber,
@@ -37,13 +28,22 @@ export default class CreateDatabase implements Seeder {
                 model: ChatClient,
                 relates: ['subscriber_id', 'agent_id'],
                 relate_name: 'chat_client_id',
-                count: 20,
+                count: 10,
                 nullable: ['agent_id'],
             },
+            {
+                model: Conversation,
+                relates: ['subscriber_id'],
+                relate_name: 'conversation_id',
+                count: 10,
+            },
+            {
+                model: Message,
+                relates: ['subscriber_id', 'conversation_id'],
+                relate_name: 'message_id',
+                count: 10,
+            },
         ]);
-        // await new CreateMessages().run(factory, connection);
-        // await new CreateConversations().run(factory, connection);
-        // await new CreateChatClients().run(factory, connection);
     }
 
     //
@@ -97,23 +97,6 @@ export default class CreateDatabase implements Seeder {
                 const pushObj = { [model.relate_name]: entry.id };
 
                 _.assign(pushObj, gen);
-
-                // for (const mr of model.relates) {
-                //     if (
-                //         model.nullable &&
-                //         model.nullable.includes(mr) &&
-                //         Math.random() > 0.5
-                //     ) {
-                //         pushObj[mr] = 0;
-                //         continue;
-                //     }
-                //
-                //     if (_.isPlainObject(picked)) {
-                //         pushObj[mr] = picked[mr];
-                //     } else {
-                //         pushObj[mr] = picked;
-                //     }
-                // }
 
                 this.ids[model.relate_name].push(pushObj);
             } else {

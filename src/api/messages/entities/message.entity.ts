@@ -6,6 +6,7 @@ import {
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Conversation } from '../../conversations/entities/conversation.entity';
+import { Subscriber } from '../../subscribers/entities/subscriber.entity';
 
 @Entity()
 export class Message {
@@ -32,6 +33,11 @@ export class Message {
     sender_type: string;
 
     @Column({
+        type: 'uuid',
+    })
+    subscriber_id: string;
+
+    @Column({
         type: 'timestamp',
         default: () => 'CURRENT_TIMESTAMP',
     })
@@ -51,4 +57,8 @@ export class Message {
     @ManyToOne((type) => Conversation, (conversation) => conversation.messages)
     @JoinColumn({ name: 'conversation_id' })
     conversation: Conversation;
+
+    @ManyToOne((type) => Subscriber, (subscriber) => subscriber.messages)
+    @JoinColumn({ name: 'subscriber_id' })
+    subscriber: Subscriber;
 }

@@ -10,6 +10,8 @@ import {
 import { ChatClientsService } from './chat-clients.service';
 import { CreateChatClientDto } from './dto/create-chat-client.dto';
 import { UpdateChatClientDto } from './dto/update-chat-client.dto';
+import { ChatClient } from './entities/chat-client.entity';
+import { Message } from '../messages/entities/message.entity';
 
 @Controller('chat-clients')
 export class ChatClientsController {
@@ -21,13 +23,13 @@ export class ChatClientsController {
     }
 
     @Get()
-    findAll() {
-        return this.chatClientsService.findAll();
+    async findAll(): Promise<ChatClient[]> {
+        return await this.chatClientsService.findAll();
     }
 
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.chatClientsService.findOne(+id);
+    async findOne(@Param('id') id: string): Promise<ChatClient> {
+        return await this.chatClientsService.findOne(id);
     }
 
     @Put(':id')
