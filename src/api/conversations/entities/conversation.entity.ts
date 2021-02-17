@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Message } from '../../messages/entities/message.entity';
 import { Subscriber } from '../../subscribers/entities/subscriber.entity';
+import { ConversationClient } from '../../conversation-clients/entities/conversation-client.entity';
 
 @Entity()
 export class Conversation {
@@ -59,4 +60,10 @@ export class Conversation {
     @ManyToOne((type) => Subscriber, (subscriber) => subscriber.conversations)
     @JoinColumn({ name: 'subscriber_id' })
     subscriber: Subscriber;
+
+    @OneToMany(
+        (type) => ConversationClient,
+        (conversation_client) => conversation_client.conversation,
+    )
+    conversation_clients: ConversationClient[];
 }

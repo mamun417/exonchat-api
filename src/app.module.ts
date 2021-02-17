@@ -11,6 +11,7 @@ import { ConversationsModule } from './api/conversations/conversations.module';
 import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
 import { SubscribersModule } from './api/subscribers/subscribers.module';
 import { ChatAgentsModule } from './api/chat-agents/chat-agents.module';
+import { ConversationClientsModule } from './api/conversation-clients/conversation-clients.module';
 
 @Module({
     imports: [
@@ -24,6 +25,7 @@ import { ChatAgentsModule } from './api/chat-agents/chat-agents.module';
         ChatClientsModule,
         SubscribersModule,
         ChatAgentsModule,
+        ConversationClientsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

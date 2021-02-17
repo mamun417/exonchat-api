@@ -24,6 +24,14 @@ export class SubscribersService {
         return `This action returns a #${id} subscriber`;
     }
 
+    async getChatClientByApiKey(apy_key: string) {
+        return await this.subscribeRepository.findOne({
+            where: {
+                apy_key,
+            },
+        });
+    }
+
     update(id: number, updateSubscriberDto: UpdateSubscriberDto) {
         return `This action updates a #${id} subscriber`;
     }

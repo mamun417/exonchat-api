@@ -7,6 +7,7 @@ import * as _ from 'lodash';
 import { ChatClient } from '../../api/chat-clients/entities/chat-client.entity';
 import { Conversation } from '../../api/conversations/entities/conversation.entity';
 import { Message } from '../../api/messages/entities/message.entity';
+import { ConversationClient } from '../../api/conversation-clients/entities/conversation-client.entity';
 
 export default class CreateDatabase implements Seeder {
     public ids = {};
@@ -43,6 +44,12 @@ export default class CreateDatabase implements Seeder {
                 relate_name: 'message_id',
                 count: 10,
             },
+            {
+                model: ConversationClient,
+                relates: ['conversation_id', 'chat_client_id'],
+                relate_name: 'conversation_client_id',
+                count: 5,
+            },
         ]);
     }
 
@@ -63,34 +70,7 @@ export default class CreateDatabase implements Seeder {
 
         for (const i of new Array(model.count ? model.count : 1)) {
             if (model.hasOwnProperty('relates')) {
-                const gen = {};
-
-                const lastRelatesPicked = _.last(model.relates);
-                const picked = this.randomPick(this.ids[lastRelatesPicked]);
-
-                if (_.isPlainObject(picked)) {
-                    for (const mr of model.relates) {
-                        if (
-                            model.nullable &&
-                            model.nullable.includes(mr) &&
-                            Math.random() > 0.5
-                        ) {
-                            gen[mr] = null;
-                        } else {
-                            gen[mr] = picked[mr];
-                        }
-                    }
-                } else {
-                    if (
-                        model.nullable &&
-                        model.nullable.includes(lastRelatesPicked) &&
-                        Math.random() > 0.5
-                    ) {
-                        gen[lastRelatesPicked] = null;
-                    } else {
-                        gen[lastRelatesPicked] = picked;
-                    }
-                }
+                const gen = this.generateMultiRelations(model);
 
                 const entry = await factory(model.model)().create(gen);
 
@@ -104,6 +84,78 @@ export default class CreateDatabase implements Seeder {
                 this.ids[model.relate_name].push(entry.id);
             }
         }
+    }
+
+    public generateMultiRelations(model) {
+        const gen = {};
+        const lastRelatesPicked = _.last(model.relates);
+        const picked = this.randomPick(this.ids[lastRelatesPicked]);
+
+        const notFoundedRelates = [];
+
+        if (_.isPlainObject(picked)) {
+            for (const mr of model.relates) {
+                if (
+                    model.nullable &&
+                    model.nullable.includes(mr) &&
+                    Math.random() > 0.5
+                ) {
+                    gen[mr] = null;
+                } else {
+                    if (!picked.hasOwnProperty(mr)) {
+                        notFoundedRelates.push(mr);
+                    } else {
+                        gen[mr] = picked[mr];
+                    }
+                }
+            }
+        } else {
+            if (
+                model.nullable &&
+                model.nullable.includes(lastRelatesPicked) &&
+                Math.random() > 0.5
+            ) {
+                gen[lastRelatesPicked] = null;
+            } else {
+                gen[lastRelatesPicked] = picked;
+            }
+        }
+
+        if (notFoundedRelates.length) {
+            for (const notFoundedRelate of notFoundedRelates) {
+                const selectNotFoundedColumnEntries = this.ids[
+                    notFoundedRelate
+                ];
+
+                let findAnyMatchedFromBefore = null;
+                for (const g of Object.keys(gen)) {
+                    const ranC = _.find(this.ids[g], [g, gen[g]]);
+
+                    for (const rc of Object.keys(ranC)) {
+                        const ll = _.find(selectNotFoundedColumnEntries, [
+                            rc,
+                            ranC[rc],
+                        ]);
+
+                        if (ll) {
+                            findAnyMatchedFromBefore = ll;
+                            break;
+                        }
+                    }
+
+                    if (findAnyMatchedFromBefore) {
+                        break;
+                    }
+                }
+
+                gen[notFoundedRelate] =
+                    findAnyMatchedFromBefore[notFoundedRelate];
+            }
+        } else {
+            // handle else if needed
+        }
+
+        return gen;
     }
 
     public randomPick(items) {

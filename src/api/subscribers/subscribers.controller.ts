@@ -30,6 +30,11 @@ export class SubscribersController {
         return this.subscribersService.findOne(+id);
     }
 
+    @Get('chat_client/:apy_key') // will be change later
+    getChatClientApiKey(@Param('apy_key') apy_key: string) {
+        return this.subscribersService.getChatClientByApiKey(apy_key);
+    }
+
     @Put(':id')
     update(
         @Param('id') id: string,

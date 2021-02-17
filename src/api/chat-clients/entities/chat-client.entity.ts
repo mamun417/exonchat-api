@@ -3,10 +3,12 @@ import {
     Entity,
     JoinColumn,
     ManyToOne,
+    OneToMany,
     PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Subscriber } from '../../subscribers/entities/subscriber.entity';
 import { ChatAgent } from '../../chat-agents/entities/chat-agent.entity';
+import { ConversationClient } from '../../conversation-clients/entities/conversation-client.entity';
 
 export enum ChatClientTypes {
     CLIENT = 'client',
@@ -85,4 +87,10 @@ export class ChatClient {
     @ManyToOne((type) => ChatAgent, (chat_agent) => chat_agent.chat_agents)
     @JoinColumn({ name: 'agent_id' })
     chat_agent: ChatAgent;
+
+    @OneToMany(
+        (type) => ConversationClient,
+        (conversation_client) => conversation_client.chat_client,
+    )
+    conversation_clients: ConversationClient[];
 }
