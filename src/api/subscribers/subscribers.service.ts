@@ -4,6 +4,7 @@ import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscriber } from './entities/subscriber.entity';
+import { ChatClient } from '../chat-clients/entities/chat-client.entity';
 
 @Injectable()
 export class SubscribersService {
@@ -22,6 +23,25 @@ export class SubscribersService {
 
     findOne(id: number) {
         return `This action returns a #${id} subscriber`;
+    }
+
+    async getChatClientsByApiKey(api_key: string): Promise<ChatClient[]> {
+        const subscriber = await this.subscribeRepository.findOne({
+            where: {
+                api_key,
+            },
+            relations: ['chat_clients'],
+        });
+
+        return subscriber['chat_clients'];
+    }
+
+    async fineOneByApiKey(api_key: string): Promise<Subscriber> {
+        return await this.subscribeRepository.findOne({
+            where: {
+                api_key,
+            },
+        });
     }
 
     async getChatClientByApiKey(apy_key: string) {

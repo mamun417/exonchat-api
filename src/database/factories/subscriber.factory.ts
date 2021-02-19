@@ -8,7 +8,7 @@ define(Subscriber, (faker: typeof Faker) => {
     subscriber.email = faker.internet.email();
     subscriber.password = faker.internet.password();
     subscriber.active = faker.random.boolean();
-    subscriber.api_key = faker.random.words(3);
+    subscriber.api_key = faker.random.word();
 
     return subscriber;
 });

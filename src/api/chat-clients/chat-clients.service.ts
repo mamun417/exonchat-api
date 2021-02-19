@@ -4,7 +4,7 @@ import { UpdateChatClientDto } from './dto/update-chat-client.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatClient } from './entities/chat-client.entity';
-import { Message } from '../messages/entities/message.entity';
+import { Subscriber } from '../subscribers/entities/subscriber.entity';
 
 @Injectable()
 export class ChatClientsService {
@@ -13,8 +13,13 @@ export class ChatClientsService {
         private chatClientRepository: Repository<ChatClient>,
     ) {}
 
-    create(createChatClientDto: CreateChatClientDto) {
-        return 'This action adds a new chatClient';
+    async create(
+        subscriber: Subscriber,
+        createChatClientDto: CreateChatClientDto,
+    ) {
+        createChatClientDto.subscriber_id = subscriber.id;
+
+        return await this.chatClientRepository.save(createChatClientDto);
     }
 
     async findAll(): Promise<ChatClient[]> {
