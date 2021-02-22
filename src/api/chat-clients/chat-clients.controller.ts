@@ -40,8 +40,9 @@ export class ChatClientsController {
     @Get('subscriber/:api_key')
     async getChatClientsByApiKey(
         @Param('api_key') api_key: string,
-    ): Promise<ChatClient[]> {
-        return await this.subscribersService.getChatClientsByApiKey(api_key);
+    ): Promise<string> {
+        await this.chatClientsService.getChatClientsByApiKey(api_key);
+        return 'habi jabi';
     }
 
     @Put(':id')

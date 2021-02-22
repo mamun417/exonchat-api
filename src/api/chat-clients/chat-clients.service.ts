@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateChatClientDto } from './dto/create-chat-client.dto';
 import { UpdateChatClientDto } from './dto/update-chat-client.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { createQueryBuilder, Repository } from 'typeorm';
 import { ChatClient } from './entities/chat-client.entity';
 import { Subscriber } from '../subscribers/entities/subscriber.entity';
 
@@ -36,5 +36,22 @@ export class ChatClientsService {
 
     remove(id: number) {
         return `This action removes a #${id} chatClient`;
+    }
+
+    async getChatClientsByApiKey(api_key: string): Promise<string> {
+        const aa = await this.chatClientRepository
+            .createQueryBuilder()
+            .getOne();
+        // .getOne();
+        // .leftJoinAndSelect(
+        //     'chat_client.subscriber',
+        //     'subscriber',
+        //     'subscriber.api_key = :api_key',
+        //     { api_key: api_key },
+        // )
+        // .getMany();
+
+        console.log(aa);
+        return 'aa';
     }
 }
