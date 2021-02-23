@@ -23,7 +23,7 @@ export class ChatClientsService {
     }
 
     async findAll(): Promise<ChatClient[]> {
-        return await this.chatClientRepository.find();
+        return await this.chatClientRepository.createQueryBuilder().getMany();
     }
 
     async findOne(id: string): Promise<ChatClient> {
@@ -38,20 +38,11 @@ export class ChatClientsService {
         return `This action removes a #${id} chatClient`;
     }
 
-    async getChatClientsByApiKey(api_key: string): Promise<string> {
-        const aa = await this.chatClientRepository
-            .createQueryBuilder()
-            .getOne();
-        // .getOne();
-        // .leftJoinAndSelect(
-        //     'chat_client.subscriber',
-        //     'subscriber',
-        //     'subscriber.api_key = :api_key',
-        //     { api_key: api_key },
-        // )
-        // .getMany();
-
-        console.log(aa);
-        return 'aa';
+    async getChatClientsByApiKey(api_key: string): Promise<ChatClient[]> {
+        return await this.chatClientRepository
+            .createQueryBuilder('chat_client')
+            .leftJoinAndSelect('chat_client.subscriber', 'subscriber')
+            .where('subscriber.api_key = :api_key', { api_key: api_key })
+            .getMany();
     }
 }
