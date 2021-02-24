@@ -15,21 +15,19 @@ import { SubscribersService } from '../subscribers/subscribers.service';
 
 @Controller('chat-clients')
 export class ChatClientsController {
-    constructor(
-        private readonly chatClientsService: ChatClientsService,
-        private readonly subscribersService: SubscribersService,
-    ) {}
+    constructor(private readonly chatClientsService: ChatClientsService) {}
+
+    @Get(':id')
+    async findOne(@Param('id') id: string): Promise<ChatClient> {
+        return await this.chatClientsService.findOne(id);
+    }
 
     @Post('subscriber/:api_key')
     async create(
         @Param('api_key') api_key: string,
         @Body() createChatClientDto: CreateChatClientDto,
     ) {
-        const subscriber = await this.subscribersService.fineOneByApiKey(
-            api_key,
-        );
-        // dtp not working
-        return this.chatClientsService.create(subscriber, createChatClientDto);
+        return this.chatClientsService.create(api_key, createChatClientDto);
     }
 
     @Get()

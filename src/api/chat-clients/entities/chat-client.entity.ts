@@ -23,12 +23,12 @@ export class ChatClient {
 
     @Column({
         nullable: true,
-        type: 'json',
+        type: 'varchar',
     })
     info: string;
 
     @Column({
-        type: 'json',
+        type: 'varchar',
     })
     host_log: string;
 
