@@ -3,6 +3,8 @@ import {
     Controller,
     Delete,
     Get,
+    HttpException,
+    HttpStatus,
     Param,
     Post,
     Put,
@@ -11,7 +13,7 @@ import { ChatClientsService } from './chat-clients.service';
 import { CreateChatClientDto } from './dto/create-chat-client.dto';
 import { UpdateChatClientDto } from './dto/update-chat-client.dto';
 import { ChatClient } from './entities/chat-client.entity';
-import { SubscribersService } from '../subscribers/subscribers.service';
+import { Helper } from '../../helper/helper';
 
 @Controller('chat-clients')
 export class ChatClientsController {
@@ -19,7 +21,9 @@ export class ChatClientsController {
 
     @Get(':id')
     async findOne(@Param('id') id: string): Promise<ChatClient> {
-        return await this.chatClientsService.findOne(id);
+        return await new Helper().getSingleDataWithException(async () => {
+            return await this.chatClientsService.findOne(id);
+        });
     }
 
     @Post('subscriber/:api_key')
