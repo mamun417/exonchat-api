@@ -12,6 +12,8 @@ import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
 import { SubscribersModule } from './api/subscribers/subscribers.module';
 import { ChatAgentsModule } from './api/chat-agents/chat-agents.module';
 import { ConversationClientsModule } from './api/conversation-clients/conversation-clients.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
     imports: [
@@ -26,8 +28,18 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
         SubscribersModule,
         ChatAgentsModule,
         ConversationClientsModule,
+        ThrottlerModule.forRoot({
+            ttl: 60,
+            limit: 1000,
+        }),
     ],
     controllers: [AppController],
-    providers: [AppService],
+    providers: [
+        AppService,
+        {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+        },
+    ],
 })
 export class AppModule {}
