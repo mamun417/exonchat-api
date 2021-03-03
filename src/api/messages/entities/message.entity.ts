@@ -22,7 +22,7 @@ export class Message {
     conversation_id: string;
 
     @Column({
-        type: 'longtext',
+        type: 'text',
     })
     msg: string;
 

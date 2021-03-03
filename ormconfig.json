@@ -1,8 +1,8 @@
 {
-    "type": "mysql",
+    "type": "postgres",
     "host": "localhost",
-    "port": 3306,
-    "username": "root",
+    "port": 5432,
+    "username": "mamun",
     "password": "1230",
     "database": "exonchat",
     "entities": ["dist/api/**/*.entity{.ts,.js}"],
