@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { jwtConstants } from './constants/constants';
+import { SubscribersModule } from '../api/subscribers/subscribers.module';
 
 @Module({
     imports: [
@@ -15,6 +16,7 @@ import { jwtConstants } from './constants/constants';
             secret: jwtConstants.secret,
             signOptions: { expiresIn: '60s' },
         }),
+        SubscribersModule,
     ],
     providers: [AuthService, LocalStrategy, JwtStrategy],
     exports: [AuthService],

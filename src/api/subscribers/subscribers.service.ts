@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscriber } from './entities/subscriber.entity';
 import { ChatClient } from '../chat-clients/entities/chat-client.entity';
+import { User } from '../../users/users.service';
 
 @Injectable()
 export class SubscribersService {
@@ -12,6 +13,14 @@ export class SubscribersService {
         @InjectRepository(Subscriber)
         private subscribeRepository: Repository<Subscriber>,
     ) {}
+
+    async login(email: string): Promise<User | undefined> {
+        return await this.subscribeRepository.findOne({
+            where: {
+                email: email,
+            },
+        });
+    }
 
     create(createSubscriberDto: CreateSubscriberDto) {
         return 'This action adds a new subscriber';
