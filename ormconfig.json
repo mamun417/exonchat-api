@@ -1,0 +1,16 @@
+{
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "username": "mamun",
+    "password": "1230",
+    "database": "exonchat",
+    "entities": ["dist/api/**/*.entity{.ts,.js}"],
+    "migrations": ["dist/database/migrations/**/*{.ts,.js}"],
+    "cli": {
+        "migrationsDir": "migrations"
+    },
+    "seeds": ["dist/database/seeds/**/*.seed{.ts,.js}"],
+    "factories": ["dist/database/factories/**/*.factory{.ts,.js}"],
+    "synchronize": true
+}
