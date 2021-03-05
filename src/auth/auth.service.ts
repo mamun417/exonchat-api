@@ -1,4 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import {
+    HttpException,
+    HttpStatus,
+    Injectable,
+    NotFoundException,
+    Res,
+    UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { SubscribersService } from '../api/subscribers/subscribers.service';
@@ -21,50 +28,134 @@ export class AuthService {
         return null;
     }
 
-    async login(user: any) {
+    async login(user: any, res: any) {
         const payload = { email: user.email, sub: user.userId };
-        return {
-            access_token: this.jwtService.sign(payload),
-        };
+
+        // get bearer token
+        const bearerToken = await this.jwtService.sign({
+            data: user,
+        });
+
+        // get refresh token
+        const refreshToken = this.jwtService.sign(
+            {
+                data: {
+                    bearerToken: bearerToken,
+                    user: user,
+                },
+            },
+            { expiresIn: 60 * 60 },
+        );
+
+        res.cookie('refreshToken', 'refresh token goes here...');
+
+        // store refresh token in cookie
+        // res.cookie('refreshToken', refreshToken, {
+        //     maxAge: 60 * 60,
+        //     httpOnly: true,
+        //     signed: true,
+        // });
+
+        return res.json({
+            access_token: bearerToken,
+            user: user,
+        });
     }
 
     async refreshToken(req: any) {
-        const bt = req.headers.authorization.split(' ');
-        if (bt.length) {
-            if (bt[0] === 'Bearer') {
+        // return req.signedCookies;
+
+        const fullBearer = req.headers.authorization.split(' ');
+        const bearer = fullBearer[0];
+        const bearerToken = fullBearer[1];
+
+        if (fullBearer.length) {
+            // check bearer token validity
+            if (bearer === 'Bearer') {
                 try {
-                    this.jwtService.verify(bt[1]);
-                    return req.headers.authorization; // send same bt like after login
+                    this.jwtService.verify(bearerToken);
+                    return req.headers.authorization; // send same bearerToken like after login
                 } catch (e) {}
             } else {
-                // send bearr not found
+                throw new UnauthorizedException();
             }
 
-            const rt = 'rt'.split(' '); //get from signedcokie
-            if (rt.length) {
-                try {
-                    const decodedToken = this.jwtService.verify(rt[1]);
+            // check refresh token validity
+            const refreshToken = await this.getToken(req, 'refreshToken');
 
-                    // if (decodedToken.bt === bt[1]) {
-                    //let newBt = sign again decodedToken.user data
-                    // let newRt = sign(decodedToken.user + newBt)
-                    // then send newBt and store newRt to cokie
-                    // } else {
-                    //     // bearer token not matched
-                    // }
+            if (refreshToken) {
+                try {
+                    const decodedRefreshToken = this.jwtService.verify(
+                        refreshToken,
+                    );
+
+                    if (decodedRefreshToken.bearerToken === bearerToken) {
+                        // get bearer token
+                        const bearerToken = await this.jwtService.sign({
+                            data: decodedRefreshToken.data.user,
+                        });
+
+                        // get refresh token
+                        const refreshToken = this.jwtService.sign(
+                            {
+                                data: {
+                                    bearerToken: bearerToken,
+                                    user: decodedRefreshToken.data.user,
+                                },
+                            },
+                            { expiresIn: 60 * 60 },
+                        );
+
+                        // res.cookie('refreshToken', 'refresh token goes here...');
+
+                        // store refresh token in cookie
+                        // res.cookie('refreshToken', refreshToken, {
+                        //     maxAge: 60 * 60,
+                        //     httpOnly: true,
+                        //     signed: true,
+                        // });
+
+                        // return res.json({
+                        //     access_token: bearerToken,
+                        //     user: decodedRefreshToken.data.user,
+                        // });
+                    } else {
+                        throw new HttpException(
+                            'Refresh token expired',
+                            HttpStatus.UNAUTHORIZED,
+                        );
+                    }
                 } catch (e) {
-                    // ref token veri failed
+                    throw new HttpException(
+                        'Refresh token expired',
+                        HttpStatus.UNAUTHORIZED,
+                    );
                 }
             } else {
-                // send ref token not found
+                throw new HttpException(
+                    'Refresh token not found',
+                    HttpStatus.NOT_FOUND,
+                );
+
+                // return res.status(422).json(
+                //     { errors: [], message: 'Refresh token not found' }
+                // );
             }
         } else {
-            return 'unauthorized';
+            throw new UnauthorizedException();
         }
-        // const verify = this.jwtService.verify(req);
+    }
 
-        // return {
-        //     access_token: this.jwtService.sign(payload),
-        // };
+    async getToken(request, tokenName) {
+        const cookies = request.headers.cookie.split(';');
+
+        const cookieObj = {};
+
+        cookies.forEach((cookie) => {
+            const cookieArr = cookie.split('=');
+            cookieObj[cookieArr[0]] = cookieArr[1];
+        });
+
+        return cookieObj[tokenName];
     }
 }

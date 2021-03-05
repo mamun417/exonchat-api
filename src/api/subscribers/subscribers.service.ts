@@ -14,7 +14,7 @@ export class SubscribersService {
         private subscribeRepository: Repository<Subscriber>,
     ) {}
 
-    async login(email: string): Promise<User | undefined> {
+    async login(email: string): Promise<Subscriber | undefined> {
         return await this.subscribeRepository.findOne({
             where: {
                 email: email,
