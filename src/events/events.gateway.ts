@@ -26,13 +26,65 @@ export class EventsGateway
     // agent is those who handles chat
 
     private clientsToARoom: any = {}; // users who are in tabs with same session
-    private roomsInAConversation: any = {};
+    private roomsInAConv: any = {};
     private apiToAgents: any = {};
 
-    @SubscribeMessage('agents-online')
+    @SubscribeMessage('ec_agents_online')
     async agentsOnline(@MessageBody() data: any): Promise<number> {
         // this.server.emit('agents-online to client');
         return data;
+    }
+
+    @SubscribeMessage('ec_init_conv_from_user')
+    async initialize_conversation(
+        @MessageBody() data: number,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        // this.server.emit('msg to client');
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('error', {
+                type: 'warning',
+                step: 'ec_init_conv_from_user',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        const conv_id = '123'; // get from api
+        const roomName = queryParams.ses_id;
+
+        if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
+            this.roomsInAConv[conv_id] = { room_ids: [roomName] };
+        } else {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_init_conv_from_user',
+                reason: 'conv id already exists',
+            });
+
+            return;
+        }
+
+        this.server.in(roomName).emit('ec_conv_initiated_from_user', {
+            data: {
+                conv_id: '123',
+            },
+            status: 'success',
+        });
+
+        // if api error
+        // this.server.to(client.id).emit('error', {
+        //     type: 'warning',
+        //     step: 'at_join_conversation',
+        //     reason: 'err.msg',
+        // });
+
+        console.log(this.roomsInAConv);
+
+        return;
     }
 
     @SubscribeMessage('joined_conversation')
@@ -43,12 +95,7 @@ export class EventsGateway
         // this.server.emit('msg to client');
         const queryParams = client?.handshake?.query;
 
-        if (
-            !queryParams ||
-            !queryParams.client_type ||
-            !queryParams.ses_id ||
-            !queryParams.api_key
-        ) {
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('error', {
                 type: 'warning',
                 step: 'at_join_conversation',
@@ -60,8 +107,8 @@ export class EventsGateway
 
         // call join conversation api and get msg. there will handle join limit also
         // if done
-        if (this.roomsInAConversation.hasOwnProperty(queryParams.conv_id)) {
-            this.roomsInAConversation[queryParams.conv_id].room_ids.push(
+        if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
+            this.roomsInAConv[queryParams.conv_id].room_ids.push(
                 queryParams.ses_id,
             );
         }
@@ -84,12 +131,7 @@ export class EventsGateway
         // this.server.emit('msg to client');
         const queryParams = client?.handshake?.query;
 
-        if (
-            !queryParams ||
-            !queryParams.client_type ||
-            !queryParams.ses_id ||
-            !queryParams.api_key
-        ) {
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('error', {
                 type: 'warning',
                 step: 'at_leave_conversation',
@@ -101,9 +143,9 @@ export class EventsGateway
 
         // call leave conversation api and get msg
         // if done
-        if (this.roomsInAConversation.hasOwnProperty(queryParams.conv_id)) {
+        if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
             _.remove(
-                this.roomsInAConversation[queryParams.conv_id].room_ids,
+                this.roomsInAConv[queryParams.conv_id].room_ids,
                 (item: any) => item === queryParams.ses_id,
             );
         }
@@ -161,13 +203,7 @@ export class EventsGateway
 
         const queryParams = client?.handshake?.query;
 
-        if (
-            !queryParams ||
-            !queryParams.client_type ||
-            !queryParams.ses_id ||
-            !queryParams.api_key ||
-            !queryParams.conv_id
-        ) {
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('error', {
                 type: 'error',
                 step: 'at_connect',
@@ -178,6 +214,11 @@ export class EventsGateway
         }
 
         const roomName = queryParams.ses_id;
+
+        // check client type from api
+        const clientType = queryParams.client_type
+            ? queryParams.client_type
+            : 'client';
 
         // make these like {
         // 'sesid<clients browser assigned-id>: {
@@ -190,17 +231,15 @@ export class EventsGateway
         if (!this.clientsToARoom.hasOwnProperty(roomName)) {
             this.clientsToARoom[roomName] = {
                 client_ids: [],
-                client_type: queryParams.client_type,
-            };
-
-            this.roomsInAConversation[queryParams.conv_id] = {
-                room_ids: [roomName],
+                client_type: clientType,
             };
         }
 
         if (!this.clientsToARoom[roomName].client_ids.includes(client.id)) {
             this.clientsToARoom[roomName].client_ids.push(client.id);
         }
+
+        client.join(roomName);
 
         console.log(this.clientsToARoom);
 
@@ -214,13 +253,7 @@ export class EventsGateway
 
         const queryParams = client?.handshake?.query;
 
-        if (
-            !queryParams ||
-            !queryParams.client_type ||
-            !queryParams.ses_id ||
-            !queryParams.api_key ||
-            !queryParams.conv_id
-        ) {
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('error', {
                 type: 'error',
                 step: 'at_disconnect',
@@ -240,10 +273,9 @@ export class EventsGateway
 
             if (!this.clientsToARoom[roomName].client_ids.length) {
                 delete this.clientsToARoom[roomName];
-
-                delete this.roomsInAConversation[queryParams.conv_id];
-                // call conversation close api
             }
+
+            client.leave(roomName);
         }
 
         console.log(this.clientsToARoom);
