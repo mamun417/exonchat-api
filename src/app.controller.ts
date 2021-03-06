@@ -29,7 +29,7 @@ export class AppController {
     }
 
     @Post('auth/refresh')
-    async refreshToken(@Request() req) {
-        return this.authService.refreshToken(req);
+    async refreshToken(@Request() req, @Res() res) {
+        return this.authService.refreshToken(req, res);
     }
 }
