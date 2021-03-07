@@ -87,67 +87,181 @@ export class EventsGateway
         return;
     }
 
-    @SubscribeMessage('joined_conversation')
-    async joinedConversation(
-        @MessageBody() data: number,
+    @SubscribeMessage('ec_join_conversation')
+    async joinConversation(
+        @MessageBody() data: any,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
-        // this.server.emit('msg to client');
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('error', {
-                type: 'warning',
-                step: 'at_join_conversation',
+                type: 'error',
+                step: 'ec_join_conversation',
                 reason: 'handshake params are not set properly',
             });
 
             return;
         }
 
+        if (!data.conv_id) {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_join_conversation',
+                reason: 'conv_id not found',
+            });
+
+            return;
+        }
+
+        // call check api for conv_id, api_key & ses_id
+        const agent_info = {}; //get agent info
+
+        const roomName = queryParams.ses_id;
+
         // call join conversation api and get msg. there will handle join limit also
         // if done
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
+            this.roomsInAConv[data.conv_id].room_ids.push(queryParams.ses_id);
+
+            this.roomsInAConv[data.conv_id].forEach((room: any) => {
+                this.server.in(room).emit('ec_is_joined_from_conversation', {
+                    data: {
+                        ...agent_info,
+                    },
+                    status: 'success',
+                });
+            });
+        } else {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_join_conversation',
+                reason: 'conversation not matched',
+            });
+
+            return;
+        }
+
+        return;
+    }
+
+    @SubscribeMessage('ec_leave_conversation')
+    async leaveConversation(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_leave_conversation',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        if (!data.conv_id) {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_leave_conversation',
+                reason: 'conv_id not found',
+            });
+
+            return;
+        }
+
+        // call check api for conv_id, api_key & ses_id
+
+        const roomName = queryParams.ses_id;
+
         if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
-            this.roomsInAConv[queryParams.conv_id].room_ids.push(
-                queryParams.ses_id,
+            // clone before remove so that we have all rooms to inform
+            const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
+
+            _.remove(
+                this.roomsInAConv[queryParams.conv_id].room_ids,
+                (item: any) => item === queryParams.ses_id,
             );
+
+            roomsInAConvCopy[data.conv_id].forEach((room: any) => {
+                this.server.in(room).emit('ec_is_leaved_from_conversation', {
+                    data: {},
+                    status: 'success',
+                });
+            });
+        } else {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_leave_conversation',
+                reason: 'Already Leaved from Current Conversation',
+            });
+
+            return;
         }
 
         // if api error
         // this.server.to(client.id).emit('error', {
         //     type: 'warning',
-        //     step: 'at_join_conversation',
+        //     step: 'at_leave_conversation',
         //     reason: 'err.msg',
         // });
 
         return;
     }
 
-    @SubscribeMessage('leaved_conversation')
-    async leavedConversation(
-        @MessageBody() data: number,
+    @SubscribeMessage('ec_close_conversation')
+    async closeConversation(
+        @MessageBody() data: any,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
-        // this.server.emit('msg to client');
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('error', {
-                type: 'warning',
-                step: 'at_leave_conversation',
+                type: 'error',
+                step: 'ec_close_conversation',
                 reason: 'handshake params are not set properly',
             });
 
             return;
         }
 
-        // call leave conversation api and get msg
-        // if done
+        if (!data.conv_id) {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_close_conversation',
+                reason: 'conv_id not found',
+            });
+
+            return;
+        }
+
+        // call check api for conv_id, api_key & ses_id
+
+        const roomName = queryParams.ses_id;
+
         if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
-            _.remove(
-                this.roomsInAConv[queryParams.conv_id].room_ids,
-                (item: any) => item === queryParams.ses_id,
-            );
+            // clone before remove so that we have all rooms to inform
+            const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
+
+            delete this.roomsInAConv[data.conv_id];
+
+            roomsInAConvCopy[data.conv_id].forEach((room: any) => {
+                this.server.in(room).emit('ec_is_leaved_from_conversation', {
+                    data: {},
+                    status: 'success',
+                });
+            });
+        } else {
+            this.server.to(client.id).emit('error', {
+                type: 'error',
+                step: 'ec_leave_conversation',
+                reason: 'Already Leaved from Current Conversation',
+            });
+
+            return;
         }
 
         // if api error
