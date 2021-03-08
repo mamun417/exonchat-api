@@ -1,9 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-
 import { ConfigModule } from '@nestjs/config';
-
 import { EventsModule } from './events/events.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessagesModule } from './api/messages/messages.module';
@@ -15,6 +13,7 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
+import { RolePermissionModule } from './role-permission/role-permission.module';
 
 @Module({
     imports: [
@@ -34,6 +33,7 @@ import { AuthModule } from './auth/auth.module';
             limit: 1000,
         }),
         AuthModule,
+        RolePermissionModule,
     ],
     controllers: [AppController],
     providers: [

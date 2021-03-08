@@ -1,16 +1,9 @@
-import {
-    Controller,
-    Get,
-    Request,
-    Post,
-    UseGuards,
-    Res,
-    Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Request, Res, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { LocalAuthGuard } from './auth/guards/local-auth.guard';
 import { AuthService } from './auth/auth.service';
-import { loadFiles } from 'typeorm-seeding/dist/utils/file.util';
+import { Roles } from './role-permission/roles.decorator';
+import { Role } from './role-permission/role.enum';
 
 @Controller()
 export class AppController {
@@ -22,7 +15,7 @@ export class AppController {
         return this.authService.login(req.user, res);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @Roles(Role.Admin)
     @Get('profile')
     getProfile(@Request() req) {
         return req.user;

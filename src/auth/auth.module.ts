@@ -12,7 +12,7 @@ import { SubscribersModule } from '../api/subscribers/subscribers.module';
         PassportModule,
         JwtModule.register({
             secret: jwtConstants.secret,
-            signOptions: { expiresIn: '5s' },
+            signOptions: { expiresIn: '10000m' },
         }),
         SubscribersModule,
     ],
