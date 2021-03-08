@@ -44,7 +44,7 @@ export class EventsGateway
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'warning',
                 step: 'ec_init_conv_from_user',
                 reason: 'handshake params are not set properly',
@@ -68,7 +68,7 @@ export class EventsGateway
             return;
         }
 
-        this.server.in(roomName).emit('ec_conv_initiated_from_user', {
+        this.server.in(roomName).emit('ec_conv_initiated_from_client', {
             data: {
                 conv_id: '123',
             },
@@ -76,7 +76,7 @@ export class EventsGateway
         });
 
         // if api error
-        // this.server.to(client.id).emit('error', {
+        // this.server.to(client.id).emit('ec_error', {
         //     type: 'warning',
         //     step: 'at_join_conversation',
         //     reason: 'err.msg',
@@ -95,7 +95,7 @@ export class EventsGateway
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_join_conversation',
                 reason: 'handshake params are not set properly',
@@ -105,7 +105,7 @@ export class EventsGateway
         }
 
         if (!data.conv_id) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_join_conversation',
                 reason: 'conv_id not found',
@@ -124,7 +124,7 @@ export class EventsGateway
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             this.roomsInAConv[data.conv_id].room_ids.push(queryParams.ses_id);
 
-            this.roomsInAConv[data.conv_id].forEach((room: any) => {
+            this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_joined_from_conversation', {
                     data: {
                         ...agent_info,
@@ -133,7 +133,7 @@ export class EventsGateway
                 });
             });
         } else {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_join_conversation',
                 reason: 'conversation not matched',
@@ -141,6 +141,8 @@ export class EventsGateway
 
             return;
         }
+
+        console.log(this.roomsInAConv);
 
         return;
     }
@@ -153,7 +155,7 @@ export class EventsGateway
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_leave_conversation',
                 reason: 'handshake params are not set properly',
@@ -163,7 +165,7 @@ export class EventsGateway
         }
 
         if (!data.conv_id) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_leave_conversation',
                 reason: 'conv_id not found',
@@ -185,14 +187,14 @@ export class EventsGateway
                 (item: any) => item === queryParams.ses_id,
             );
 
-            roomsInAConvCopy[data.conv_id].forEach((room: any) => {
+            roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_leaved_from_conversation', {
                     data: {},
                     status: 'success',
                 });
             });
         } else {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_leave_conversation',
                 reason: 'Already Leaved from Current Conversation',
@@ -202,7 +204,7 @@ export class EventsGateway
         }
 
         // if api error
-        // this.server.to(client.id).emit('error', {
+        // this.server.to(client.id).emit('ec_error', {
         //     type: 'warning',
         //     step: 'at_leave_conversation',
         //     reason: 'err.msg',
@@ -219,7 +221,7 @@ export class EventsGateway
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_close_conversation',
                 reason: 'handshake params are not set properly',
@@ -229,7 +231,7 @@ export class EventsGateway
         }
 
         if (!data.conv_id) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_close_conversation',
                 reason: 'conv_id not found',
@@ -248,14 +250,14 @@ export class EventsGateway
 
             delete this.roomsInAConv[data.conv_id];
 
-            roomsInAConvCopy[data.conv_id].forEach((room: any) => {
+            roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_leaved_from_conversation', {
                     data: {},
                     status: 'success',
                 });
             });
         } else {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_leave_conversation',
                 reason: 'Already Leaved from Current Conversation',
@@ -265,7 +267,7 @@ export class EventsGateway
         }
 
         // if api error
-        // this.server.to(client.id).emit('error', {
+        // this.server.to(client.id).emit('ec_error', {
         //     type: 'warning',
         //     step: 'at_leave_conversation',
         //     reason: 'err.msg',
@@ -285,17 +287,41 @@ export class EventsGateway
         return;
     }
 
-    @SubscribeMessage('exonchat_msg_from_user')
+    @SubscribeMessage('ec_msg_from_client')
     async webchatNewMsg(
         @MessageBody() data: any,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
-        this.server
-            .in(this.clientsToARoom[client.id])
-            .emit('exonchat_msg_to_user', {
-                msg: data.msg,
-                sentByClient: true,
-            }); // send to room also with sender
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_init_conv_from_user',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        // let ses_id = _.findKey(this.roomsInAConv, (convObj: any) => {
+        //     return convObj.room_ids.includes(queryParams.ses_id);
+        // }); // get conv_id from ses id code
+
+        const agentRooms = Object.keys(this.clientsToARoom).filter(
+            (roomId: any) => {
+                return this.clientsToARoom[roomId].client_type === 'agent';
+            },
+        );
+
+        console.log(agentRooms);
+
+        // this.server
+        //     .in(this.clientsToARoom[client.id])
+        //     .emit('exonchat_msg_to_user', {
+        //         msg: data.msg,
+        //         sentByClient: true,
+        //     }); // send to room also with sender
 
         // loop through all client.id present in this.apiToAgents[client.handshake.query.api]
         // this.server.to(client.id).emit('new-message-to-agents', { data });
@@ -318,7 +344,7 @@ export class EventsGateway
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'at_connect',
                 reason: 'handshake params are not set properly',
@@ -346,6 +372,7 @@ export class EventsGateway
             this.clientsToARoom[roomName] = {
                 client_ids: [],
                 client_type: clientType,
+                api_key: queryParams.api_key,
             };
         }
 
@@ -368,7 +395,7 @@ export class EventsGateway
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('error', {
+            this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'at_disconnect',
                 reason: 'handshake params are not set properly',
