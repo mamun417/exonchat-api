@@ -7,7 +7,7 @@ import { Role } from './role.enum';
 export class CatsController {
     @Post()
     @Roles(Role.Admin)
-    create(@Body() createMessageDto: CreateMessageDto) {
-        // create cats
+    create(@Body() body) {
+        return body;
     }
 }

@@ -15,7 +15,6 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
 
 @Module({
     imports: [
@@ -35,7 +34,6 @@ import { UsersModule } from './users/users.module';
             limit: 1000,
         }),
         AuthModule,
-        UsersModule,
     ],
     controllers: [AppController],
     providers: [
