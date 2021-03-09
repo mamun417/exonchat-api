@@ -25,7 +25,7 @@ export class EventsGateway
     // user is webchat user
     // agent is those who handles chat
 
-    private clientsToARoom: any = {}; // users who are in tabs with same session
+    private clientsToARoom: any = {}; // users & agents who are in tabs with same session
     private roomsInAConv: any = {};
     private apiToAgents: any = {};
 
@@ -33,6 +33,46 @@ export class EventsGateway
     async agentsOnline(@MessageBody() data: any): Promise<number> {
         // this.server.emit('agents-online to client');
         return data;
+    }
+
+    @SubscribeMessage('ec_page_visit_info_from_client')
+    async pageVisitInfoFromClient(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_page_visit_info_from_client',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        const agentRooms = Object.keys(this.clientsToARoom).filter(
+            (roomId: any) => {
+                return (
+                    this.clientsToARoom[roomId].client_type === 'agent' &&
+                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+                );
+            },
+        );
+
+        // console.log(agentRooms);
+
+        agentRooms.forEach((roomId: any) => {
+            this.server
+                .in(this.clientsToARoom[roomId])
+                .emit('ec_page_visit_info_from_client', {
+                    url: data.url,
+                    sent_at: data.sent_at,
+                }); // send to all agents
+        });
+
+        return;
     }
 
     @SubscribeMessage('ec_init_conv_from_user')
@@ -276,19 +316,8 @@ export class EventsGateway
         return;
     }
 
-    @SubscribeMessage('message')
-    async message(
-        @MessageBody() data: number,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
-        // this.server.emit('msg to client');
-        console.log(data);
-
-        return;
-    }
-
-    @SubscribeMessage('ec_msg_from_client')
-    async webchatNewMsg(
+    @SubscribeMessage('ec_is_typing_from_client')
+    async typingFromClient(
         @MessageBody() data: any,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
@@ -297,34 +326,212 @@ export class EventsGateway
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('ec_error', {
                 type: 'warning',
-                step: 'ec_init_conv_from_user',
+                step: 'ec_is_typing_from_client',
                 reason: 'handshake params are not set properly',
             });
 
             return;
         }
 
-        // let ses_id = _.findKey(this.roomsInAConv, (convObj: any) => {
-        //     return convObj.room_ids.includes(queryParams.ses_id);
-        // }); // get conv_id from ses id code
+        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
+            return convObj.room_ids.includes(queryParams.ses_id);
+        }); // get conv_id from ses id
 
         const agentRooms = Object.keys(this.clientsToARoom).filter(
             (roomId: any) => {
-                return this.clientsToARoom[roomId].client_type === 'agent';
+                return (
+                    this.clientsToARoom[roomId].client_type === 'agent' &&
+                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+                );
             },
         );
 
-        console.log(agentRooms);
+        // console.log(agentRooms);
 
+        agentRooms.forEach((roomId: any) => {
+            this.server
+                .in(this.clientsToARoom[roomId])
+                .emit('ec_is_typing_from_client', {
+                    conv_id: convId,
+                    msg: data.msg,
+                    sent_at: data.sent_at,
+                }); // send to all agents
+        });
+
+        // use if needed
         // this.server
-        //     .in(this.clientsToARoom[client.id])
-        //     .emit('exonchat_msg_to_user', {
+        //     .in(this.clientsToARoom[queryParams.ses_id])
+        //     .emit('ec_is_typing_to_client', {
         //         msg: data.msg,
-        //         sentByClient: true,
-        //     }); // send to room also with sender
+        //         sent_at: data.sent_at,
+        //         return_type: 'own',
+        //     }); // return back to client so that we can update to all tab
 
-        // loop through all client.id present in this.apiToAgents[client.handshake.query.api]
-        // this.server.to(client.id).emit('new-message-to-agents', { data });
+        return;
+    }
+
+    @SubscribeMessage('ec_msg_from_client')
+    async msgFromClient(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_msg_from_client',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
+            return convObj.room_ids.includes(queryParams.ses_id);
+        }); // get conv_id from ses id
+
+        const agentRooms = Object.keys(this.clientsToARoom).filter(
+            (roomId: any) => {
+                return (
+                    this.clientsToARoom[roomId].client_type === 'agent' &&
+                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+                );
+            },
+        );
+
+        // console.log(agentRooms);
+
+        agentRooms.forEach((roomId: any) => {
+            this.server
+                .in(this.clientsToARoom[roomId])
+                .emit('ec_msg_from_client', {
+                    conv_id: convId,
+                    msg: data.msg,
+                    sent_at: data.sent_at,
+                }); // send to all agents
+        });
+
+        // use if needed
+        // this.server
+        //     .in(this.clientsToARoom[queryParams.ses_id])
+        //     .emit('ec_msg_to_client', {
+        //         msg: data.msg,
+        //         sent_at: data.sent_at,
+        //         return_type: 'own',
+        //     }); // return back to client so that we can update to all tab
+
+        return;
+    }
+
+    @SubscribeMessage('ec_is_typing_from_agent')
+    async typingFromAgent(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_is_typing_from_agent',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
+            return convObj.room_ids.includes(queryParams.ses_id);
+        }); // get conv_id from ses id
+
+        const agentRooms = Object.keys(this.clientsToARoom).filter(
+            (roomId: any) => {
+                return (
+                    !this.clientsToARoom[roomId].client_ids.includes(
+                        client.id, // ignore from same agent
+                    ) &&
+                    this.clientsToARoom[roomId].client_type === 'agent' &&
+                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+                );
+            },
+        );
+
+        // console.log(agentRooms);
+
+        agentRooms.forEach((roomId: any) => {
+            this.server
+                .in(this.clientsToARoom[roomId])
+                .emit('ec_is_typing_from_agent', {
+                    conv_id: convId,
+                    sent_at: data.sent_at,
+                }); // send to all agents without own agent
+        });
+
+        // use if needed
+        // this.server
+        //     .in(this.clientsToARoom[queryParams.ses_id])
+        //     .emit('ec_is_typing_to_agent', {
+        //         sent_at: data.sent_at,
+        //         return_type: 'own',
+        //     }); // return back to client so that we can update to all tab
+
+        return;
+    }
+
+    @SubscribeMessage('ec_msg_from_agent')
+    async msgFromAgent(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_msg_from_agent',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
+            return convObj.room_ids.includes(queryParams.ses_id);
+        }); // get conv_id from ses id
+
+        const agentRooms = Object.keys(this.clientsToARoom).filter(
+            (roomId: any) => {
+                return (
+                    !this.clientsToARoom[roomId].client_ids.includes(
+                        client.id, // ignore from same agent
+                    ) &&
+                    this.clientsToARoom[roomId].client_type === 'agent' &&
+                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+                );
+            },
+        );
+
+        // console.log(agentRooms);
+
+        agentRooms.forEach((roomId: any) => {
+            this.server
+                .in(this.clientsToARoom[roomId])
+                .emit('ec_msg_from_agent', {
+                    conv_id: convId,
+                    msg: data.msg,
+                    sent_at: data.sent_at,
+                }); // send to all agents
+        });
+
+        // use if needed
+        // this.server
+        //     .in(this.clientsToARoom[queryParams.ses_id])
+        //     .emit('ec_msg_to_agent', {
+        //         msg: data.msg,
+        //         sent_at: data.sent_at,
+        //         return_type: 'own',
+        //     }); // return back to client so that we can update to all tab
 
         return;
     }
