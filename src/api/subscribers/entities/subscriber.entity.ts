@@ -1,12 +1,4 @@
-import {
-    BeforeInsert,
-    Column,
-    Entity,
-    JoinColumn,
-    ManyToOne,
-    OneToMany,
-    PrimaryGeneratedColumn,
-} from 'typeorm';
+import { BeforeInsert, Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Conversation } from '../../conversations/entities/conversation.entity';
 import { ChatAgent } from '../../chat-agents/entities/chat-agent.entity';
 import { ChatClient } from '../../chat-clients/entities/chat-client.entity';
@@ -47,10 +39,7 @@ export class Subscriber {
     @OneToMany((type) => ChatClient, (chat_client) => chat_client.subscriber)
     chat_clients: ChatClient[];
 
-    @OneToMany(
-        (type) => Conversation,
-        (conversation) => conversation.subscriber,
-    )
+    @OneToMany((type) => Conversation, (conversation) => conversation.subscriber)
     conversations: Conversation[];
 
     @OneToMany((type) => Message, (message) => message.subscriber)

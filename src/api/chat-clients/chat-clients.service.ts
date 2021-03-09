@@ -17,10 +17,7 @@ export class ChatClientsService {
     ) {}
 
     async create(api_key: string, createChatClientDto: CreateChatClientDto) {
-        const subscriber = await this.subscribersService.fineOneByApiKey(
-            api_key,
-        );
-
+        const subscriber = await this.subscribersService.fineOneByApiKey(api_key);
         createChatClientDto.subscriber_id = subscriber.id;
 
         return await this.chatClientRepository.save(createChatClientDto);

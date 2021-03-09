@@ -2,8 +2,8 @@ import { Controller, Get, Post, Request, Res, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { LocalAuthGuard } from './auth/guards/local-auth.guard';
 import { AuthService } from './auth/auth.service';
-import { Roles } from './role-permission/roles.decorator';
-import { Role } from './role-permission/role.enum';
+import { Roles } from './authorizarion/roles.decorator';
+import { Role } from './authorizarion/role.enum';
 
 @Controller()
 export class AppController {

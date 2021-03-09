@@ -13,7 +13,8 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
-import { RolePermissionModule } from './role-permission/role-permission.module';
+import { RolePermissionModule } from './api/role-permissions/role-permission.module';
+import { AuthorizationModule } from './authorizarion/authorization.module';
 
 @Module({
     imports: [
@@ -33,6 +34,7 @@ import { RolePermissionModule } from './role-permission/role-permission.module';
             limit: 1000,
         }),
         AuthModule,
+        AuthorizationModule,
         RolePermissionModule,
     ],
     controllers: [AppController],
