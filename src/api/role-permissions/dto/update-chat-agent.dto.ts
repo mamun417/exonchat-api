@@ -1,4 +1,4 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateChatAgentDto } from './create-chat-agent.dto';
+import { CreateRoleDto } from './create-role.dto';
 
-export class UpdateChatAgentDto extends PartialType(CreateChatAgentDto) {}
+export class UpdateChatAgentDto extends PartialType(CreateRoleDto) {}

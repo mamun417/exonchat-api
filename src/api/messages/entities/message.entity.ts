@@ -1,10 +1,5 @@
-import {
-    Column,
-    Entity,
-    JoinColumn,
-    ManyToOne,
-    PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+
 import { Conversation } from '../../conversations/entities/conversation.entity';
 import { Subscriber } from '../../subscribers/entities/subscriber.entity';
 

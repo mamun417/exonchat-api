@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn, RelationId } from 'typeorm';
 import { Permission } from './permission.entity';
 
 @Entity()
@@ -15,14 +15,15 @@ export class Role {
     @Column({ nullable: true })
     description: string;
 
+    @ManyToMany((type) => Permission, (permission) => permission.roles, { cascade: true })
+    @JoinTable()
+    permissions: Permission[];
+
     @Column({
         type: 'timestamp',
         default: () => 'CURRENT_TIMESTAMP',
     })
     created_at: string;
-
-    @ManyToMany((type) => Permission, (permission) => permission.roles)
-    permissions: Permission[];
 
     @Column({
         type: 'timestamp',
