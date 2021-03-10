@@ -162,7 +162,15 @@ export class EventsGateway
         // call join conversation api and get msg. there will handle join limit also
         // if done
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
-            this.roomsInAConv[data.conv_id].room_ids.push(queryParams.ses_id);
+            if (
+                !this.roomsInAConv[data.conv_id].room_ids.includes(
+                    queryParams.ses_id,
+                )
+            ) {
+                this.roomsInAConv[data.conv_id].room_ids.push(
+                    queryParams.ses_id,
+                );
+            }
 
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_joined_from_conversation', {
@@ -349,23 +357,19 @@ export class EventsGateway
         // console.log(agentRooms);
 
         agentRooms.forEach((roomId: any) => {
-            this.server
-                .in(this.clientsToARoom[roomId])
-                .emit('ec_is_typing_from_client', {
-                    conv_id: convId,
-                    msg: data.msg,
-                    sent_at: data.sent_at,
-                }); // send to all agents
+            this.server.in(roomId).emit('ec_is_typing_from_client', {
+                conv_id: convId,
+                msg: data.msg,
+                sent_at: data.sent_at,
+            }); // send to all agents
         });
 
         // use if needed
-        // this.server
-        //     .in(this.clientsToARoom[queryParams.ses_id])
-        //     .emit('ec_is_typing_to_client', {
-        //         msg: data.msg,
-        //         sent_at: data.sent_at,
-        //         return_type: 'own',
-        //     }); // return back to client so that we can update to all tab
+        this.server.in(queryParams.ses_id).emit('ec_is_typing_to_client', {
+            msg: data.msg,
+            sent_at: data.sent_at,
+            return_type: 'own',
+        }); // return back to client so that we can update to all tab
 
         return;
     }
@@ -403,23 +407,19 @@ export class EventsGateway
         // console.log(agentRooms);
 
         agentRooms.forEach((roomId: any) => {
-            this.server
-                .in(this.clientsToARoom[roomId])
-                .emit('ec_msg_from_client', {
-                    conv_id: convId,
-                    msg: data.msg,
-                    sent_at: data.sent_at,
-                }); // send to all agents
+            this.server.in(roomId).emit('ec_msg_from_client', {
+                conv_id: convId,
+                msg: data.msg,
+                sent_at: data.sent_at,
+            }); // send to all agents
         });
 
         // use if needed
-        // this.server
-        //     .in(this.clientsToARoom[queryParams.ses_id])
-        //     .emit('ec_msg_to_client', {
-        //         msg: data.msg,
-        //         sent_at: data.sent_at,
-        //         return_type: 'own',
-        //     }); // return back to client so that we can update to all tab
+        this.server.in(queryParams.ses_id).emit('ec_msg_to_client', {
+            msg: data.msg,
+            sent_at: data.sent_at,
+            return_type: 'own',
+        }); // return back to client so that we can update to all tab
 
         return;
     }
@@ -441,40 +441,37 @@ export class EventsGateway
             return;
         }
 
-        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-            return convObj.room_ids.includes(queryParams.ses_id);
-        }); // get conv_id from ses id
+        // handle to a specific conv's client
+        // const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
+        //     return convObj.room_ids.includes(queryParams.ses_id);
+        // }); // get conv_id from ses id
 
-        const agentRooms = Object.keys(this.clientsToARoom).filter(
-            (roomId: any) => {
-                return (
-                    !this.clientsToARoom[roomId].client_ids.includes(
-                        client.id, // ignore from same agent
-                    ) &&
-                    this.clientsToARoom[roomId].client_type === 'agent' &&
-                    this.clientsToARoom[roomId].api_key === queryParams.api_key
-                );
-            },
-        );
+        // const agentRooms = Object.keys(this.clientsToARoom).filter(
+        //     (roomId: any) => {
+        //         return (
+        //             !this.clientsToARoom[roomId].client_ids.includes(
+        //                 client.id, // ignore from same agent
+        //             ) &&
+        //             this.clientsToARoom[roomId].client_type === 'agent' &&
+        //             this.clientsToARoom[roomId].api_key === queryParams.api_key
+        //         );
+        //     },
+        // );
 
-        // console.log(agentRooms);
+        // // console.log(agentRooms);
 
-        agentRooms.forEach((roomId: any) => {
-            this.server
-                .in(this.clientsToARoom[roomId])
-                .emit('ec_is_typing_from_agent', {
-                    conv_id: convId,
-                    sent_at: data.sent_at,
-                }); // send to all agents without own agent
-        });
-
-        // use if needed
-        // this.server
-        //     .in(this.clientsToARoom[queryParams.ses_id])
-        //     .emit('ec_is_typing_to_agent', {
+        // agentRooms.forEach((roomId: any) => {
+        //     this.server.in(roomId).emit('ec_is_typing_from_agent', {
+        //         conv_id: convId,
         //         sent_at: data.sent_at,
-        //         return_type: 'own',
-        //     }); // return back to client so that we can update to all tab
+        //     }); // send to all agents without own agent
+        // });
+
+        // // use if needed
+        // this.server.in(queryParams.ses_id).emit('ec_is_typing_to_agent', {
+        //     sent_at: data.sent_at,
+        //     return_type: 'own',
+        // }); // return back to client so that we can update to all tab
 
         return;
     }
@@ -515,23 +512,19 @@ export class EventsGateway
         // console.log(agentRooms);
 
         agentRooms.forEach((roomId: any) => {
-            this.server
-                .in(this.clientsToARoom[roomId])
-                .emit('ec_msg_from_agent', {
-                    conv_id: convId,
-                    msg: data.msg,
-                    sent_at: data.sent_at,
-                }); // send to all agents
+            this.server.in(roomId).emit('ec_msg_from_agent', {
+                conv_id: convId,
+                msg: data.msg,
+                sent_at: data.sent_at,
+            }); // send to all other agents
         });
 
         // use if needed
-        // this.server
-        //     .in(this.clientsToARoom[queryParams.ses_id])
-        //     .emit('ec_msg_to_agent', {
-        //         msg: data.msg,
-        //         sent_at: data.sent_at,
-        //         return_type: 'own',
-        //     }); // return back to client so that we can update to all tab
+        this.server.in(queryParams.ses_id).emit('ec_msg_to_agent', {
+            msg: data.msg,
+            sent_at: data.sent_at,
+            return_type: 'own',
+        }); // return back to client so that we can update to all tab
 
         return;
     }
@@ -590,6 +583,7 @@ export class EventsGateway
         client.join(roomName);
 
         console.log(this.clientsToARoom);
+        console.log(this.roomsInAConv);
 
         //if agent
         // save to this.apiToAgents = client.id
