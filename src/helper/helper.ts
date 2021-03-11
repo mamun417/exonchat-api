@@ -5,7 +5,7 @@ export class Helper {
         const data = await callback();
 
         if (!data) {
-            throw new HttpException('Data not found', HttpStatus.NOT_FOUND);
+            throw new HttpException('Invalid identifier', HttpStatus.NOT_FOUND);
         }
 
         return data;

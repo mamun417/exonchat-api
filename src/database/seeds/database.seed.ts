@@ -8,11 +8,15 @@ import { ChatClient } from '../../api/chat-clients/entities/chat-client.entity';
 import { Conversation } from '../../api/conversations/entities/conversation.entity';
 import { Message } from '../../api/messages/entities/message.entity';
 import { ConversationClient } from '../../api/conversation-clients/entities/conversation-client.entity';
+import { Permission } from '../../api/role-permissions/entities/permission.entity';
 
 export default class CreateDatabase implements Seeder {
     public ids = {};
 
     public async run(factory: Factory, connection: Connection): Promise<any> {
+        // permission factory
+        await factory(Permission)().createMany(10);
+
         await this.hasRelations(factory, [
             {
                 model: Subscriber,
@@ -95,11 +99,7 @@ export default class CreateDatabase implements Seeder {
 
         if (_.isPlainObject(picked)) {
             for (const mr of model.relates) {
-                if (
-                    model.nullable &&
-                    model.nullable.includes(mr) &&
-                    Math.random() > 0.5
-                ) {
+                if (model.nullable && model.nullable.includes(mr) && Math.random() > 0.5) {
                     gen[mr] = null;
                 } else {
                     if (!picked.hasOwnProperty(mr)) {
@@ -110,11 +110,7 @@ export default class CreateDatabase implements Seeder {
                 }
             }
         } else {
-            if (
-                model.nullable &&
-                model.nullable.includes(lastRelatesPicked) &&
-                Math.random() > 0.5
-            ) {
+            if (model.nullable && model.nullable.includes(lastRelatesPicked) && Math.random() > 0.5) {
                 gen[lastRelatesPicked] = null;
             } else {
                 gen[lastRelatesPicked] = picked;
@@ -123,19 +119,14 @@ export default class CreateDatabase implements Seeder {
 
         if (notFoundedRelates.length) {
             for (const notFoundedRelate of notFoundedRelates) {
-                const selectNotFoundedColumnEntries = this.ids[
-                    notFoundedRelate
-                ];
+                const selectNotFoundedColumnEntries = this.ids[notFoundedRelate];
 
                 let findAnyMatchedFromBefore = null;
                 for (const g of Object.keys(gen)) {
                     const ranC = _.find(this.ids[g], [g, gen[g]]);
 
                     for (const rc of Object.keys(ranC)) {
-                        const ll = _.find(selectNotFoundedColumnEntries, [
-                            rc,
-                            ranC[rc],
-                        ]);
+                        const ll = _.find(selectNotFoundedColumnEntries, [rc, ranC[rc]]);
 
                         if (ll) {
                             findAnyMatchedFromBefore = ll;
@@ -148,8 +139,7 @@ export default class CreateDatabase implements Seeder {
                     }
                 }
 
-                gen[notFoundedRelate] =
-                    findAnyMatchedFromBefore[notFoundedRelate];
+                gen[notFoundedRelate] = findAnyMatchedFromBefore[notFoundedRelate];
             }
         } else {
             // handle else if needed

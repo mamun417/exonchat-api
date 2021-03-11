@@ -1,5 +1,6 @@
 import { IsEmpty, IsNotEmpty } from 'class-validator';
 import { IsNull } from 'typeorm';
+import { Permission } from '../entities/permission.entity';
 
 export class CreateRoleDto {
     @IsNotEmpty()
@@ -10,5 +11,5 @@ export class CreateRoleDto {
 
     description: string;
 
-    permissions: [];
+    permissions: Permission[];
 }
