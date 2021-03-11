@@ -75,8 +75,64 @@ export class EventsGateway
         return;
     }
 
-    @SubscribeMessage('ec_init_conv_from_user')
-    async initialize_conversation(
+    @SubscribeMessage('ec_init_conv_from_agent')
+    async init_conversation_from_agent(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        // this.server.emit('msg to client');
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_init_conv_from_agent',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        const conv_id = '999'; // get from api
+        const roomName = queryParams.ses_id;
+
+        if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
+            this.roomsInAConv[conv_id] = { room_ids: [roomName] };
+
+            if (data.agents_only) {
+                this.roomsInAConv[conv_id].agents_only = true;
+            }
+        } else {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_init_conv_from_agent',
+                reason: 'conv id already exists',
+            });
+
+            return;
+        }
+
+        this.server.in(roomName).emit('ec_conv_initiated_from_agent', {
+            data: {
+                conv_id: '999',
+            },
+            status: 'success',
+        });
+
+        // if api error
+        // this.server.to(client.id).emit('ec_error', {
+        //     type: 'warning',
+        //     step: 'ec_conv_initiated_from_agent',
+        //     reason: 'err.msg',
+        // });
+
+        console.log(this.roomsInAConv);
+
+        return;
+    }
+
+    @SubscribeMessage('ec_init_conv_from_client')
+    async init_conversation_from_client(
         @MessageBody() data: number,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
@@ -86,7 +142,7 @@ export class EventsGateway
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
             this.server.to(client.id).emit('ec_error', {
                 type: 'warning',
-                step: 'ec_init_conv_from_user',
+                step: 'ec_init_conv_from_client',
                 reason: 'handshake params are not set properly',
             });
 
@@ -101,7 +157,7 @@ export class EventsGateway
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_init_conv_from_user',
+                step: 'ec_init_conv_from_client',
                 reason: 'conv id already exists',
             });
 
@@ -118,7 +174,7 @@ export class EventsGateway
         // if api error
         // this.server.to(client.id).emit('ec_error', {
         //     type: 'warning',
-        //     step: 'at_join_conversation',
+        //     step: 'ec_init_conv_from_client',
         //     reason: 'err.msg',
         // });
 
@@ -345,6 +401,7 @@ export class EventsGateway
             return convObj.room_ids.includes(queryParams.ses_id);
         }); // get conv_id from ses id
 
+        // get all agents with the api_key
         const agentRooms = Object.keys(this.clientsToARoom).filter(
             (roomId: any) => {
                 return (
@@ -354,8 +411,7 @@ export class EventsGateway
             },
         );
 
-        // console.log(agentRooms);
-
+        // send to all connected agents
         agentRooms.forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_is_typing_from_client', {
                 conv_id: convId,
@@ -395,6 +451,7 @@ export class EventsGateway
             return convObj.room_ids.includes(queryParams.ses_id);
         }); // get conv_id from ses id
 
+        // get all agents with the api_key
         const agentRooms = Object.keys(this.clientsToARoom).filter(
             (roomId: any) => {
                 return (
@@ -404,8 +461,7 @@ export class EventsGateway
             },
         );
 
-        // console.log(agentRooms);
-
+        // send to all connected agents
         agentRooms.forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_msg_from_client', {
                 conv_id: convId,
@@ -441,37 +497,79 @@ export class EventsGateway
             return;
         }
 
-        // handle to a specific conv's client
-        // const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-        //     return convObj.room_ids.includes(queryParams.ses_id);
-        // }); // get conv_id from ses id
+        if (
+            this.roomsInAConv.hasOwnProperty(queryParams.conv_id) &&
+            this.roomsInAConv[queryParams.conv_id].includes(queryParams.ses_id)
+        ) {
+            const convObj = this.roomsInAConv[queryParams.conv_id];
 
-        // const agentRooms = Object.keys(this.clientsToARoom).filter(
-        //     (roomId: any) => {
-        //         return (
-        //             !this.clientsToARoom[roomId].client_ids.includes(
-        //                 client.id, // ignore from same agent
-        //             ) &&
-        //             this.clientsToARoom[roomId].client_type === 'agent' &&
-        //             this.clientsToARoom[roomId].api_key === queryParams.api_key
-        //         );
-        //     },
-        // );
+            if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
+                //
+            } else {
+                const agentRooms = Object.keys(this.clientsToARoom).filter(
+                    (roomId: any) => {
+                        return (
+                            !this.clientsToARoom[roomId].client_ids.includes(
+                                client.id, // ignore from same agent
+                            ) &&
+                            this.clientsToARoom[roomId].client_type ===
+                                'agent' &&
+                            this.clientsToARoom[roomId].api_key ===
+                                queryParams.api_key
+                        );
+                    },
+                );
 
-        // // console.log(agentRooms);
+                // it will contain single elm for now
+                const clientRooms = convObj.room_ids.filter((roomId: any) => {
+                    return (
+                        this.clientsToARoom[roomId].client_type !== 'agent' &&
+                        this.clientsToARoom[roomId].api_key ===
+                            queryParams.api_key
+                    );
+                });
 
-        // agentRooms.forEach((roomId: any) => {
-        //     this.server.in(roomId).emit('ec_is_typing_from_agent', {
-        //         conv_id: convId,
-        //         sent_at: data.sent_at,
-        //     }); // send to all agents without own agent
-        // });
+                if (clientRooms.length === 1) {
+                    clientRooms.forEach((roomId: any) => {
+                        this.server.in(roomId).emit('ec_is_typing_from_agent', {
+                            conv_id: queryParams.conv_id,
+                            msg: data.msg,
+                            sent_at: data.sent_at,
+                        });
+                    });
+                } else {
+                    this.server.to(client.id).emit('ec_error', {
+                        type: 'warning',
+                        step: 'ec_is_typing_from_agent',
+                        reason: 'Somehow client is not present in this conv',
+                    });
 
-        // // use if needed
-        // this.server.in(queryParams.ses_id).emit('ec_is_typing_to_agent', {
-        //     sent_at: data.sent_at,
-        //     return_type: 'own',
-        // }); // return back to client so that we can update to all tab
+                    return;
+                }
+
+                agentRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_is_typing_from_agent', {
+                        conv_id: queryParams.conv_id,
+                        msg: data.msg,
+                        sent_at: data.sent_at,
+                    }); // send to all other agents
+                });
+            }
+        } else {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_is_typing_from_agent',
+                reason: 'You are doing something wrong',
+            });
+
+            return;
+        }
+
+        // use if needed
+        this.server.in(queryParams.ses_id).emit('ec_is_typing_to_agent', {
+            sent_at: data.sent_at,
+            return_type: 'own',
+        }); // return back to client so that we can update to all tab
 
         return;
     }
@@ -493,31 +591,77 @@ export class EventsGateway
             return;
         }
 
-        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-            return convObj.room_ids.includes(queryParams.ses_id);
-        }); // get conv_id from ses id
+        // check if the conv only for agents
+        // if for agents send to only those conv rooms
+        // else send to every other agents then the client
 
-        const agentRooms = Object.keys(this.clientsToARoom).filter(
-            (roomId: any) => {
-                return (
-                    !this.clientsToARoom[roomId].client_ids.includes(
-                        client.id, // ignore from same agent
-                    ) &&
-                    this.clientsToARoom[roomId].client_type === 'agent' &&
-                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+        if (
+            this.roomsInAConv.hasOwnProperty(queryParams.conv_id) &&
+            this.roomsInAConv[queryParams.conv_id].includes(queryParams.ses_id)
+        ) {
+            const convObj = this.roomsInAConv[queryParams.conv_id];
+
+            if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
+                //
+            } else {
+                const agentRooms = Object.keys(this.clientsToARoom).filter(
+                    (roomId: any) => {
+                        return (
+                            !this.clientsToARoom[roomId].client_ids.includes(
+                                client.id, // ignore from same agent
+                            ) &&
+                            this.clientsToARoom[roomId].client_type ===
+                                'agent' &&
+                            this.clientsToARoom[roomId].api_key ===
+                                queryParams.api_key
+                        );
+                    },
                 );
-            },
-        );
 
-        // console.log(agentRooms);
+                // it will contain single elm for now
+                const clientRooms = convObj.room_ids.filter((roomId: any) => {
+                    return (
+                        this.clientsToARoom[roomId].client_type !== 'agent' &&
+                        this.clientsToARoom[roomId].api_key ===
+                            queryParams.api_key
+                    );
+                });
 
-        agentRooms.forEach((roomId: any) => {
-            this.server.in(roomId).emit('ec_msg_from_agent', {
-                conv_id: convId,
-                msg: data.msg,
-                sent_at: data.sent_at,
-            }); // send to all other agents
-        });
+                if (clientRooms.length === 1) {
+                    clientRooms.forEach((roomId: any) => {
+                        this.server.in(roomId).emit('ec_msg_from_agent', {
+                            conv_id: queryParams.conv_id,
+                            msg: data.msg,
+                            sent_at: data.sent_at,
+                        });
+                    });
+                } else {
+                    this.server.to(client.id).emit('ec_error', {
+                        type: 'warning',
+                        step: 'ec_msg_from_agent',
+                        reason: 'Somehow client is not present in this conv',
+                    });
+
+                    return;
+                }
+
+                agentRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_msg_from_agent', {
+                        conv_id: queryParams.conv_id,
+                        msg: data.msg,
+                        sent_at: data.sent_at,
+                    }); // send to all other agents
+                });
+            }
+        } else {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_msg_from_agent',
+                reason: 'You are doing something wrong',
+            });
+
+            return;
+        }
 
         // use if needed
         this.server.in(queryParams.ses_id).emit('ec_msg_to_agent', {
