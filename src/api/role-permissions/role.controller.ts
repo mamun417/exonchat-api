@@ -3,6 +3,7 @@ import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
+import { AssignRoleToUserDto } from './dto/assign-role-to-user.dto';
 
 @Controller('roles')
 export class RoleController {
@@ -29,7 +30,12 @@ export class RoleController {
     }
 
     @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.roleService.remove(id);
+    async remove(@Param('id') id: string) {
+        return await this.roleService.remove(id);
+    }
+
+    @Put('assign/user')
+    async roleAssignToUser(@Body() assignRoleToUserDto: AssignRoleToUserDto) {
+        return await this.roleService.roleAssignToUser(assignRoleToUserDto);
     }
 }

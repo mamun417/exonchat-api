@@ -1,5 +1,4 @@
-import { IsEmpty, IsNotEmpty } from 'class-validator';
-import { IsNull } from 'typeorm';
+import { IsArray, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { Permission } from '../entities/permission.entity';
 
 export class CreateRoleDto {
@@ -11,5 +10,8 @@ export class CreateRoleDto {
 
     description: string;
 
+    @IsArray()
+    @MinLength(1, { each: true })
+    @IsString({ each: true })
     permissions: Permission[];
 }

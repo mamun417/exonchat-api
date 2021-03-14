@@ -1,12 +1,4 @@
-import {
-    Controller,
-    Get,
-    Post,
-    Body,
-    Put,
-    Param,
-    Delete,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
 import { ChatAgentsService } from './chat-agents.service';
 import { CreateChatAgentDto } from './dto/create-chat-agent.dto';
 import { UpdateChatAgentDto } from './dto/update-chat-agent.dto';
@@ -27,15 +19,12 @@ export class ChatAgentsController {
 
     @Get(':id')
     findOne(@Param('id') id: string) {
-        return this.chatAgentsService.findOne(+id);
+        return this.chatAgentsService.findOne(id);
     }
 
     @Put(':id')
-    update(
-        @Param('id') id: string,
-        @Body() updateChatAgentDto: UpdateChatAgentDto,
-    ) {
-        return this.chatAgentsService.update(+id, updateChatAgentDto);
+    update(@Param('id') id: string, @Body() updateChatAgentDto: UpdateChatAgentDto) {
+        return this.chatAgentsService.update(id, updateChatAgentDto);
     }
 
     @Delete(':id')

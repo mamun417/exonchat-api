@@ -1,11 +1,4 @@
-import {
-    Column,
-    Entity,
-    JoinColumn,
-    ManyToOne,
-    OneToMany,
-    PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Message } from '../../messages/entities/message.entity';
 import { Subscriber } from '../../subscribers/entities/subscriber.entity';
 import { ChatClient } from '../../chat-clients/entities/chat-client.entity';
@@ -14,6 +7,9 @@ import { ChatClient } from '../../chat-clients/entities/chat-client.entity';
 export class ChatAgent {
     @PrimaryGeneratedColumn('uuid')
     id: string;
+
+    @Column({ nullable: true })
+    role_id: string;
 
     @Column({
         type: 'uuid',
@@ -26,7 +22,7 @@ export class ChatAgent {
     @Column()
     password: string;
 
-    @Column()
+    @Column({ default: false })
     active: boolean;
 
     @Column({

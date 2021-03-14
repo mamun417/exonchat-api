@@ -18,7 +18,7 @@ export class UserExtraPermission {
     })
     user_id: string;
 
-    @Column()
+    @Column({ nullable: true })
     user_type: string;
 
     @Column({ default: 0 })
