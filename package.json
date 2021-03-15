@@ -22,13 +22,13 @@
         "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
         "seed:config": "ts-node ./node_modules/typeorm-seeding/dist/cli.js config",
         "seed": "ts-node ./node_modules/typeorm-seeding/dist/cli.js seed",
-        "drop:seed": "npm run schema:drop; npm run schema:sync; ts-node ./node_modules/typeorm-seeding/dist/cli.js seed",
         "schema:drop": "ts-node ./node_modules/typeorm/cli.js schema:drop",
-        "schema:sync": "ts-node ./node_modules/typeorm/cli.js schema:sync"
+        "schema:sync": "ts-node ./node_modules/typeorm/cli.js schema:sync",
+        "drop:seed": "npm run schema:drop; npm run schema:sync; ts-node ./node_modules/typeorm-seeding/dist/cli.js seed"
     },
     "dependencies": {
         "@nestjs/common": "^7.6.6",
-        "@nestjs/config": "^0.6.2",
+        "@nestjs/config": "^0.6.3",
         "@nestjs/core": "^7.5.1",
         "@nestjs/jwt": "^7.2.0",
         "@nestjs/mapped-types": "^0.3.0",
