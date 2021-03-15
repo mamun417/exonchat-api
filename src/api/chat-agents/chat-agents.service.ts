@@ -5,14 +5,21 @@ import { Helper } from '../../helper/helper';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ChatAgent } from './entities/chat-agent.entity';
 import { Repository } from 'typeorm';
-import { Role } from '../role-permissions/entities/role.entity';
-import { contains } from 'class-validator';
+import { UserExtraPermission } from '../role-permissions/entities/user_extra_permission.entity';
+import * as _ from 'lodash';
+import { Permission } from '../role-permissions/entities/permission.entity';
 
 @Injectable()
 export class ChatAgentsService {
     constructor(
         @InjectRepository(ChatAgent)
         private chatAgentRepository: Repository<ChatAgent>,
+
+        @InjectRepository(UserExtraPermission)
+        private userExtraPermissionRepository: Repository<UserExtraPermission>,
+
+        @InjectRepository(Permission)
+        private permissionRepository: Repository<Permission>,
     ) {}
 
     create(createChatAgentDto: CreateChatAgentDto) {
@@ -43,5 +50,32 @@ export class ChatAgentsService {
 
     remove(id: number) {
         return `This action removes a #${id} chatAgent`;
+    }
+
+    async getRolePermissions(id: string) {
+        return await new Helper().getSingleDataWithException(async () => {
+            const chatAgent = await this.chatAgentRepository.findOne(id, {
+                relations: ['role', 'role.permissions'],
+            });
+
+            return chatAgent.role.permissions;
+        }, 'chat_agents');
+    }
+
+    async getUserPermissions(id: string) {
+        const rolePermissions = await this.getRolePermissions(id);
+
+        const rolePermissionIds = rolePermissions.map((permission) => permission.id);
+
+        const userExtraPermissions = await this.userExtraPermissionRepository.find({
+            user_id: id,
+            include: true,
+        });
+
+        const userExtraPermissionsIds = userExtraPermissions.map((permission) => permission.permission_id);
+
+        const allPermissionIds = _.union(rolePermissionIds, userExtraPermissionsIds);
+
+        return await this.permissionRepository.find(allPermissionIds);
     }
 }

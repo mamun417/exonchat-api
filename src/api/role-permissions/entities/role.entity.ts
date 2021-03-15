@@ -1,5 +1,6 @@
-import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn, RelationId } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn, RelationId } from 'typeorm';
 import { Permission } from './permission.entity';
+import { ChatAgent } from '../../chat-agents/entities/chat-agent.entity';
 
 @Entity()
 export class Role {
@@ -18,6 +19,8 @@ export class Role {
     @ManyToMany((type) => Permission, (permission) => permission.roles, { cascade: true })
     @JoinTable()
     permissions: Permission[];
+
+    @OneToMany((type) => ChatAgent, (chatAgent) => chatAgent.role) chat_agents: ChatAgent[];
 
     @Column({
         type: 'timestamp',

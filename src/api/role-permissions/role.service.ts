@@ -10,12 +10,17 @@ import { AssignRoleToUserDto } from './dto/assign-role-to-user.dto';
 import { ChatAgent } from '../chat-agents/entities/chat-agent.entity';
 import { ChatAgentsService } from '../chat-agents/chat-agents.service';
 import { UserExtraPermission } from './entities/user_extra_permission.entity';
+import { agent } from 'supertest';
+import * as _ from 'lodash';
 
 @Injectable()
 export class RoleService {
     constructor(
         @InjectRepository(Role)
         private roleRepository: Repository<Role>,
+
+        @InjectRepository(Permission)
+        private permissionRepository: Repository<Permission>,
 
         @InjectRepository(UserExtraPermission)
         private userExtraPermissionRepository: Repository<UserExtraPermission>,
@@ -56,19 +61,35 @@ export class RoleService {
     async roleAssignToUser(assignRoleToUserDto: AssignRoleToUserDto) {
         const userId = assignRoleToUserDto.user_id;
         const roleId = assignRoleToUserDto.role_id;
-        const excludePermissions = assignRoleToUserDto.exclude_permissions;
-        const includePermissions = assignRoleToUserDto.include_permissions;
+        let excludePermissions: any = assignRoleToUserDto.exclude_permissions;
+        let includePermissions: any = assignRoleToUserDto.include_permissions;
 
         const role = await this.findOne(roleId); // validate role_id
         const chatAgent = await this.chatAgentsService.findOne(userId); // validate uer_id
 
+        const rolePermissions = await this.chatAgentsService.getRolePermissions(userId);
+
+        includePermissions = includePermissions.filter((permission) => {
+            return _.findIndex(rolePermissions, ['id', permission]) === -1;
+        });
+
+        // remove which ids includes into includePermissions to get actual exclude permissions
+        excludePermissions = excludePermissions.filter((permission) => {
+            return !includePermissions.includes(permission) && _.findIndex(rolePermissions, ['id', permission]) !== -1;
+        });
+
+        // remove old data from userExtraPermissions
+        await this.userExtraPermissionRepository.delete({
+            user_id: userId,
+        });
+
+        // update userExtraPermissions
+        await this.saveUserExtraPermissions(includePermissions, userId);
+        await this.saveUserExtraPermissions(excludePermissions, userId, false);
+
         chatAgent.role_id = role.id;
 
         return await this.chatAgentsService.update(chatAgent.id, chatAgent);
-
-        // save extra permissions
-
-        // return response;
     }
 
     async makePermissionsArr(dto) {
@@ -79,5 +100,24 @@ export class RoleService {
         }
 
         return permissions as Permission[];
+    }
+
+    async saveUserExtraPermissions(permissions: [], userId: string, include = true, userType = 'agent') {
+        if (permissions) {
+            for (const permission of permissions) {
+                const checkPermission = await this.permissionRepository.findOne(permission);
+
+                if (checkPermission) {
+                    const userExtraPermission = new UserExtraPermission();
+
+                    userExtraPermission.user_id = userId;
+                    userExtraPermission.permission_id = permission;
+                    userExtraPermission.include = include;
+                    userExtraPermission.user_type = userType;
+
+                    await this.userExtraPermissionRepository.save(userExtraPermission);
+                }
+            }
+        }
     }
 }

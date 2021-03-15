@@ -31,4 +31,9 @@ export class ChatAgentsController {
     remove(@Param('id') id: string) {
         return this.chatAgentsService.remove(+id);
     }
+
+    @Get(':id/permissions')
+    getUserPermissions(@Param('id') id: string) {
+        return this.chatAgentsService.getUserPermissions(id);
+    }
 }

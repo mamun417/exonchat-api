@@ -6,6 +6,12 @@ export class Permission {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
+    @Column({ default: true })
+    status: boolean;
+
+    @Column({ nullable: true })
+    use_for: string;
+
     @Column()
     slug: string;
 

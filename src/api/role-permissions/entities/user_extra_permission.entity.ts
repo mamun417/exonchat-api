@@ -22,7 +22,7 @@ export class UserExtraPermission {
     user_type: string;
 
     @Column({ default: 0 })
-    exclude: boolean;
+    include: boolean;
 
     @Column({
         type: 'timestamp',

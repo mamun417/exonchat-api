@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColum
 import { Message } from '../../messages/entities/message.entity';
 import { Subscriber } from '../../subscribers/entities/subscriber.entity';
 import { ChatClient } from '../../chat-clients/entities/chat-client.entity';
+import { Role } from '../../role-permissions/entities/role.entity';
 
 @Entity()
 export class ChatAgent {
@@ -43,4 +44,8 @@ export class ChatAgent {
 
     @OneToMany((type) => ChatClient, (chat_client) => chat_client.chat_agent)
     chat_agents: ChatAgent[];
+
+    @ManyToOne((type) => Role, (role) => role.permissions)
+    @JoinColumn({ name: 'role_id' })
+    role: Role;
 }
