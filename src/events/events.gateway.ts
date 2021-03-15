@@ -9,8 +9,6 @@ import {
     OnGatewayConnection,
     OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { from, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { Server, Socket } from 'socket.io';
 import * as _ from 'lodash';
 
@@ -29,10 +27,38 @@ export class EventsGateway
     private roomsInAConv: any = {};
     private apiToAgents: any = {};
 
-    @SubscribeMessage('ec_agents_online')
-    async agentsOnline(@MessageBody() data: any): Promise<number> {
-        // this.server.emit('agents-online to client');
-        return data;
+    @SubscribeMessage('ec_get_agents_online')
+    async agentsOnline(
+        @MessageBody() data: any,
+        @ConnectedSocket() client: Socket,
+    ): Promise<number> {
+        const queryParams = client?.handshake?.query;
+
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'warning',
+                step: 'ec_get_agents_online',
+                reason: 'handshake params are not set properly',
+            });
+
+            return;
+        }
+
+        // get all online agents with the api_key
+        const agents = Object.keys(this.clientsToARoom).filter(
+            (roomId: any) => {
+                return (
+                    this.clientsToARoom[roomId].client_type === 'agent' &&
+                    this.clientsToARoom[roomId].api_key === queryParams.api_key
+                );
+            },
+        );
+
+        this.server.to(client.id).emit('ec_agents_online_res', {
+            agents: agents,
+        });
+
+        return;
     }
 
     @SubscribeMessage('ec_page_visit_info_from_client')
@@ -80,7 +106,6 @@ export class EventsGateway
         @MessageBody() data: any,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
-        // this.server.emit('msg to client');
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -136,7 +161,6 @@ export class EventsGateway
         @MessageBody() data: number,
         @ConnectedSocket() client: Socket,
     ): Promise<number> {
-        // this.server.emit('msg to client');
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
