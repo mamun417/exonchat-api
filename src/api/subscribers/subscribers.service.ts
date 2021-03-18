@@ -6,6 +6,8 @@ import { Repository } from 'typeorm';
 import { Subscriber } from './entities/subscriber.entity';
 import { ChatClient } from '../chat-clients/entities/chat-client.entity';
 
+import { PrismaService } from '../../prisma.service';
+
 @Injectable()
 export class SubscribersService {
     constructor(

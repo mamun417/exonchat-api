@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["createMany"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model subscriber {
+  id                String         @id @default(cuid())
+  active            Boolean        @default(false)
+  api_key           String         @unique @default(cuid())
+  created_at        DateTime       @default(now()) @db.Timestamp(6)
+  updated_at        DateTime       @default(now()) @db.Timestamp(6)
+  roles             role[]
+  extra_permissions extra_permission[]
+  chat_agents       chat_agent[]
+  socket_sessions   socket_session[]
+  conversations     conversation[]
+  messages          message[]
+}
+
+model chat_agent {
+  id                  String        @id @default(cuid())
+  email               String        @db.VarChar
+  password            String        @db.VarChar
+  active              Boolean       @default(false)
+  created_at          DateTime      @default(now()) @db.Timestamp(6)
+  updated_at          DateTime      @default(now()) @db.Timestamp(6)
+  role                role          @relation(fields: [role_id], references: [id])
+  role_id             String    
+  subscriber          subscriber    @relation(fields: [subscriber_id], references: [id])
+  subscriber_id       String
+  extra_permissions   extra_permission[]    
+  socket_sessions     socket_session[]
+}
+
+model role {
+  id                          String                        @id @default(cuid())
+  slug                        String                        @db.VarChar
+  name                        String                        @db.VarChar
+  description                 String?                       @db.VarChar
+  subscriber                  subscriber?                   @relation(fields: [subscriber_id], references: [id])
+  subscriber_id               String?
+  chat_agents                 chat_agent[]
+  permissions                 permission[]
+  created_at                  DateTime                      @default(now()) @db.Timestamp(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamp(6)
+}
+
+model permission {
+  id                          String                        @id @default(cuid())
+  use_for                     permission_use_for_enum       @default(subscriber)
+  slug                        String                        @unique @db.VarChar
+  name                        String                        @db.VarChar
+  description                 String?                       @db.VarChar
+  status                      Boolean                       @default(true)
+  created_at                  DateTime                      @default(now()) @db.Timestamp(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamp(6)
+  roles                       role[]
+  extra_permissions           extra_permission[]
+}
+
+model extra_permission {
+  id                          String                    @id @default(cuid())
+  permission                  permission                @relation(fields: [permission_id], references: [id])
+  permission_id               String                
+  chat_agent                  chat_agent?               @relation(fields: [chat_agent_id], references: [id])
+  chat_agent_id               String?              
+  subscriber                  subscriber?               @relation(fields: [subscriber_id], references: [id])
+  subscriber_id               String?                   // if has then all the users in this subscriber
+  // administrator user pending
+  include                     Boolean                   @default(true)
+  created_at                  DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at                  DateTime                  @default(now()) @db.Timestamp(6)
+}
+
+model socket_session {
+  id                  String                @id @default(cuid())
+  info                String?               @db.VarChar
+  host_log            String                @db.VarChar
+  identifier          String?               @db.VarChar
+  init_name           String?               @db.VarChar
+  init_email          String?               @db.VarChar
+  user_type                socket_session_user_type_enum @default(client)
+  agent_id            String?               
+  subscriber_id       String                
+  created_at          DateTime              @default(now()) @db.Timestamp(6)
+  updated_at          DateTime              @default(now()) @db.Timestamp(6)
+  chat_agent          chat_agent?           @relation(fields: [agent_id], references: [id])
+  subscriber          subscriber            @relation(fields: [subscriber_id], references: [id])
+  conversation_client conversation_client[]
+}
+
+model conversation {
+  id                  String                @id @default(cuid())
+  agents_only         String?               
+  subscriber_id       String                
+  type                String                @default("web_chat") @db.VarChar
+  closed_at           DateTime              @default(now()) @db.Timestamp(6)
+  close_by_id         String                
+  created_at          DateTime              @default(now()) @db.Timestamp(6)
+  updated_at          DateTime              @default(now()) @db.Timestamp(6)
+  subscriber          subscriber            @relation(fields: [subscriber_id], references: [id])
+  conversation_client conversation_client[]
+  message             message[]
+}
+
+model conversation_client {
+  id              String       @id @default(cuid())
+  conversation_id String       
+  socket_session_id  String       
+  joined_at       DateTime     @default(now()) @db.Timestamp(6)
+  leave_at        DateTime     @default(now()) @db.Timestamp(6)
+  created_at      DateTime     @default(now()) @db.Timestamp(6)
+  updated_at      DateTime     @default(now()) @db.Timestamp(6)
+  socket_session     socket_session  @relation(fields: [socket_session_id], references: [id])
+  conversation    conversation @relation(fields: [conversation_id], references: [id])
+}
+
+model message {
+  id              String       @id @default(cuid())
+  conversation_id String       
+  msg             String
+  sender          String       @db.VarChar
+  sender_type     String       @db.VarChar
+  subscriber_id   String       
+  created_at      DateTime     @default(now()) @db.Timestamp(6)
+  updated_at      DateTime     @default(now()) @db.Timestamp(6)
+  conversation    conversation @relation(fields: [conversation_id], references: [id])
+  subscriber      subscriber   @relation(fields: [subscriber_id], references: [id])
+}
+
+
+
+enum socket_session_user_type_enum {
+  client
+  agent
+}
+
+enum permission_use_for_enum {
+  subscriber
+  administrator
+}
