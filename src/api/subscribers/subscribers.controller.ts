@@ -9,6 +9,7 @@ export class SubscribersController {
 
     @Post()
     create(@Body() createSubscriberDto: CreateSubscriberDto) {
+        // return createSubscriberDto;
         return this.subscribersService.create(createSubscriberDto);
     }
 
@@ -19,21 +20,21 @@ export class SubscribersController {
 
     @Get(':id')
     findOne(@Param('id') id: string) {
-        return this.subscribersService.findOne(+id);
+        return this.subscribersService.findOne(id);
     }
 
-    @Get('chat_client/:apy_key') // will be change later
-    getChatClientApiKey(@Param('apy_key') apy_key: string) {
-        return this.subscribersService.getChatClientByApiKey(apy_key);
-    }
+    // @Get('chat_client/:apy_key') // will be change later
+    // getChatClientApiKey(@Param('apy_key') apy_key: string) {
+    //     return this.subscribersService.getChatClientByApiKey(apy_key);
+    // }
 
-    @Put(':id')
-    update(@Param('id') id: string, @Body() updateSubscriberDto: UpdateSubscriberDto) {
-        return this.subscribersService.update(+id, updateSubscriberDto);
-    }
+    // @Put(':id')
+    // update(@Param('id') id: string, @Body() updateSubscriberDto: UpdateSubscriberDto) {
+    //     return this.subscribersService.update(+id, updateSubscriberDto);
+    // }
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.subscribersService.remove(+id);
-    }
+    // @Delete(':id')
+    // remove(@Param('id') id: string) {
+    //     return this.subscribersService.remove(+id);
+    // }
 }

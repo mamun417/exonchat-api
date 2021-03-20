@@ -5,39 +5,41 @@ import { create } from 'node:domain';
 
 const prisma = new PrismaClient();
 
-async function main() {
-    const permissions = [
-        { slug: 'agent_create', name: 'Agent Create' },
-        { slug: 'chat_join', name: 'Chat Join' },
-    ];
-    const roles = [
-        { slug: 'admin', name: 'Admin' },
-        { slug: 'agent', name: 'Agent' },
-    ];
+enum permission_use_for_enum {
+    subscriber,
+    administrator,
+}
 
-    const permissionData = await Promise.all(
-        permissions.map(async (permission) => {
-            return await prisma.permission.upsert({
-                where: { slug: permission.slug },
-                create: permission,
-                update: permission,
-            });
-        }),
-    );
+async function main() {
+    const roles: any = [
+        {
+            slug: 'super_admin',
+            name: 'Super Admin',
+            use_for: 'administrator',
+            permissions: [{ slug: 'subscriber_list', name: 'Subscriber List', use_for: 'administrator' }],
+        },
+        {
+            slug: 'admin',
+            name: 'Admin',
+            use_for: 'subscriber',
+            permissions: [{ slug: 'agent_create', name: 'Agent Create', use_for: 'subscriber' }],
+        },
+        {
+            slug: 'agent',
+            name: 'Agent',
+            use_for: 'subscriber',
+            permissions: [{ slug: 'chat_join', name: 'Chat Join', use_for: 'subscriber' }],
+        },
+    ];
 
     const rolesData = await Promise.all(
         roles.map(async (role) => {
-            const idCond = { slug: role.slug === 'admin' ? 'agent_create' : 'chat_join' };
-
             return await prisma.role.create({
                 data: {
                     slug: role.slug,
                     name: role.name,
-                    permissions: {
-                        connect: {
-                            id: _l.find(permissionData, idCond).id,
-                        },
-                    },
+                    use_for: role.use_for,
+                    permissions: { create: role.permissions },
                 },
             });
         }),

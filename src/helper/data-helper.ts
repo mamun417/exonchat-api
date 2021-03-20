@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export class Helper {
+export class DataHelper {
     async getSingleDataWithException(callback, resource_location = '') {
         const data = await callback();
 

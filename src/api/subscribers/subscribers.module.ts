@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import { SubscribersService } from './subscribers.service';
 import { SubscribersController } from './subscribers.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Subscriber } from './entities/subscriber.entity';
+
+import { PrismaService } from '../../prisma.service';
+
+import { DataHelper } from '../../helper/data-helper';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Subscriber])],
+    imports: [],
     controllers: [SubscribersController],
-    providers: [SubscribersService],
-    exports: [SubscribersService],
+    providers: [PrismaService, DataHelper, SubscribersService],
+    exports: [],
 })
 export class SubscribersModule {}

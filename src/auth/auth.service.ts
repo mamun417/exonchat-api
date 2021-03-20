@@ -1,17 +1,17 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, Res, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { SubscribersService } from '../api/subscribers/subscribers.service';
+import { ChatAgentsService } from '../api/chat-agents/chat-agents.service';
 
 @Injectable()
 export class AuthService {
-    constructor(private subscriberService: SubscribersService, private jwtService: JwtService) {}
+    constructor(private agentService: ChatAgentsService, private jwtService: JwtService) {}
 
-    async validateUser(email: string, pass: string): Promise<any> {
-        const user = await this.subscriberService.login(email);
-        if (user && user.password === pass) {
-            const { password, ...result } = user;
-            return result;
-        }
+    async validateUserForLogin(email: string, pass: string): Promise<any> {
+        // const user = await this.agentService.validate(email, subscriber_id);
+        // if (user && user.password === pass) {
+        //     const { password, ...result } = user;
+        //     return result;
+        // }
         return null;
     }
 
