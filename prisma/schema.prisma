@@ -10,8 +10,10 @@ datasource db {
 
 model subscriber {
   id                String         @id @default(cuid())
-  active            Boolean        @default(false)
+  company_name      String         @unique
+  display_name      String         
   api_key           String         @unique @default(cuid())
+  active            Boolean        @default(false)
   created_at        DateTime       @default(now()) @db.Timestamp(6)
   updated_at        DateTime       @default(now()) @db.Timestamp(6)
   roles             role[]

@@ -46,13 +46,15 @@ async function main() {
     );
 
     const subscriberData = await Promise.all(
-        ['test', 'other'].map(async (emailPart, key) => {
+        ['test', 'other'].map(async (namePart, key) => {
             await prisma.subscriber.create({
                 data: {
+                    company_name: namePart,
+                    display_name: namePart,
                     chat_agents: {
                         create: [
                             {
-                                email: `${emailPart}@${emailPart}.${emailPart}`,
+                                email: `${namePart}@${namePart}.${namePart}`,
                                 password: '123',
                                 role: {
                                     connect: {
@@ -61,7 +63,7 @@ async function main() {
                                 },
                             },
                             {
-                                email: `${emailPart}1@${emailPart}.${emailPart}`,
+                                email: `${namePart}1@${namePart}.${namePart}`,
                                 password: '123',
                                 role: {
                                     connect: {

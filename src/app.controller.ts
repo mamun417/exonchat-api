@@ -1,10 +1,13 @@
 import { Controller, Get, Post, Request, Res, UseGuards } from '@nestjs/common';
-import { AppService } from './app.service';
-// import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { LocalAuthGuard } from './auth/guards/local-auth.guard';
+
+import { RequirePermission } from './authorizarion/permission.decorator';
+import { Permission } from './authorizarion/permission.enum';
+
 import { AuthService } from './auth/auth.service';
-import { Roles } from './authorizarion/roles.decorator';
-import { Role } from './authorizarion/role.enum';
+import { AppService } from './app.service';
 
 @Controller()
 export class AppController {
@@ -15,16 +18,19 @@ export class AppController {
     // }
     @UseGuards(LocalAuthGuard)
     @Post('auth/login')
-    async login(@Request() req, @Res() res) {
-        return this.authService.login(req.user, res);
+    async login(@Request() req: any, @Res() res: any) {
+        return this.authService.login(req.user, req, res);
     }
-    // @Roles(Role.Admin)
-    // @Get('profile')
-    // getProfile(@Request() req) {
-    //     return req.user;
-    // }
-    // @Post('auth/refresh')
-    // async refreshToken(@Request() req, @Res() res) {
-    //     return this.authService.refreshToken(req, res);
-    // }
+
+    // @UseGuards(JwtAuthGuard)
+    @RequirePermission(Permission.AGENT_CREATE)
+    @Get('profile')
+    getProfile(@Request() req: any) {
+        return req.user;
+    }
+
+    @Post('auth/refresh')
+    async refreshToken(@Request() req: any, @Res() res: any) {
+        return this.authService.refreshToken(req, res);
+    }
 }

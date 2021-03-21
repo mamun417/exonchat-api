@@ -6,12 +6,26 @@ import { chat_agent } from '@prisma/client';
 export class ChatAgentsService {
     constructor(private prisma: PrismaService) {}
 
-    async validate(email: string, subscriber_id: string): Promise<chat_agent> {
-        return this.prisma.chat_agent.findUnique({
+    async validateForLogin(login_info: any, pass: string): Promise<chat_agent> {
+        return this.prisma.chat_agent.findFirst({
             where: {
-                agent_identifier: {
-                    email,
-                    subscriber_id,
+                email: login_info.email,
+                subscriber: {
+                    company_name: login_info.company_name,
+                },
+            },
+            include: {
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
                 },
             },
         });

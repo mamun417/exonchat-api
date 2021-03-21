@@ -17,7 +17,7 @@ import { ChatAgentsModule } from '../api/chat-agents/chat-agents.module';
         PassportModule,
         JwtModule.register({
             secret: jwtConstants.secret,
-            signOptions: { expiresIn: '10000m' },
+            signOptions: { expiresIn: '60m' },
         }),
         ChatAgentsModule,
     ],

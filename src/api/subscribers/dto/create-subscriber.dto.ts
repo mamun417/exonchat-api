@@ -18,4 +18,12 @@ export class CreateSubscriberDto {
     @IsString()
     @IsNotEmpty()
     display_name: string;
+
+    @IsString()
+    @IsNotEmpty()
+    company_name: string;
+
+    @IsString()
+    @IsNotEmpty()
+    company_display_name: string;
 }

@@ -22,6 +22,8 @@ export class SubscribersService {
 
         return this.prisma.subscriber.create({
             data: {
+                company_name: createSubscriberDto.company_name,
+                display_name: createSubscriberDto.company_display_name,
                 chat_agents: {
                     create: [
                         {
