@@ -1,13 +1,14 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Post, Put } from '@nestjs/common';
-import { ChatClientsService } from './chat-clients.service';
-import { CreateChatClientDto } from './dto/create-chat-client.dto';
-import { UpdateChatClientDto } from './dto/update-chat-client.dto';
-import { ChatClient } from './entities/chat-client.entity';
-import { Helper } from '../../helper/helper';
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Ip, Param, Post, Put } from '@nestjs/common';
+import { SocketSessionsService } from './socket-sessions.service';
+import { CreateSocketSessionDto } from './dto/create-socket-session.dto';
+@Controller('socket-sessions')
+export class SocketSessionsController {
+    constructor(private readonly socketSessionsService: SocketSessionsService) {}
 
-@Controller('chat-clients')
-export class ChatClientsController {
-    // constructor(private readonly chatClientsService: ChatClientsService) {}
+    @Post()
+    async create(@Body() createSocketSessionDto: CreateSocketSessionDto, @Ip() ip: any) {
+        return this.socketSessionsService.createSocketSession(createSocketSessionDto, ip);
+    }
     // @Get(':id')
     // async findOne(@Param('id') id: string): Promise<ChatClient> {
     //     return await new Helper().getSingleDataWithException(async () => {

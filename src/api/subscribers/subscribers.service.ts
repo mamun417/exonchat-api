@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Subscriber } from './entities/subscriber.entity';
-import { ChatClient } from '../chat-clients/entities/chat-client.entity';
 
 import { PrismaService } from '../../prisma.service';
 import { subscriber } from '@prisma/client';
@@ -51,6 +47,15 @@ export class SubscribersService {
         );
     }
 
+    async fineOneByApiKey(api_key: string): Promise<subscriber> {
+        return await this.dataHelper.getSingleDataWithException(
+            async () =>
+                await this.prisma.subscriber.findUnique({
+                    where: { api_key },
+                }),
+        );
+    }
+
     // async getChatClientsByApiKey(api_key: string): Promise<ChatClient[]> {
     //     const subscriber = await this.subscribeRepository.findOne({
     //         where: {
@@ -60,14 +65,6 @@ export class SubscribersService {
     //     });
 
     //     return subscriber['chat_clients'];
-    // }
-
-    // async fineOneByApiKey(api_key: string): Promise<Subscriber> {
-    //     return await this.subscribeRepository.findOne({
-    //         where: {
-    //             api_key,
-    //         },
-    //     });
     // }
 
     // async getChatClientByApiKey(apy_key: string) {

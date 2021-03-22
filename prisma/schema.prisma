@@ -11,7 +11,7 @@ datasource db {
 model subscriber {
   id                String         @id @default(cuid())
   company_name      String         @unique
-  display_name      String         
+  display_name      String
   api_key           String         @unique @default(cuid())
   active            Boolean        @default(false)
   created_at        DateTime       @default(now()) @db.Timestamp(6)
@@ -83,46 +83,46 @@ model extra_permission {
 }
 
 model socket_session {
-  id                  String                @id @default(cuid())
-  info                String?               @db.VarChar
-  host_log            String                @db.VarChar
-  identifier          String?               @db.VarChar
-  init_name           String?               @db.VarChar
-  init_email          String?               @db.VarChar
-  user_type                socket_session_user_type_enum @default(client)
+  id                  String                        @id @default(cuid())
+  info                String?                       @db.VarChar
+  ip                  String                        @db.VarChar
+  identifier          String?                       @db.VarChar // it will determine by which key we can get the user logged info from api
+  init_name           String?                       @db.VarChar
+  init_email          String?                       @db.VarChar
+//   user_type           socket_session_user_type_enum @default(client)
+  created_at          DateTime                      @default(now()) @db.Timestamp(6)
+  updated_at          DateTime                      @default(now()) @db.Timestamp(6)
+  chat_agent          chat_agent?                   @relation(fields: [agent_id], references: [id])
   agent_id            String?
+  subscriber          subscriber                    @relation(fields: [subscriber_id], references: [id])
   subscriber_id       String
-  created_at          DateTime              @default(now()) @db.Timestamp(6)
-  updated_at          DateTime              @default(now()) @db.Timestamp(6)
-  chat_agent          chat_agent?           @relation(fields: [agent_id], references: [id])
-  subscriber          subscriber            @relation(fields: [subscriber_id], references: [id])
   conversation_client conversation_client[]
 }
 
 model conversation {
   id                  String                @id @default(cuid())
   agents_only         String?
-  subscriber_id       String
   type                String                @default("web_chat") @db.VarChar
   closed_at           DateTime              @default(now()) @db.Timestamp(6)
-  close_by_id         String
+  closed_by_id        String?
   created_at          DateTime              @default(now()) @db.Timestamp(6)
   updated_at          DateTime              @default(now()) @db.Timestamp(6)
   subscriber          subscriber            @relation(fields: [subscriber_id], references: [id])
+  subscriber_id       String
   conversation_client conversation_client[]
   message             message[]
 }
 
 model conversation_client {
-  id              String       @id @default(cuid())
-  conversation_id String
-  socket_session_id  String
-  joined_at       DateTime     @default(now()) @db.Timestamp(6)
-  leave_at        DateTime     @default(now()) @db.Timestamp(6)
-  created_at      DateTime     @default(now()) @db.Timestamp(6)
-  updated_at      DateTime     @default(now()) @db.Timestamp(6)
-  socket_session     socket_session  @relation(fields: [socket_session_id], references: [id])
-  conversation    conversation @relation(fields: [conversation_id], references: [id])
+  id                String          @id @default(cuid())
+  joined_at         DateTime        @default(now()) @db.Timestamp(6)
+  leave_at          DateTime?
+  created_at        DateTime        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime        @default(now()) @db.Timestamp(6)
+  socket_session    socket_session  @relation(fields: [socket_session_id], references: [id])
+  socket_session_id String
+  conversation      conversation    @relation(fields: [conversation_id], references: [id])
+  conversation_id   String
 }
 
 model message {

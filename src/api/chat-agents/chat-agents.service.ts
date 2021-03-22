@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { chat_agent } from '@prisma/client';
+import { Helper } from 'src/helper/helper';
 
 @Injectable()
 export class ChatAgentsService {
@@ -39,11 +40,11 @@ export class ChatAgentsService {
     //     return `This action returns all chatAgents`;
     // }
 
-    // async findOne(id: string): Promise<ChatAgent> {
-    //     return await new Helper().getSingleDataWithException(async () => {
-    //         return await this.chatAgentRepository.findOne(id);
-    //     }, 'chat_agents');
-    // }
+    async findOne(id: string): Promise<chat_agent> {
+        return await new Helper().getSingleDataWithException(async () => {
+            return await this.prisma.chat_agent.findFirst({ where: { id: id } });
+        });
+    }
 
     // async update(id: string, updateChatAgentDto: UpdateChatAgentDto): Promise<ChatAgent> {
     //     const chatAgent = await this.findOne(id);

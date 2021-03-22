@@ -14,9 +14,10 @@ import { RolePermissionModule } from './api/role-permissions/role-permission.mod
 
 import { SubscribersModule } from './api/subscribers/subscribers.module';
 import { ChatAgentsModule } from './api/chat-agents/chat-agents.module';
+import { SocketSessionsModule } from './api/subscriber/socket-session/socket-sessions.module';
+import { ConversationsModule } from './api/subscriber/conversations/conversations.module';
+
 import { MessagesModule } from './api/messages/messages.module';
-import { ConversationsModule } from './api/conversations/conversations.module';
-import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
 import { ConversationClientsModule } from './api/conversation-clients/conversation-clients.module';
 
 @Module({
@@ -35,10 +36,10 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
 
         EventsModule,
         SubscribersModule,
+        SocketSessionsModule,
         ChatAgentsModule,
+        ConversationsModule,
         // MessagesModule,
-        // ConversationsModule,
-        // ChatClientsModule,
         // ConversationClientsModule,
     ],
     controllers: [AppController],

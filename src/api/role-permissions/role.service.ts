@@ -1,34 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Role } from './entities/role.entity';
-import { Permission } from './entities/permission.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Helper } from '../../helper/helper';
 import { AssignRoleToUserDto } from './dto/assign-role-to-user.dto';
-import { ChatAgent } from '../chat-agents/entities/chat-agent.entity';
 import { ChatAgentsService } from '../chat-agents/chat-agents.service';
-import { UserExtraPermission } from './entities/user_extra_permission.entity';
 import { agent } from 'supertest';
 import * as _ from 'lodash';
 
 @Injectable()
 export class RoleService {
-    constructor() // @InjectRepository(Role)
-    // private roleRepository: Repository<Role>,
-
-    // @InjectRepository(Permission)
-    // private permissionRepository: Repository<Permission>,
-
-    // @InjectRepository(UserExtraPermission)
-    // private userExtraPermissionRepository: Repository<UserExtraPermission>,
-
-    // @InjectRepository(ChatAgent)
-    // private chatAgentRepository: Repository<ChatAgent>,
-
-    // private readonly chatAgentsService: ChatAgentsService,
-    {}
+    constructor() {}
 
     // async findAll(): Promise<Role[]> {
     //     return await this.roleRepository.find({ relations: ['permissions'] });

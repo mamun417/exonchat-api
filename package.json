@@ -29,7 +29,8 @@
         "db:model": "npx prisma generate",
         "db:drop": "npx prisma db push --preview-feature --force-reset --accept-data-loss",
         "db:seed": "npx prisma db seed --preview-feature",
-        "db:drop:seed": "npm run db:drop; npm run db:seed"
+        "db:drop:seed": "npm run db:drop; npm run db:seed",
+        "studio": "npx prisma studio"
     },
     "dependencies": {
         "@nestjs/common": "^7.6.6",

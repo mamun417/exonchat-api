@@ -10,6 +10,6 @@ import { DataHelper } from '../../helper/data-helper';
     imports: [],
     controllers: [SubscribersController],
     providers: [PrismaService, DataHelper, SubscribersService],
-    exports: [],
+    exports: [SubscribersService],
 })
 export class SubscribersModule {}
