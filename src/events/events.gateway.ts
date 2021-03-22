@@ -102,7 +102,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        const conv_id = '999'; // get from api
+        const conv_id = '123'; // get from api
         const roomName = queryParams.ses_id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
@@ -123,7 +123,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         this.server.in(roomName).emit('ec_conv_initiated_from_agent', {
             data: {
-                conv_id: '999',
+                conv_id: '123',
             },
             status: 'success',
         });
@@ -278,11 +278,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const roomName = queryParams.ses_id;
 
-        if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
+        console.log(this.roomsInAConv);
+
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
-
-            _.remove(this.roomsInAConv[queryParams.conv_id].room_ids, (item: any) => item === queryParams.ses_id);
+            _.remove(this.roomsInAConv[data.conv_id].room_ids, (item: any) => item === queryParams.ses_id);
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_leaved_from_conversation', {
@@ -338,14 +339,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const roomName = queryParams.ses_id;
 
-        if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
 
             delete this.roomsInAConv[data.conv_id];
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
-                this.server.in(room).emit('ec_is_leaved_from_conversation', {
+                this.server.in(room).emit('ec_is_closed_from_conversation', {
                     data: {},
                     status: 'success',
                 });
@@ -353,8 +354,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_leave_conversation',
-                reason: 'Already Leaved from Current Conversation',
+                step: 'ec_close_conversation',
+                reason: 'Already Closed from Current Conversation',
             });
 
             return;
@@ -475,10 +476,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         if (
-            this.roomsInAConv.hasOwnProperty(queryParams.conv_id) &&
-            this.roomsInAConv[queryParams.conv_id].includes(queryParams.ses_id)
+            this.roomsInAConv.hasOwnProperty(data.conv_id) &&
+            this.roomsInAConv[data.conv_id].room_ids.includes(queryParams.ses_id)
         ) {
-            const convObj = this.roomsInAConv[queryParams.conv_id];
+            const convObj = this.roomsInAConv[data.conv_id];
 
             if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
                 //
@@ -565,10 +566,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // else send to every other agents then the client
 
         if (
-            this.roomsInAConv.hasOwnProperty(queryParams.conv_id) &&
-            this.roomsInAConv[queryParams.conv_id].includes(queryParams.ses_id)
+            this.roomsInAConv.hasOwnProperty(data.conv_id) &&
+            this.roomsInAConv[data.conv_id].room_ids.includes(queryParams.ses_id)
         ) {
-            const convObj = this.roomsInAConv[queryParams.conv_id];
+            const convObj = this.roomsInAConv[data.conv_id];
 
             if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
                 //
