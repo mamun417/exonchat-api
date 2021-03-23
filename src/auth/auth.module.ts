@@ -10,7 +10,7 @@ import { jwtConstants } from './constants/constants';
 
 import { AuthService } from './auth.service';
 
-import { ChatAgentsModule } from '../api/chat-agents/chat-agents.module';
+import { UsersModule } from 'src/api/subscriber/users/users.module';
 
 @Module({
     imports: [
@@ -19,7 +19,7 @@ import { ChatAgentsModule } from '../api/chat-agents/chat-agents.module';
             secret: jwtConstants.secret,
             signOptions: { expiresIn: '60m' },
         }),
-        ChatAgentsModule,
+        UsersModule,
     ],
     providers: [AuthService, LocalStrategy, JwtStrategy],
     exports: [AuthService],

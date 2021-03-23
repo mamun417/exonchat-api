@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateSocketSessionDto {
     @IsNotEmpty()
@@ -6,5 +6,5 @@ export class CreateSocketSessionDto {
 
     @IsOptional()
     @IsNotEmpty()
-    agent_id: string;
+    user_id: string;
 }

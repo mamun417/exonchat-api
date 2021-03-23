@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service';
-import { chat_agent } from '@prisma/client';
+import { PrismaService } from 'src/prisma.service';
+import { user } from '@prisma/client';
 import { Helper } from 'src/helper/helper';
 
 @Injectable()
-export class ChatAgentsService {
+export class UsersService {
     constructor(private prisma: PrismaService) {}
 
-    async validateForLogin(login_info: any, pass: string): Promise<chat_agent> {
-        return this.prisma.chat_agent.findFirst({
+    async validateForLogin(login_info: any, pass: string): Promise<user> {
+        return this.prisma.user.findFirst({
             where: {
                 email: login_info.email,
                 subscriber: {
@@ -40,9 +40,9 @@ export class ChatAgentsService {
     //     return `This action returns all chatAgents`;
     // }
 
-    async findOne(id: string): Promise<chat_agent> {
+    async findOne(id: string): Promise<user> {
         return await new Helper().getSingleDataWithException(async () => {
-            return await this.prisma.chat_agent.findFirst({ where: { id: id } });
+            return await this.prisma.user.findFirst({ where: { id: id } });
         });
     }
 

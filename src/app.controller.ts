@@ -23,7 +23,7 @@ export class AppController {
     }
 
     // @UseGuards(JwtAuthGuard)
-    @RequirePermission(Permission.AGENT_CREATE)
+    @RequirePermission(Permission.AGENT_ASSIGN)
     @Get('profile')
     getProfile(@Request() req: any) {
         return req.user;

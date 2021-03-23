@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
 
-import { PrismaService } from '../../prisma.service';
+import { PrismaService } from '../../../prisma.service';
 import { subscriber } from '@prisma/client';
 
-import { DataHelper } from '../../helper/data-helper';
+import { DataHelper } from '../../../helper/data-helper';
 
 @Injectable()
 export class SubscribersService {
@@ -20,7 +20,7 @@ export class SubscribersService {
             data: {
                 company_name: createSubscriberDto.company_name,
                 display_name: createSubscriberDto.company_display_name,
-                chat_agents: {
+                users: {
                     create: [
                         {
                             email: createSubscriberDto.email,

@@ -1,6 +1,8 @@
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateUserDto } from './create-chat-agent.dto';
 import { IsNotEmpty, IsOptional } from 'class-validator';
 
-export class CreateChatAgentDto {
+export class UpdateUserDto extends PartialType(CreateUserDto) {
     @IsOptional()
     role_id: string; // check enum
 
@@ -10,7 +12,7 @@ export class CreateChatAgentDto {
     @IsNotEmpty()
     email: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     password: string;
 
     @IsOptional()

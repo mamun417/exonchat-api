@@ -1,11 +1,11 @@
 import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
-import { ChatAgentsService } from './chat-agents.service';
-import { CreateChatAgentDto } from './dto/create-chat-agent.dto';
-import { UpdateChatAgentDto } from './dto/update-chat-agent.dto';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-chat-agent.dto';
+import { UpdateUserDto } from './dto/update-chat-agent.dto';
 
-@Controller('chat-agents')
-export class ChatAgentsController {
-    constructor(private readonly chatAgentsService: ChatAgentsService) {}
+@Controller('users')
+export class UsersController {
+    constructor(private readonly usersService: UsersService) {}
 
     // @Post()
     // create(@Body() createChatAgentDto: CreateChatAgentDto) {

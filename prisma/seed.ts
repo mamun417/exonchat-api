@@ -22,7 +22,7 @@ async function main() {
             slug: 'admin',
             name: 'Admin',
             use_for: 'subscriber',
-            permissions: [{ slug: 'agent_create', name: 'Agent Create', use_for: 'subscriber' }],
+            permissions: [{ slug: 'agent_assign', name: 'Agent Assign', use_for: 'subscriber' }],
         },
         {
             slug: 'agent',
@@ -51,7 +51,8 @@ async function main() {
                 data: {
                     company_name: namePart,
                     display_name: namePart,
-                    chat_agents: {
+                    api_key: namePart,
+                    users: {
                         create: [
                             {
                                 email: `${namePart}@${namePart}.${namePart}`,

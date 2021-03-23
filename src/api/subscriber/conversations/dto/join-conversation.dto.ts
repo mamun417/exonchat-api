@@ -5,7 +5,7 @@ enum chat_type_enum {
     user_to_user_chat = 'user_to_user_chat',
 }
 
-export class CreateConversationDto {
+export class JoinConversationDto {
     @IsNotEmpty()
     api_key: string;
 

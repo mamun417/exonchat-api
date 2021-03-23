@@ -1,32 +1,34 @@
 import { Injectable } from '@nestjs/common';
 import { CreateSocketSessionDto } from './dto/create-socket-session.dto';
 
-import { SubscribersService } from 'src/api/subscribers/subscribers.service';
-import { ChatAgentsService } from 'src/api/chat-agents/chat-agents.service';
+import { SubscribersService } from 'src/api/subscriber/subscribers/subscribers.service';
+import { UsersService } from 'src/api/subscriber/users/users.service';
 
 import { PrismaService } from 'src/prisma.service';
+import { DataHelper } from 'src/helper/data-helper';
 import { socket_session } from '@prisma/client';
 
 @Injectable()
 export class SocketSessionsService {
     constructor(
         private prisma: PrismaService,
+        private dataHelper: DataHelper,
         private subscriberService: SubscribersService,
-        private chatAgentService: ChatAgentsService,
+        private userService: UsersService,
     ) {}
 
     async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, ip: any) {
         const subscriber = await this.subscriberService.fineOneByApiKey(createSocketSessionDto.api_key);
 
-        let agentConnector: any = {};
+        let userConnector: any = {};
 
-        if (createSocketSessionDto.agent_id) {
-            agentConnector = await this.chatAgentService.findOne(createSocketSessionDto.agent_id);
+        if (createSocketSessionDto.user_id) {
+            userConnector = await this.userService.findOne(createSocketSessionDto.user_id);
 
-            agentConnector = {
-                chat_agent: {
+            userConnector = {
+                user: {
                     connect: {
-                        id: agentConnector.id,
+                        id: userConnector.id,
                     },
                 },
             };
@@ -40,10 +42,11 @@ export class SocketSessionsService {
                         id: subscriber.id,
                     },
                 },
-                ...agentConnector,
+                ...userConnector,
             },
         });
     }
+
     // async create(api_key: string, createChatClientDto: CreateChatClientDto) {
     //     const subscriber = await this.subscribersService.fineOneByApiKey(api_key);
     //     createChatClientDto.subscriber_id = subscriber.id;
@@ -52,9 +55,17 @@ export class SocketSessionsService {
     // async findAll(): Promise<ChatClient[]> {
     //     return await this.chatClientRepository.createQueryBuilder().getMany();
     // }
-    // async findOne(id: string) {
-    //     return await this.chatClientRepository.findOne(id);
-    // }
+
+    async findOne(id: string) {
+        return await this.prisma.socket_session.findUnique({
+            where: { id },
+        });
+    }
+
+    async findOneWithException(id: string) {
+        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id));
+    }
+
     // update(id: number, updateChatClientDto: UpdateChatClientDto) {
     //     return `This action updates a #${id} chatClient`;
     // }

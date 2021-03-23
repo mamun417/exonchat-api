@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '../role.enum';
 import { ROLES_KEY } from '../roles.decorator';
-import { JwtStrategy } from '../../auth/strategies/jwt.strategy';
+import { JwtStrategy } from 'src/auth/strategies/jwt.strategy';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()

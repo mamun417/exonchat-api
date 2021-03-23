@@ -1,4 +1,4 @@
-import { CreateMessageDto } from '../api/messages/dto/create-message.dto';
+import { CreateMessageDto } from 'src/api/messages/dto/create-message.dto';
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { Roles } from './roles.decorator';
 import { Role } from './role.enum';

@@ -1,13 +1,13 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, Res, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ChatAgentsService } from '../api/chat-agents/chat-agents.service';
+import { UsersService } from 'src/api/subscriber/users/users.service';
 
 @Injectable()
 export class AuthService {
-    constructor(private agentService: ChatAgentsService, private jwtService: JwtService) {}
+    constructor(private usersService: UsersService, private jwtService: JwtService) {}
 
     async validateUserForLogin(login_info: string, pass: string): Promise<any> {
-        const user = await this.agentService.validateForLogin(login_info, pass);
+        const user = await this.usersService.validateForLogin(login_info, pass);
 
         if (!user) {
             throw new HttpException(`Invalid Login Credentials`, HttpStatus.NOT_FOUND);

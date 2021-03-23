@@ -3,7 +3,6 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Helper } from '../../helper/helper';
 import { AssignRoleToUserDto } from './dto/assign-role-to-user.dto';
-import { ChatAgentsService } from '../chat-agents/chat-agents.service';
 import { agent } from 'supertest';
 import * as _ from 'lodash';
 

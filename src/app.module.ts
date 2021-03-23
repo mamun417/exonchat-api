@@ -12,8 +12,8 @@ import { AuthModule } from './auth/auth.module';
 import { AuthorizationModule } from './authorizarion/authorization.module';
 import { RolePermissionModule } from './api/role-permissions/role-permission.module';
 
-import { SubscribersModule } from './api/subscribers/subscribers.module';
-import { ChatAgentsModule } from './api/chat-agents/chat-agents.module';
+import { SubscribersModule } from './api/subscriber/subscribers/subscribers.module';
+import { UsersModule } from './api/subscriber/users/users.module';
 import { SocketSessionsModule } from './api/subscriber/socket-session/socket-sessions.module';
 import { ConversationsModule } from './api/subscriber/conversations/conversations.module';
 
@@ -37,7 +37,7 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
         EventsModule,
         SubscribersModule,
         SocketSessionsModule,
-        ChatAgentsModule,
+        UsersModule,
         ConversationsModule,
         // MessagesModule,
         // ConversationClientsModule,
