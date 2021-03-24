@@ -106,7 +106,7 @@ model conversation {
   id                    String                 @id @default(cuid())
   users_only            Boolean?
   type                  conversation_type_enum @default(user_to_user_chat)
-  closed_at             DateTime               @default(now()) @db.Timestamp(6)
+  closed_at             DateTime?              @db.Timestamp(6)
   created_at            DateTime               @default(now()) @db.Timestamp(6)
   updated_at            DateTime               @default(now()) @db.Timestamp(6)
   subscriber_id         String
@@ -116,13 +116,13 @@ model conversation {
   closed_by_id          String?
   closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
   conversation_sessions conversation_session[]
-  messages              message[]
+  message               message[]
 }
 
 model conversation_session {
   id                String         @id @default(cuid())
-  joined_at         DateTime       @default(now()) @db.Timestamp(6)
-  leave_at          DateTime?
+  joined_at         DateTime?      @db.Timestamp(6)
+  leaved_at         DateTime?      @db.Timestamp(6)
   created_at        DateTime       @default(now()) @db.Timestamp(6)
   updated_at        DateTime       @default(now()) @db.Timestamp(6)
   socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
@@ -131,6 +131,8 @@ model conversation_session {
   conversation_id   String
   subscriber_id     String
   subscriber        subscriber     @relation(fields: [subscriber_id], references: [id])
+
+  @@unique(fields: [conversation_id, socket_session_id], name: "conv_ses_identifier")
 }
 
 model message {

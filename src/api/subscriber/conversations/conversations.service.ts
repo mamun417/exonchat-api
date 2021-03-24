@@ -8,12 +8,16 @@ import { UsersService } from '../users/users.service';
 
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
-import { UpdateConversationDto } from './dto/update-conversation.dto';
+import { LeaveConversationDto } from './dto/leave-conversation.dto';
+import { CloseConversationDto } from './dto/close-conversation.dto';
+
+import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
 export class ConversationsService {
     constructor(
         private prisma: PrismaService,
+        private dataHelper: DataHelper,
         private subscriberService: SubscribersService,
         private socketSessionService: SocketSessionsService,
         private userService: UsersService,
@@ -39,6 +43,7 @@ export class ConversationsService {
                 type: createConversationDto.chat_type,
                 conversation_sessions: {
                     create: {
+                        joined_at: new Date(),
                         socket_session: {
                             connect: { id: socketSession.id },
                         },
@@ -61,15 +66,22 @@ export class ConversationsService {
         const subscriber = await this.subscriberService.fineOneByApiKey(joinConversationDto.api_key);
         const socketSession = await this.socketSessionService.findOneWithException(joinConversationDto.ses_id);
 
-        const conversation = await this.prisma.conversation.findFirst({
+        const conversation = await this.findOneWithException(id, { subscriber_id: subscriber.id });
+
+        const convSes = await this.prisma.conversation_session.findUnique({
             where: {
-                id: id,
-                subscriber_id: subscriber.id,
+                conv_ses_identifier: {
+                    conversation_id: conversation.id,
+                    socket_session_id: socketSession.id,
+                },
             },
         });
 
+        if (convSes) throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
+
         return this.prisma.conversation_session.create({
             data: {
+                joined_at: new Date(),
                 subscriber: {
                     connect: { id: subscriber.id },
                 },
@@ -83,15 +95,93 @@ export class ConversationsService {
         });
     }
 
+    async leave(id: string, leaveConversationDto: LeaveConversationDto) {
+        const subscriber = await this.subscriberService.fineOneByApiKey(leaveConversationDto.api_key);
+        const socketSession = await this.socketSessionService.findOneWithException(leaveConversationDto.ses_id);
+
+        const conversation = await this.findOneWithException(id, {
+            subscriber_id: subscriber.id,
+        });
+
+        const updated = await this.prisma.conversation_session.updateMany({
+            where: {
+                conversation_id: conversation.id,
+                socket_session_id: socketSession.id,
+                leaved_at: null,
+            },
+            data: {
+                leaved_at: new Date(),
+            },
+        });
+
+        if (!updated.count) {
+            throw new HttpException(`Already leaved from this conversation`, HttpStatus.CONFLICT);
+        }
+
+        return this.prisma.conversation_session.findUnique({
+            where: {
+                conv_ses_identifier: {
+                    conversation_id: conversation.id,
+                    socket_session_id: socketSession.id,
+                },
+            },
+        });
+    }
+
+    async close(id: string, closeConversationDto: CloseConversationDto) {
+        const subscriber = await this.subscriberService.fineOneByApiKey(closeConversationDto.api_key);
+        const socketSession = await this.socketSessionService.findOneWithException(closeConversationDto.ses_id);
+
+        const conversation = await this.findOneWithException(id, {
+            subscriber_id: subscriber.id,
+        });
+
+        if (conversation.leaved_at) {
+            throw new HttpException('Already leaved from this conversation', HttpStatus.CONFLICT);
+        }
+
+        await this.prisma.conversation.update({
+            where: {
+                id: id,
+            },
+            data: {
+                closed_at: new Date(),
+                closed_by: {
+                    connect: {
+                        id: socketSession.id,
+                    },
+                },
+            },
+        });
+
+        return this.prisma.conversation_session.updateMany({
+            where: {
+                conversation_id: id,
+            },
+            data: {
+                leaved_at: new Date(),
+            },
+        });
+    }
+
     // async findAll(): Promise<Conversation[]> {
     //     return await this.conversationRepository.find({
-    //         relations: ['messages'],
+    //         relations: ['messages'],ec_get_agents_online
     //     });
     // }
 
-    // findOne(id: number) {
-    //     return `This action returns a #${id} conversation`;
-    // }
+    async findOne(id: string, extraQueries: any = {}) {
+        return await this.prisma.conversation.findFirst({
+            where: {
+                id: id,
+                ...extraQueries,
+            },
+        });
+    }
+
+    async findOneWithException(id: string, extraQueries: any = {}) {
+        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id, extraQueries));
+    }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {
     //     return `This action updates a #${id} conversation`;
