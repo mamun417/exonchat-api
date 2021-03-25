@@ -11,6 +11,7 @@ import { JoinConversationDto } from './dto/join-conversation.dto';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
 
+import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
@@ -136,7 +137,7 @@ export class ConversationsService {
             subscriber_id: subscriber.id,
         });
 
-        if (conversation.leaved_at) {
+        if (conversation.closed_at) {
             throw new HttpException('Already leaved from this conversation', HttpStatus.CONFLICT);
         }
 
@@ -151,17 +152,20 @@ export class ConversationsService {
                         id: socketSession.id,
                     },
                 },
+                conversation_sessions: {
+                    updateMany: {
+                        where: {
+                            leaved_at: null,
+                        },
+                        data: {
+                            leaved_at: new Date(),
+                        },
+                    },
+                },
             },
         });
 
-        return this.prisma.conversation_session.updateMany({
-            where: {
-                conversation_id: id,
-            },
-            data: {
-                leaved_at: new Date(),
-            },
-        });
+        return conversation;
     }
 
     // async findAll(): Promise<Conversation[]> {
@@ -170,8 +174,8 @@ export class ConversationsService {
     //     });
     // }
 
-    async findOne(id: string, extraQueries: any = {}) {
-        return await this.prisma.conversation.findFirst({
+    async findOne(id: string, extraQueries: any = {}): Promise<conversation> {
+        return this.prisma.conversation.findFirst({
             where: {
                 id: id,
                 ...extraQueries,
@@ -179,7 +183,7 @@ export class ConversationsService {
         });
     }
 
-    async findOneWithException(id: string, extraQueries: any = {}) {
+    async findOneWithException(id: string, extraQueries: any = {}): Promise<conversation> {
         return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id, extraQueries));
     }
 

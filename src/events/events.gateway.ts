@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/common';
 import {
     MessageBody,
     ConnectedSocket,
@@ -9,11 +10,17 @@ import {
     OnGatewayConnection,
     OnGatewayDisconnect,
 } from '@nestjs/websockets';
+
 import { Server, Socket } from 'socket.io';
+
 import * as _ from 'lodash';
+
+import { map } from 'rxjs/operators';
 
 @WebSocketGateway({ serveClient: false })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+    constructor(private httpService: HttpService) {}
+
     @WebSocketServer()
     server: Server;
 
@@ -157,7 +164,32 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        const conv_id = '123'; // get from api
+        let conv_data = null;
+        let conv_id = null;
+
+        try {
+            const convRes: any = await this.httpService
+                .post('http://localhost:3000/conversations', {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                    chat_type: 'live_chat',
+                })
+                .toPromise();
+
+            conv_data = convRes.data;
+            conv_id = convRes.data.id;
+        } catch (e) {
+            console.log(e.response.data);
+
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_init_conv_from_client',
+                reason: e.response.data,
+            });
+
+            return;
+        }
+
         const roomName = queryParams.ses_id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
@@ -172,9 +204,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        this.server.in(roomName).emit('ec_conv_initiated_from_client', {
+        this.server.in(roomName).emit('ec_conv_initiated_to_client', {
             data: {
-                conv_id: '123',
+                conv_data,
+                conv_id,
             },
             status: 'success',
         });
@@ -205,11 +238,24 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        if (!data.conv_id) {
+        let conv_ses_data = null;
+
+        try {
+            const convSesRes: any = await this.httpService
+                .post(`http://localhost:3000/conversations/${data.conv_id}`, {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                })
+                .toPromise();
+
+            conv_ses_data = convSesRes.data;
+        } catch (e) {
+            console.log(e.response.data);
+
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_join_conversation',
-                reason: 'conv_id not found',
+                step: 'ec_init_conv_from_client',
+                reason: e.response.data,
             });
 
             return;
@@ -230,7 +276,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_joined_from_conversation', {
                     data: {
-                        ...agent_info,
+                        conv_ses_data,
                     },
                     status: 'success',
                 });
@@ -264,11 +310,24 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        if (!data.conv_id) {
+        let conv_ses_data = null;
+
+        try {
+            const convSesRes: any = await this.httpService
+                .post(`http://localhost:3000/conversations/${data.conv_id}/leave`, {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                })
+                .toPromise();
+
+            conv_ses_data = convSesRes.data;
+        } catch (e) {
+            console.log(e.response.data);
+
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_leave_conversation',
-                reason: 'conv_id not found',
+                step: 'ec_init_conv_from_client',
+                reason: e.response.data,
             });
 
             return;
@@ -287,7 +346,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_leaved_from_conversation', {
-                    data: {},
+                    data: { conv_ses_data },
                     status: 'success',
                 });
             });
@@ -325,11 +384,26 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        if (!data.conv_id) {
+        let conv_data = null;
+        let conv_id = null;
+
+        try {
+            const convRes: any = await this.httpService
+                .post(`http://localhost:3000/conversations${data.conv_id}/close`, {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                })
+                .toPromise();
+
+            conv_data = convRes.data;
+            conv_id = convRes.data.id;
+        } catch (e) {
+            console.log(e.response.data);
+
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_close_conversation',
-                reason: 'conv_id not found',
+                step: 'ec_init_conv_from_client',
+                reason: e.response.data,
             });
 
             return;
@@ -347,7 +421,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_closed_from_conversation', {
-                    data: {},
+                    data: {
+                        conv_data,
+                        conv_id,
+                    },
                     status: 'success',
                 });
             });
@@ -642,7 +719,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         console.log('Init');
     }
 
-    handleConnection(client: Socket, ...args: any[]) {
+    async handleConnection(client: Socket, ...args: any[]) {
         console.log(`Client connected: ${client.id}`);
 
         // if client
