@@ -254,7 +254,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_init_conv_from_client',
+                step: 'ec_join_conversation',
                 reason: e.response.data,
             });
 
@@ -326,7 +326,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_init_conv_from_client',
+                step: 'ec_leave_conversation',
                 reason: e.response.data,
             });
 
@@ -402,7 +402,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_init_conv_from_client',
+                step: 'ec_close_conversation',
                 reason: e.response.data,
             });
 
