@@ -10,10 +10,11 @@ async function bootstrap() {
     app.use(cookieParser(jwtConstants.secret));
     app.useGlobalPipes(new ValidationPipe());
     app.enableCors({
-        origin: '*',
+        origin: ['http://localhost:8080'],
         credentials: true,
         preflightContinue: false,
     });
+
     // app.useGlobalFilters(new AllExceptionsFilter());
     await app.listen(3000);
 }
