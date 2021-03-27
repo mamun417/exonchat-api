@@ -27,7 +27,7 @@ export class ConversationsController {
 
     @Post(':id/close')
     close(@Param('id') id: string, @Body() closeConversationDto: CloseConversationDto) {
-        return this.conversationsService.leave(id, closeConversationDto);
+        return this.conversationsService.close(id, closeConversationDto);
     }
 
     // @Get()

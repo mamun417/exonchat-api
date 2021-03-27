@@ -116,7 +116,7 @@ export class ConversationsService {
         });
 
         if (!updated.count) {
-            throw new HttpException(`Already leaved from this conversation`, HttpStatus.CONFLICT);
+            throw new HttpException(`Already left from this conversation`, HttpStatus.CONFLICT);
         }
 
         return this.prisma.conversation_session.findUnique({
@@ -138,7 +138,7 @@ export class ConversationsService {
         });
 
         if (conversation.closed_at) {
-            throw new HttpException('Already leaved from this conversation', HttpStatus.CONFLICT);
+            throw new HttpException('Already closed from this conversation', HttpStatus.CONFLICT);
         }
 
         await this.prisma.conversation.update({

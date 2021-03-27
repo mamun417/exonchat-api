@@ -28,7 +28,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // client is webchat user
     // user = user/agent
 
-    private clientsToARoom: any = {}; // all [users/agents, clients]
     private userClientsInARoom: any = {}; // users/agents
     private normalClientsInARoom: any = {}; // normal clients from site web-chat
     private roomsInAConv: any = {};
@@ -44,7 +43,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
         );
 
-        this.server.to(client.id).emit('ec_get_logged_users', {
+        this.server.to(client.id).emit('ec_logged_users_updated', {
             users: users,
         });
 
@@ -479,7 +478,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 // it will contain single elm for now
                 const clientRooms = convObj.room_ids.filter(
-                    (roomId: any) => this.normalClientsInARoom[roomId].api_key === queryParams.api_key,
+                    (roomId: any) => this.normalClientsInARoom[roomId]?.api_key === queryParams.api_key,
                 );
 
                 if (clientRooms.length === 1) {
@@ -556,7 +555,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 // it will contain single elm for now
                 const clientRooms = convObj.room_ids.filter(
-                    (roomId: any) => this.normalClientsInARoom[roomId].api_key === queryParams.api_key,
+                    (roomId: any) => this.normalClientsInARoom[roomId]?.api_key === queryParams.api_key,
                 );
 
                 if (clientRooms.length === 1) {
@@ -631,6 +630,16 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 socket_client_ids: [],
                 api_key: queryParams.api_key,
             };
+
+            // const userRooms = Object.keys(this.userClientsInARoom).filter(
+            //     (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+            // );
+
+            // userRooms.forEach((roomId: any) => {
+            //     this.server.in(roomId).emit('ec_msg_from_user', {
+            //         user_ses_id:
+            //     }); // send to all other users
+            // });
         }
 
         if (!this[dynamicInARoom][roomName].socket_client_ids.includes(client.id)) {
