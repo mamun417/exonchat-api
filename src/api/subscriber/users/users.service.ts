@@ -28,6 +28,12 @@ export class UsersService {
                         },
                     },
                 },
+                // subscriber: {
+                //     select: {
+                //         id: true,
+                //         company_name: true,
+                //     },
+                // },
             },
         });
     }
@@ -36,9 +42,37 @@ export class UsersService {
     //     return 'This action adds a new chatAgent';
     // }
 
-    // findAll() {
-    //     return `This action returns all chatAgents`;
-    // }
+    findAll(req: any): Promise<user[]> {
+        console.log(req.user.data.subscriber_id);
+
+        return this.prisma.user.findMany({
+            where: {
+                subscriber_id: {
+                    equals: req.user.data.subscriber_id,
+                },
+            },
+            include: {
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                // subscriber: {
+                //     select: {
+                //         id: true,
+                //         company_name: true,
+                //     },
+                // },
+            },
+        });
+    }
 
     async findOne(id: string): Promise<user> {
         return this.prisma.user.findFirst({ where: { id: id } });

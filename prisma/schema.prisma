@@ -30,6 +30,7 @@ model user {
   email             String             @db.VarChar
   password          String             @db.VarChar
   active            Boolean            @default(false)
+  online_status     Boolean            @default(true)
   created_at        DateTime           @default(now()) @db.Timestamp(6)
   updated_at        DateTime           @default(now()) @db.Timestamp(6)
   role              role               @relation(fields: [role_id], references: [id])
