@@ -41,9 +41,11 @@ export class UsersService {
     // }
 
     async findOne(id: string): Promise<user> {
-        return await new Helper().getSingleDataWithException(async () => {
-            return await this.prisma.user.findFirst({ where: { id: id } });
-        });
+        return this.prisma.user.findFirst({ where: { id: id } });
+    }
+
+    async findOneWithException(id: string): Promise<user> {
+        return await new Helper().getSingleDataWithException(async () => this.findOne(id), 'user');
     }
 
     // async update(id: string, updateChatAgentDto: UpdateChatAgentDto): Promise<ChatAgent> {

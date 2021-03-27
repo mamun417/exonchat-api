@@ -5,7 +5,13 @@ export class DataHelper {
         const data = await callback();
 
         if (!data) {
-            throw new HttpException(`Resource Not Found!`, HttpStatus.NOT_FOUND);
+            let errMsg = 'resource not found';
+
+            if (resource_location) {
+                errMsg = `${resource_location} resource not found`;
+            }
+
+            throw new HttpException(errMsg, HttpStatus.NOT_FOUND);
         }
 
         return data;

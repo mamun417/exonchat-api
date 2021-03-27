@@ -18,12 +18,12 @@ export class SocketSessionsService {
     ) {}
 
     async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, ip: any) {
-        const subscriber = await this.subscriberService.fineOneByApiKey(createSocketSessionDto.api_key);
+        const subscriber = await this.subscriberService.findOneByApiKeyWithException(createSocketSessionDto.api_key);
 
         let userConnector: any = {};
 
         if (createSocketSessionDto.user_id) {
-            userConnector = await this.userService.findOne(createSocketSessionDto.user_id);
+            userConnector = await this.userService.findOneWithException(createSocketSessionDto.user_id);
 
             userConnector = {
                 user: {
@@ -63,7 +63,7 @@ export class SocketSessionsService {
     }
 
     async findOneWithException(id: string) {
-        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id));
+        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id), 'socket_session');
     }
 
     // update(id: number, updateChatClientDto: UpdateChatClientDto) {

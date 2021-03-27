@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
 
@@ -15,6 +15,10 @@ export class SubscribersService {
         const adminRole = await this.prisma.role.findFirst({
             where: { slug: 'admin', subscriber_id: null },
         });
+
+        if (!adminRole) {
+            throw new HttpException('role resource not foound', HttpStatus.NOT_FOUND);
+        }
 
         return this.prisma.subscriber.create({
             data: {
@@ -42,17 +46,23 @@ export class SubscribersService {
     }
 
     async findOne(id: string): Promise<subscriber> {
-        return await this.dataHelper.getSingleDataWithException(
-            async () => await this.prisma.subscriber.findUnique({ where: { id: id } }),
-        );
+        return this.prisma.subscriber.findUnique({ where: { id: id } });
     }
 
-    async fineOneByApiKey(api_key: string): Promise<subscriber> {
+    async findOneWithException(id: string): Promise<subscriber> {
+        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id), 'subscriber');
+    }
+
+    async findOneByApiKey(api_key: string): Promise<subscriber> {
+        return this.prisma.subscriber.findUnique({
+            where: { api_key },
+        });
+    }
+
+    async findOneByApiKeyWithException(api_key: string): Promise<subscriber> {
         return await this.dataHelper.getSingleDataWithException(
-            async () =>
-                await this.prisma.subscriber.findUnique({
-                    where: { api_key },
-                }),
+            async () => await this.findOneByApiKey(api_key),
+            'subscriber',
         );
     }
 

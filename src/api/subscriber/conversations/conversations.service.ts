@@ -25,7 +25,7 @@ export class ConversationsService {
     ) {}
 
     async create(createConversationDto: CreateConversationDto) {
-        const subscriber = await this.subscriberService.fineOneByApiKey(createConversationDto.api_key);
+        const subscriber = await this.subscriberService.findOneByApiKeyWithException(createConversationDto.api_key);
         const socketSession = await this.socketSessionService.findOneWithException(createConversationDto.ses_id);
 
         if (!socketSession.user_id) {
@@ -38,7 +38,7 @@ export class ConversationsService {
             if (convBySesId) throw new HttpException(`Already Created with this Session ID`, HttpStatus.CONFLICT);
         }
 
-        return await this.prisma.conversation.create({
+        return this.prisma.conversation.create({
             data: {
                 users_only: createConversationDto.chat_type === 'user_to_user_chat' ? true : false,
                 type: createConversationDto.chat_type,
@@ -64,7 +64,7 @@ export class ConversationsService {
     }
 
     async join(id: string, joinConversationDto: JoinConversationDto) {
-        const subscriber = await this.subscriberService.fineOneByApiKey(joinConversationDto.api_key);
+        const subscriber = await this.subscriberService.findOneByApiKeyWithException(joinConversationDto.api_key);
         const socketSession = await this.socketSessionService.findOneWithException(joinConversationDto.ses_id);
 
         const conversation = await this.findOneWithException(id, { subscriber_id: subscriber.id });
@@ -97,7 +97,7 @@ export class ConversationsService {
     }
 
     async leave(id: string, leaveConversationDto: LeaveConversationDto) {
-        const subscriber = await this.subscriberService.fineOneByApiKey(leaveConversationDto.api_key);
+        const subscriber = await this.subscriberService.findOneByApiKeyWithException(leaveConversationDto.api_key);
         const socketSession = await this.socketSessionService.findOneWithException(leaveConversationDto.ses_id);
 
         const conversation = await this.findOneWithException(id, {
@@ -130,7 +130,7 @@ export class ConversationsService {
     }
 
     async close(id: string, closeConversationDto: CloseConversationDto) {
-        const subscriber = await this.subscriberService.fineOneByApiKey(closeConversationDto.api_key);
+        const subscriber = await this.subscriberService.findOneByApiKeyWithException(closeConversationDto.api_key);
         const socketSession = await this.socketSessionService.findOneWithException(closeConversationDto.ses_id);
 
         const conversation = await this.findOneWithException(id, {
@@ -184,7 +184,10 @@ export class ConversationsService {
     }
 
     async findOneWithException(id: string, extraQueries: any = {}): Promise<conversation> {
-        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id, extraQueries));
+        return await this.dataHelper.getSingleDataWithException(
+            async () => await this.findOne(id, extraQueries),
+            'conversation',
+        );
     }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {
