@@ -1,3 +1,4 @@
+import { HttpService } from '@nestjs/common';
 import {
     MessageBody,
     ConnectedSocket,
@@ -9,12 +10,17 @@ import {
     OnGatewayConnection,
     OnGatewayDisconnect,
 } from '@nestjs/websockets';
+
 import { Server, Socket } from 'socket.io';
+
 import * as _ from 'lodash';
 
+import { map } from 'rxjs/operators';
+
 @WebSocketGateway({ serveClient: false })
-export class EventsGateway
-    implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+    constructor(private httpService: HttpService) {}
+
     @WebSocketServer()
     server: Server;
 
@@ -28,10 +34,7 @@ export class EventsGateway
     private apiToAgents: any = {};
 
     @SubscribeMessage('ec_get_agents_online')
-    async agentsOnline(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async agentsOnline(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -45,14 +48,12 @@ export class EventsGateway
         }
 
         // get all online agents with the api_key
-        const agents = Object.keys(this.clientsToARoom).filter(
-            (roomId: any) => {
-                return (
-                    this.clientsToARoom[roomId].client_type === 'agent' &&
-                    this.clientsToARoom[roomId].api_key === queryParams.api_key
-                );
-            },
-        );
+        const agents = Object.keys(this.clientsToARoom).filter((roomId: any) => {
+            return (
+                this.clientsToARoom[roomId].client_type === 'agent' &&
+                this.clientsToARoom[roomId].api_key === queryParams.api_key
+            );
+        });
 
         this.server.to(client.id).emit('ec_agents_online_res', {
             agents: agents,
@@ -62,10 +63,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_page_visit_info_from_client')
-    async pageVisitInfoFromClient(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async pageVisitInfoFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -78,34 +76,27 @@ export class EventsGateway
             return;
         }
 
-        const agentRooms = Object.keys(this.clientsToARoom).filter(
-            (roomId: any) => {
-                return (
-                    this.clientsToARoom[roomId].client_type === 'agent' &&
-                    this.clientsToARoom[roomId].api_key === queryParams.api_key
-                );
-            },
-        );
+        const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
+            return (
+                this.clientsToARoom[roomId].client_type === 'agent' &&
+                this.clientsToARoom[roomId].api_key === queryParams.api_key
+            );
+        });
 
         // console.log(agentRooms);
 
         agentRooms.forEach((roomId: any) => {
-            this.server
-                .in(this.clientsToARoom[roomId])
-                .emit('ec_page_visit_info_from_client', {
-                    url: data.url,
-                    sent_at: data.sent_at,
-                }); // send to all agents
+            this.server.in(this.clientsToARoom[roomId]).emit('ec_page_visit_info_from_client', {
+                url: data.url,
+                sent_at: data.sent_at,
+            }); // send to all agents
         });
 
         return;
     }
 
     @SubscribeMessage('ec_init_conv_from_agent')
-    async init_conversation_from_agent(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async init_conversation_from_agent(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -118,7 +109,7 @@ export class EventsGateway
             return;
         }
 
-        const conv_id = '999'; // get from api
+        const conv_id = '123'; // get from api
         const roomName = queryParams.ses_id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
@@ -139,7 +130,7 @@ export class EventsGateway
 
         this.server.in(roomName).emit('ec_conv_initiated_from_agent', {
             data: {
-                conv_id: '999',
+                conv_id: '123',
             },
             status: 'success',
         });
@@ -173,7 +164,32 @@ export class EventsGateway
             return;
         }
 
-        const conv_id = '123'; // get from api
+        let conv_data = null;
+        let conv_id = null;
+
+        try {
+            const convRes: any = await this.httpService
+                .post('http://localhost:3000/conversations', {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                    chat_type: 'live_chat',
+                })
+                .toPromise();
+
+            conv_data = convRes.data;
+            conv_id = convRes.data.id;
+        } catch (e) {
+            console.log(e.response.data);
+
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_init_conv_from_client',
+                reason: e.response.data,
+            });
+
+            return;
+        }
+
         const roomName = queryParams.ses_id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
@@ -188,9 +204,10 @@ export class EventsGateway
             return;
         }
 
-        this.server.in(roomName).emit('ec_conv_initiated_from_client', {
+        this.server.in(roomName).emit('ec_conv_initiated_to_client', {
             data: {
-                conv_id: '123',
+                conv_data,
+                conv_id,
             },
             status: 'success',
         });
@@ -208,10 +225,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_join_conversation')
-    async joinConversation(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async joinConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -224,11 +238,24 @@ export class EventsGateway
             return;
         }
 
-        if (!data.conv_id) {
+        let conv_ses_data = null;
+
+        try {
+            const convSesRes: any = await this.httpService
+                .post(`http://localhost:3000/conversations/${data.conv_id}`, {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                })
+                .toPromise();
+
+            conv_ses_data = convSesRes.data;
+        } catch (e) {
+            console.log(e.response.data);
+
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_join_conversation',
-                reason: 'conv_id not found',
+                reason: e.response.data,
             });
 
             return;
@@ -242,20 +269,14 @@ export class EventsGateway
         // call join conversation api and get msg. there will handle join limit also
         // if done
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
-            if (
-                !this.roomsInAConv[data.conv_id].room_ids.includes(
-                    queryParams.ses_id,
-                )
-            ) {
-                this.roomsInAConv[data.conv_id].room_ids.push(
-                    queryParams.ses_id,
-                );
+            if (!this.roomsInAConv[data.conv_id].room_ids.includes(queryParams.ses_id)) {
+                this.roomsInAConv[data.conv_id].room_ids.push(queryParams.ses_id);
             }
 
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_joined_from_conversation', {
                     data: {
-                        ...agent_info,
+                        conv_ses_data,
                     },
                     status: 'success',
                 });
@@ -276,10 +297,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_leave_conversation')
-    async leaveConversation(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async leaveConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -292,11 +310,24 @@ export class EventsGateway
             return;
         }
 
-        if (!data.conv_id) {
+        let conv_ses_data = null;
+
+        try {
+            const convSesRes: any = await this.httpService
+                .post(`http://localhost:3000/conversations/${data.conv_id}/leave`, {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                })
+                .toPromise();
+
+            conv_ses_data = convSesRes.data;
+        } catch (e) {
+            console.log(e.response.data);
+
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_leave_conversation',
-                reason: 'conv_id not found',
+                reason: e.response.data,
             });
 
             return;
@@ -306,18 +337,16 @@ export class EventsGateway
 
         const roomName = queryParams.ses_id;
 
-        if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
+        console.log(this.roomsInAConv);
+
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
-
-            _.remove(
-                this.roomsInAConv[queryParams.conv_id].room_ids,
-                (item: any) => item === queryParams.ses_id,
-            );
+            _.remove(this.roomsInAConv[data.conv_id].room_ids, (item: any) => item === queryParams.ses_id);
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_leaved_from_conversation', {
-                    data: {},
+                    data: { conv_ses_data },
                     status: 'success',
                 });
             });
@@ -342,10 +371,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_close_conversation')
-    async closeConversation(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async closeConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -358,11 +384,26 @@ export class EventsGateway
             return;
         }
 
-        if (!data.conv_id) {
+        let conv_data = null;
+        let conv_id = null;
+
+        try {
+            const convRes: any = await this.httpService
+                .post(`http://localhost:3000/conversations${data.conv_id}/close`, {
+                    api_key: queryParams.api_key,
+                    ses_id: queryParams.ses_id,
+                })
+                .toPromise();
+
+            conv_data = convRes.data;
+            conv_id = convRes.data.id;
+        } catch (e) {
+            console.log(e.response.data);
+
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
                 step: 'ec_close_conversation',
-                reason: 'conv_id not found',
+                reason: e.response.data,
             });
 
             return;
@@ -372,23 +413,26 @@ export class EventsGateway
 
         const roomName = queryParams.ses_id;
 
-        if (this.roomsInAConv.hasOwnProperty(queryParams.conv_id)) {
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
 
             delete this.roomsInAConv[data.conv_id];
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
-                this.server.in(room).emit('ec_is_leaved_from_conversation', {
-                    data: {},
+                this.server.in(room).emit('ec_is_closed_from_conversation', {
+                    data: {
+                        conv_data,
+                        conv_id,
+                    },
                     status: 'success',
                 });
             });
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_leave_conversation',
-                reason: 'Already Leaved from Current Conversation',
+                step: 'ec_close_conversation',
+                reason: 'Already Closed from Current Conversation',
             });
 
             return;
@@ -405,10 +449,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_is_typing_from_client')
-    async typingFromClient(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async typingFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -426,14 +467,12 @@ export class EventsGateway
         }); // get conv_id from ses id
 
         // get all agents with the api_key
-        const agentRooms = Object.keys(this.clientsToARoom).filter(
-            (roomId: any) => {
-                return (
-                    this.clientsToARoom[roomId].client_type === 'agent' &&
-                    this.clientsToARoom[roomId].api_key === queryParams.api_key
-                );
-            },
-        );
+        const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
+            return (
+                this.clientsToARoom[roomId].client_type === 'agent' &&
+                this.clientsToARoom[roomId].api_key === queryParams.api_key
+            );
+        });
 
         // send to all connected agents
         agentRooms.forEach((roomId: any) => {
@@ -455,10 +494,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_msg_from_client')
-    async msgFromClient(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async msgFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -476,14 +512,12 @@ export class EventsGateway
         }); // get conv_id from ses id
 
         // get all agents with the api_key
-        const agentRooms = Object.keys(this.clientsToARoom).filter(
-            (roomId: any) => {
-                return (
-                    this.clientsToARoom[roomId].client_type === 'agent' &&
-                    this.clientsToARoom[roomId].api_key === queryParams.api_key
-                );
-            },
-        );
+        const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
+            return (
+                this.clientsToARoom[roomId].client_type === 'agent' &&
+                this.clientsToARoom[roomId].api_key === queryParams.api_key
+            );
+        });
 
         // send to all connected agents
         agentRooms.forEach((roomId: any) => {
@@ -505,10 +539,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_is_typing_from_agent')
-    async typingFromAgent(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async typingFromAgent(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -522,34 +553,29 @@ export class EventsGateway
         }
 
         if (
-            this.roomsInAConv.hasOwnProperty(queryParams.conv_id) &&
-            this.roomsInAConv[queryParams.conv_id].includes(queryParams.ses_id)
+            this.roomsInAConv.hasOwnProperty(data.conv_id) &&
+            this.roomsInAConv[data.conv_id].room_ids.includes(queryParams.ses_id)
         ) {
-            const convObj = this.roomsInAConv[queryParams.conv_id];
+            const convObj = this.roomsInAConv[data.conv_id];
 
             if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
                 //
             } else {
-                const agentRooms = Object.keys(this.clientsToARoom).filter(
-                    (roomId: any) => {
-                        return (
-                            !this.clientsToARoom[roomId].client_ids.includes(
-                                client.id, // ignore from same agent
-                            ) &&
-                            this.clientsToARoom[roomId].client_type ===
-                                'agent' &&
-                            this.clientsToARoom[roomId].api_key ===
-                                queryParams.api_key
-                        );
-                    },
-                );
+                const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
+                    return (
+                        !this.clientsToARoom[roomId].client_ids.includes(
+                            client.id, // ignore from same agent
+                        ) &&
+                        this.clientsToARoom[roomId].client_type === 'agent' &&
+                        this.clientsToARoom[roomId].api_key === queryParams.api_key
+                    );
+                });
 
                 // it will contain single elm for now
                 const clientRooms = convObj.room_ids.filter((roomId: any) => {
                     return (
                         this.clientsToARoom[roomId].client_type !== 'agent' &&
-                        this.clientsToARoom[roomId].api_key ===
-                            queryParams.api_key
+                        this.clientsToARoom[roomId].api_key === queryParams.api_key
                     );
                 });
 
@@ -599,10 +625,7 @@ export class EventsGateway
     }
 
     @SubscribeMessage('ec_msg_from_agent')
-    async msgFromAgent(
-        @MessageBody() data: any,
-        @ConnectedSocket() client: Socket,
-    ): Promise<number> {
+    async msgFromAgent(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
         if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
@@ -620,34 +643,29 @@ export class EventsGateway
         // else send to every other agents then the client
 
         if (
-            this.roomsInAConv.hasOwnProperty(queryParams.conv_id) &&
-            this.roomsInAConv[queryParams.conv_id].includes(queryParams.ses_id)
+            this.roomsInAConv.hasOwnProperty(data.conv_id) &&
+            this.roomsInAConv[data.conv_id].room_ids.includes(queryParams.ses_id)
         ) {
-            const convObj = this.roomsInAConv[queryParams.conv_id];
+            const convObj = this.roomsInAConv[data.conv_id];
 
             if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
                 //
             } else {
-                const agentRooms = Object.keys(this.clientsToARoom).filter(
-                    (roomId: any) => {
-                        return (
-                            !this.clientsToARoom[roomId].client_ids.includes(
-                                client.id, // ignore from same agent
-                            ) &&
-                            this.clientsToARoom[roomId].client_type ===
-                                'agent' &&
-                            this.clientsToARoom[roomId].api_key ===
-                                queryParams.api_key
-                        );
-                    },
-                );
+                const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
+                    return (
+                        !this.clientsToARoom[roomId].client_ids.includes(
+                            client.id, // ignore from same agent
+                        ) &&
+                        this.clientsToARoom[roomId].client_type === 'agent' &&
+                        this.clientsToARoom[roomId].api_key === queryParams.api_key
+                    );
+                });
 
                 // it will contain single elm for now
                 const clientRooms = convObj.room_ids.filter((roomId: any) => {
                     return (
                         this.clientsToARoom[roomId].client_type !== 'agent' &&
-                        this.clientsToARoom[roomId].api_key ===
-                            queryParams.api_key
+                        this.clientsToARoom[roomId].api_key === queryParams.api_key
                     );
                 });
 
@@ -701,7 +719,7 @@ export class EventsGateway
         console.log('Init');
     }
 
-    handleConnection(client: Socket, ...args: any[]) {
+    async handleConnection(client: Socket, ...args: any[]) {
         console.log(`Client connected: ${client.id}`);
 
         // if client
@@ -724,9 +742,7 @@ export class EventsGateway
         const roomName = queryParams.ses_id;
 
         // check client type from api
-        const clientType = queryParams.client_type
-            ? queryParams.client_type
-            : 'client';
+        const clientType = queryParams.client_type ? queryParams.client_type : 'client';
 
         // make these like {
         // 'sesid<clients browser assigned-id>: {
@@ -776,10 +792,7 @@ export class EventsGateway
         const roomName = queryParams.ses_id;
 
         if (this.clientsToARoom.hasOwnProperty(roomName)) {
-            _.remove(
-                this.clientsToARoom[roomName].client_ids,
-                (item: any) => item === client.id,
-            );
+            _.remove(this.clientsToARoom[roomName].client_ids, (item: any) => item === client.id);
 
             if (!this.clientsToARoom[roomName].client_ids.length) {
                 delete this.clientsToARoom[roomName];

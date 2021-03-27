@@ -1,123 +1,101 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Role } from './entities/role.entity';
-import { Permission } from './entities/permission.entity';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Helper } from '../../helper/helper';
 import { AssignRoleToUserDto } from './dto/assign-role-to-user.dto';
-import { ChatAgent } from '../chat-agents/entities/chat-agent.entity';
-import { ChatAgentsService } from '../chat-agents/chat-agents.service';
-import { UserExtraPermission } from './entities/user_extra_permission.entity';
-import { agent } from 'supertest';
 import * as _ from 'lodash';
 
 @Injectable()
 export class RoleService {
-    constructor(
-        @InjectRepository(Role)
-        private roleRepository: Repository<Role>,
+    constructor() {}
 
-        @InjectRepository(Permission)
-        private permissionRepository: Repository<Permission>,
+    // async findAll(): Promise<Role[]> {
+    //     return await this.roleRepository.find({ relations: ['permissions'] });
+    // }
 
-        @InjectRepository(UserExtraPermission)
-        private userExtraPermissionRepository: Repository<UserExtraPermission>,
+    // async create(createRoleDto: CreateRoleDto): Promise<Role> {
+    //     createRoleDto.permissions = await this.makePermissionsArr(createRoleDto);
+    //     return await this.roleRepository.save(createRoleDto);
+    // }
 
-        @InjectRepository(ChatAgent)
-        private chatAgentRepository: Repository<ChatAgent>,
+    // async update(id: string, updateRoleDto: UpdateRoleDto): Promise<Role> {
+    //     const role = await this.findOne(id);
 
-        private readonly chatAgentsService: ChatAgentsService,
-    ) {}
+    //     role.permissions = await this.makePermissionsArr(updateRoleDto);
 
-    async findAll(): Promise<Role[]> {
-        return await this.roleRepository.find({ relations: ['permissions'] });
-    }
+    //     return await this.roleRepository.save(role);
+    // }
 
-    async create(createRoleDto: CreateRoleDto): Promise<Role> {
-        createRoleDto.permissions = await this.makePermissionsArr(createRoleDto);
-        return await this.roleRepository.save(createRoleDto);
-    }
+    // async findOne(id: string): Promise<Role> {
+    //     return await new Helper().getSingleDataWithException(async () => {
+    //         return await this.roleRepository.findOne(id, { relations: ['permissions'] });
+    //     }, 'roles');
+    // }
 
-    async update(id: string, updateRoleDto: UpdateRoleDto): Promise<Role> {
-        const role = await this.findOne(id);
+    // async remove(id: string) {
+    //     return await this.roleRepository.delete(id);
+    // }
 
-        role.permissions = await this.makePermissionsArr(updateRoleDto);
+    // async roleAssignToUser(assignRoleToUserDto: AssignRoleToUserDto) {
+    //     const userId = assignRoleToUserDto.user_id;
+    //     const roleId = assignRoleToUserDto.role_id;
+    //     let excludePermissions: any = assignRoleToUserDto.exclude_permissions;
+    //     let includePermissions: any = assignRoleToUserDto.include_permissions;
 
-        return await this.roleRepository.save(role);
-    }
+    //     const role = await this.findOne(roleId); // validate role_id
+    //     const chatAgent = await this.chatAgentsService.findOne(userId); // validate uer_id
 
-    async findOne(id: string): Promise<Role> {
-        return await new Helper().getSingleDataWithException(async () => {
-            return await this.roleRepository.findOne(id, { relations: ['permissions'] });
-        }, 'roles');
-    }
+    //     const rolePermissions = await this.chatAgentsService.getRolePermissions(userId);
 
-    async remove(id: string) {
-        return await this.roleRepository.delete(id);
-    }
+    //     includePermissions = includePermissions.filter((permission) => {
+    //         return _.findIndex(rolePermissions, ['id', permission]) === -1;
+    //     });
 
-    async roleAssignToUser(assignRoleToUserDto: AssignRoleToUserDto) {
-        const userId = assignRoleToUserDto.user_id;
-        const roleId = assignRoleToUserDto.role_id;
-        let excludePermissions: any = assignRoleToUserDto.exclude_permissions;
-        let includePermissions: any = assignRoleToUserDto.include_permissions;
+    //     // remove which ids includes into includePermissions to get actual exclude permissions
+    //     excludePermissions = excludePermissions.filter((permission) => {
+    //         return !includePermissions.includes(permission) && _.findIndex(rolePermissions, ['id', permission]) !== -1;
+    //     });
 
-        const role = await this.findOne(roleId); // validate role_id
-        const chatAgent = await this.chatAgentsService.findOne(userId); // validate uer_id
+    //     // remove old data from userExtraPermissions
+    //     await this.userExtraPermissionRepository.delete({
+    //         user_id: userId,
+    //     });
 
-        const rolePermissions = await this.chatAgentsService.getRolePermissions(userId);
+    //     // update userExtraPermissions
+    //     await this.saveUserExtraPermissions(includePermissions, userId);
+    //     await this.saveUserExtraPermissions(excludePermissions, userId, false);
 
-        includePermissions = includePermissions.filter((permission) => {
-            return _.findIndex(rolePermissions, ['id', permission]) === -1;
-        });
+    //     chatAgent.role_id = role.id;
 
-        // remove which ids includes into includePermissions to get actual exclude permissions
-        excludePermissions = excludePermissions.filter((permission) => {
-            return !includePermissions.includes(permission) && _.findIndex(rolePermissions, ['id', permission]) !== -1;
-        });
+    //     return await this.chatAgentsService.update(chatAgent.id, chatAgent);
+    // }
 
-        // remove old data from userExtraPermissions
-        await this.userExtraPermissionRepository.delete({
-            user_id: userId,
-        });
+    // async makePermissionsArr(dto) {
+    //     const permissions = [];
 
-        // update userExtraPermissions
-        await this.saveUserExtraPermissions(includePermissions, userId);
-        await this.saveUserExtraPermissions(excludePermissions, userId, false);
+    //     for (const permissionId of dto.permissions) {
+    //         permissions.push({ id: permissionId });
+    //     }
 
-        chatAgent.role_id = role.id;
+    //     return permissions as Permission[];
+    // }
 
-        return await this.chatAgentsService.update(chatAgent.id, chatAgent);
-    }
+    // async saveUserExtraPermissions(permissions: [], userId: string, include = true, userType = 'agent') {
+    //     if (permissions) {
+    //         for (const permission of permissions) {
+    //             const checkPermission = await this.permissionRepository.findOne(permission);
 
-    async makePermissionsArr(dto) {
-        const permissions = [];
+    //             if (checkPermission) {
+    //                 const userExtraPermission = new UserExtraPermission();
 
-        for (const permissionId of dto.permissions) {
-            permissions.push({ id: permissionId });
-        }
+    //                 userExtraPermission.user_id = userId;
+    //                 userExtraPermission.permission_id = permission;
+    //                 userExtraPermission.include = include;
+    //                 userExtraPermission.user_type = userType;
 
-        return permissions as Permission[];
-    }
-
-    async saveUserExtraPermissions(permissions: [], userId: string, include = true, userType = 'agent') {
-        if (permissions) {
-            for (const permission of permissions) {
-                const checkPermission = await this.permissionRepository.findOne(permission);
-
-                if (checkPermission) {
-                    const userExtraPermission = new UserExtraPermission();
-
-                    userExtraPermission.user_id = userId;
-                    userExtraPermission.permission_id = permission;
-                    userExtraPermission.include = include;
-                    userExtraPermission.user_type = userType;
-
-                    await this.userExtraPermissionRepository.save(userExtraPermission);
-                }
-            }
-        }
-    }
+    //                 await this.userExtraPermissionRepository.save(userExtraPermission);
+    //             }
+    //         }
+    //     }
+    // }
 }

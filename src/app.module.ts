@@ -1,41 +1,46 @@
 import { Module } from '@nestjs/common';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+
 import { ConfigModule } from '@nestjs/config';
 import { EventsModule } from './events/events.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { MessagesModule } from './api/messages/messages.module';
-import { ConversationsModule } from './api/conversations/conversations.module';
-import { ChatClientsModule } from './api/chat-clients/chat-clients.module';
-import { SubscribersModule } from './api/subscribers/subscribers.module';
-import { ChatAgentsModule } from './api/chat-agents/chat-agents.module';
-import { ConversationClientsModule } from './api/conversation-clients/conversation-clients.module';
+
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
-import { RolePermissionModule } from './api/role-permissions/role-permission.module';
 import { AuthorizationModule } from './authorizarion/authorization.module';
+import { RolePermissionModule } from './api/role-permissions/role-permission.module';
+
+import { SubscribersModule } from './api/subscriber/subscribers/subscribers.module';
+import { UsersModule } from './api/subscriber/users/users.module';
+import { SocketSessionsModule } from './api/subscriber/socket-session/socket-sessions.module';
+import { ConversationsModule } from './api/subscriber/conversations/conversations.module';
+
+import { MessagesModule } from './api/messages/messages.module';
+import { ConversationClientsModule } from './api/conversation-clients/conversation-clients.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
         }),
-        TypeOrmModule.forRoot(),
-        EventsModule,
-        MessagesModule,
-        ConversationsModule,
-        ChatClientsModule,
-        SubscribersModule,
-        ChatAgentsModule,
-        ConversationClientsModule,
+
         ThrottlerModule.forRoot({
             ttl: 60,
             limit: 1000,
         }),
         AuthModule,
         AuthorizationModule,
-        RolePermissionModule,
+        // RolePermissionModule,
+
+        EventsModule,
+        SubscribersModule,
+        SocketSessionsModule,
+        UsersModule,
+        ConversationsModule,
+        // MessagesModule,
+        // ConversationClientsModule,
     ],
     controllers: [AppController],
     providers: [

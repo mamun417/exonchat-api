@@ -1,5 +1,4 @@
 import { IsArray, IsNotEmpty, IsString, MinLength } from 'class-validator';
-import { Permission } from '../entities/permission.entity';
 
 export class CreateRoleDto {
     @IsNotEmpty()
@@ -9,9 +8,4 @@ export class CreateRoleDto {
     name: string;
 
     description: string;
-
-    @IsArray()
-    @MinLength(1, { each: true })
-    @IsString({ each: true })
-    permissions: Permission[];
 }
