@@ -15,8 +15,6 @@ import { Server, Socket } from 'socket.io';
 
 import * as _ from 'lodash';
 
-import { map } from 'rxjs/operators';
-
 @WebSocketGateway({ serveClient: false })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     constructor(private httpService: HttpService) {}
@@ -26,37 +24,28 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     // server is eq to socket.io's io
     // client|Socket is eq to socket.io's socket
-    // user is webchat user
-    // agent is those who handles chat
 
-    private clientsToARoom: any = {}; // users & agents who are in tabs with same session
+    // client is webchat user
+    // user = user/agent
+
+    private clientsToARoom: any = {}; // all [users/agents, clients]
+    private userClientsInARoom: any = {}; // users/agents
+    private normalClientsInARoom: any = {}; // normal clients from site web-chat
     private roomsInAConv: any = {};
-    private apiToAgents: any = {};
 
-    @SubscribeMessage('ec_get_agents_online')
-    async agentsOnline(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    @SubscribeMessage('ec_get_logged_users') // get users list when needed
+    async usersOnline(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_get_agents_online',
-                reason: 'handshake params are not set properly',
-            });
+        if (!this.queryParamsOk(client, queryParams, 'ec_get_logged_users')) return;
 
-            return;
-        }
+        // get all logged users with the api_key
+        const users = Object.keys(this.userClientsInARoom).filter(
+            (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+        );
 
-        // get all online agents with the api_key
-        const agents = Object.keys(this.clientsToARoom).filter((roomId: any) => {
-            return (
-                this.clientsToARoom[roomId].client_type === 'agent' &&
-                this.clientsToARoom[roomId].api_key === queryParams.api_key
-            );
-        });
-
-        this.server.to(client.id).emit('ec_agents_online_res', {
-            agents: agents,
+        this.server.to(client.id).emit('ec_get_logged_users', {
+            users: users,
         });
 
         return;
@@ -66,48 +55,29 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async pageVisitInfoFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_page_visit_info_from_client',
-                reason: 'handshake params are not set properly',
-            });
+        if (!this.queryParamsOk(client, queryParams, 'ec_page_visit_info_from_client')) return;
 
-            return;
-        }
+        const userRooms = Object.keys(this.userClientsInARoom).filter(
+            (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+        );
 
-        const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
-            return (
-                this.clientsToARoom[roomId].client_type === 'agent' &&
-                this.clientsToARoom[roomId].api_key === queryParams.api_key
-            );
-        });
+        // console.log(userRooms);
 
-        // console.log(agentRooms);
-
-        agentRooms.forEach((roomId: any) => {
-            this.server.in(this.clientsToARoom[roomId]).emit('ec_page_visit_info_from_client', {
+        userRooms.forEach((roomId: any) => {
+            this.server.in(this.userClientsInARoom[roomId]).emit('ec_page_visit_info_from_client', {
                 url: data.url,
                 sent_at: data.sent_at,
-            }); // send to all agents
+            }); // send to all users
         });
 
         return;
     }
 
-    @SubscribeMessage('ec_init_conv_from_agent')
-    async init_conversation_from_agent(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    @SubscribeMessage('ec_init_conv_from_user')
+    async init_conversation_from_user(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_init_conv_from_agent',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_init_conv_from_user')) return;
 
         const conv_id = '123'; // get from api
         const roomName = queryParams.ses_id;
@@ -115,20 +85,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
             this.roomsInAConv[conv_id] = { room_ids: [roomName] };
 
-            if (data.agents_only) {
-                this.roomsInAConv[conv_id].agents_only = true;
+            if (data.users_only) {
+                this.roomsInAConv[conv_id].users_only = true;
             }
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_init_conv_from_agent',
+                step: 'ec_init_conv_from_user',
                 reason: 'conv id already exists',
             });
 
             return;
         }
 
-        this.server.in(roomName).emit('ec_conv_initiated_from_agent', {
+        this.server.in(roomName).emit('ec_conv_initiated_from_user', {
             data: {
                 conv_id: '123',
             },
@@ -138,7 +108,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // if api error
         // this.server.to(client.id).emit('ec_error', {
         //     type: 'warning',
-        //     step: 'ec_conv_initiated_from_agent',
+        //     step: 'ec_conv_initiated_from_user',
         //     reason: 'err.msg',
         // });
 
@@ -154,15 +124,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     ): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_init_conv_from_client',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_init_conv_from_client')) return;
 
         let conv_data = null;
         let conv_id = null;
@@ -228,15 +190,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async joinConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_join_conversation',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_join_conversation')) return;
 
         let conv_ses_data = null;
 
@@ -262,7 +216,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         // call check api for conv_id, api_key & ses_id
-        const agent_info = {}; //get agent info
+        const user_info = {}; //get user info
 
         const roomName = queryParams.ses_id;
 
@@ -300,15 +254,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async leaveConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_leave_conversation',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_leave_conversation')) return;
 
         let conv_ses_data = null;
 
@@ -374,22 +320,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async closeConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_close_conversation',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_close_conversation')) return;
 
         let conv_data = null;
         let conv_id = null;
 
         try {
             const convRes: any = await this.httpService
-                .post(`http://localhost:3000/conversations${data.conv_id}/close`, {
+                .post(`http://localhost:3000/conversations/${data.conv_id}/close`, {
                     api_key: queryParams.api_key,
                     ses_id: queryParams.ses_id,
                 })
@@ -452,35 +390,24 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async typingFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_is_typing_from_client',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_is_typing_from_client')) return;
 
         const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
             return convObj.room_ids.includes(queryParams.ses_id);
         }); // get conv_id from ses id
 
-        // get all agents with the api_key
-        const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
-            return (
-                this.clientsToARoom[roomId].client_type === 'agent' &&
-                this.clientsToARoom[roomId].api_key === queryParams.api_key
-            );
-        });
+        // get all users with the api_key
+        const userRooms = Object.keys(this.userClientsInARoom).filter(
+            (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+        );
 
-        // send to all connected agents
-        agentRooms.forEach((roomId: any) => {
+        // send to all connected users
+        userRooms.forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_is_typing_from_client', {
                 conv_id: convId,
                 msg: data.msg,
                 sent_at: data.sent_at,
-            }); // send to all agents
+            }); // send to all users
         });
 
         // use if needed
@@ -497,35 +424,24 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async msgFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_msg_from_client',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_msg_from_client')) return;
 
         const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
             return convObj.room_ids.includes(queryParams.ses_id);
         }); // get conv_id from ses id
 
-        // get all agents with the api_key
-        const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
-            return (
-                this.clientsToARoom[roomId].client_type === 'agent' &&
-                this.clientsToARoom[roomId].api_key === queryParams.api_key
-            );
-        });
+        // get all users with the api_key
+        const userRooms = Object.keys(this.userClientsInARoom).filter(
+            (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+        );
 
-        // send to all connected agents
-        agentRooms.forEach((roomId: any) => {
+        // send to all connected users
+        userRooms.forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_msg_from_client', {
                 conv_id: convId,
                 msg: data.msg,
                 sent_at: data.sent_at,
-            }); // send to all agents
+            }); // send to all users
         });
 
         // use if needed
@@ -538,19 +454,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
-    @SubscribeMessage('ec_is_typing_from_agent')
-    async typingFromAgent(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    @SubscribeMessage('ec_is_typing_from_user')
+    async typingFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_is_typing_from_agent',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_is_typing_from_user')) return;
 
         if (
             this.roomsInAConv.hasOwnProperty(data.conv_id) &&
@@ -558,30 +466,25 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         ) {
             const convObj = this.roomsInAConv[data.conv_id];
 
-            if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
+            if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
                 //
             } else {
-                const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
-                    return (
-                        !this.clientsToARoom[roomId].client_ids.includes(
-                            client.id, // ignore from same agent
-                        ) &&
-                        this.clientsToARoom[roomId].client_type === 'agent' &&
-                        this.clientsToARoom[roomId].api_key === queryParams.api_key
-                    );
-                });
+                const userRooms = Object.keys(this.userClientsInARoom).filter(
+                    (roomId: any) =>
+                        this.userClientsInARoom[roomId].api_key === queryParams.api_key &&
+                        !this.userClientsInARoom[roomId].socket_client_ids.includes(
+                            client.id, // ignore from same user
+                        ),
+                );
 
                 // it will contain single elm for now
-                const clientRooms = convObj.room_ids.filter((roomId: any) => {
-                    return (
-                        this.clientsToARoom[roomId].client_type !== 'agent' &&
-                        this.clientsToARoom[roomId].api_key === queryParams.api_key
-                    );
-                });
+                const clientRooms = convObj.room_ids.filter(
+                    (roomId: any) => this.normalClientsInARoom[roomId].api_key === queryParams.api_key,
+                );
 
                 if (clientRooms.length === 1) {
                     clientRooms.forEach((roomId: any) => {
-                        this.server.in(roomId).emit('ec_is_typing_from_agent', {
+                        this.server.in(roomId).emit('ec_is_typing_from_user', {
                             conv_id: queryParams.conv_id,
                             msg: data.msg,
                             sent_at: data.sent_at,
@@ -590,25 +493,25 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 } else {
                     this.server.to(client.id).emit('ec_error', {
                         type: 'warning',
-                        step: 'ec_is_typing_from_agent',
+                        step: 'ec_is_typing_from_user',
                         reason: 'Somehow client is not present in this conv',
                     });
 
                     return;
                 }
 
-                agentRooms.forEach((roomId: any) => {
-                    this.server.in(roomId).emit('ec_is_typing_from_agent', {
+                userRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_is_typing_from_user', {
                         conv_id: queryParams.conv_id,
                         msg: data.msg,
                         sent_at: data.sent_at,
-                    }); // send to all other agents
+                    }); // send to all other users
                 });
             }
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'warning',
-                step: 'ec_is_typing_from_agent',
+                step: 'ec_is_typing_from_user',
                 reason: 'You are doing something wrong',
             });
 
@@ -616,7 +519,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         // use if needed
-        this.server.in(queryParams.ses_id).emit('ec_is_typing_to_agent', {
+        this.server.in(queryParams.ses_id).emit('ec_is_typing_to_user', {
             sent_at: data.sent_at,
             return_type: 'own',
         }); // return back to client so that we can update to all tab
@@ -624,54 +527,41 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
-    @SubscribeMessage('ec_msg_from_agent')
-    async msgFromAgent(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    @SubscribeMessage('ec_msg_from_user')
+    async msgFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_msg_from_agent',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
-
-        // check if the conv only for agents
-        // if for agents send to only those conv rooms
-        // else send to every other agents then the client
+        if (!this.queryParamsOk(client, queryParams, 'ec_msg_from_user')) return;
 
         if (
             this.roomsInAConv.hasOwnProperty(data.conv_id) &&
             this.roomsInAConv[data.conv_id].room_ids.includes(queryParams.ses_id)
         ) {
+            // check if the conv only for users
+            // if for users send to only those conv rooms
+            // else send to every other users then the client
+
             const convObj = this.roomsInAConv[data.conv_id];
 
-            if (convObj.hasOwnProperty('agents_only') && convObj.agents_only) {
+            if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
                 //
             } else {
-                const agentRooms = Object.keys(this.clientsToARoom).filter((roomId: any) => {
-                    return (
-                        !this.clientsToARoom[roomId].client_ids.includes(
-                            client.id, // ignore from same agent
-                        ) &&
-                        this.clientsToARoom[roomId].client_type === 'agent' &&
-                        this.clientsToARoom[roomId].api_key === queryParams.api_key
-                    );
-                });
+                const userRooms = Object.keys(this.userClientsInARoom).filter(
+                    (roomId: any) =>
+                        this.userClientsInARoom[roomId].api_key === queryParams.api_key &&
+                        !this.userClientsInARoom[roomId].socket_client_ids.includes(
+                            client.id, // ignore from same user
+                        ),
+                );
 
                 // it will contain single elm for now
-                const clientRooms = convObj.room_ids.filter((roomId: any) => {
-                    return (
-                        this.clientsToARoom[roomId].client_type !== 'agent' &&
-                        this.clientsToARoom[roomId].api_key === queryParams.api_key
-                    );
-                });
+                const clientRooms = convObj.room_ids.filter(
+                    (roomId: any) => this.normalClientsInARoom[roomId].api_key === queryParams.api_key,
+                );
 
                 if (clientRooms.length === 1) {
                     clientRooms.forEach((roomId: any) => {
-                        this.server.in(roomId).emit('ec_msg_from_agent', {
+                        this.server.in(roomId).emit('ec_msg_from_user', {
                             conv_id: queryParams.conv_id,
                             msg: data.msg,
                             sent_at: data.sent_at,
@@ -680,25 +570,25 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 } else {
                     this.server.to(client.id).emit('ec_error', {
                         type: 'warning',
-                        step: 'ec_msg_from_agent',
+                        step: 'ec_msg_from_user',
                         reason: 'Somehow client is not present in this conv',
                     });
 
                     return;
                 }
 
-                agentRooms.forEach((roomId: any) => {
-                    this.server.in(roomId).emit('ec_msg_from_agent', {
+                userRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_msg_from_user', {
                         conv_id: queryParams.conv_id,
                         msg: data.msg,
                         sent_at: data.sent_at,
-                    }); // send to all other agents
+                    }); // send to all other users
                 });
             }
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'warning',
-                step: 'ec_msg_from_agent',
+                step: 'ec_msg_from_user',
                 reason: 'You are doing something wrong',
             });
 
@@ -706,7 +596,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         // use if needed
-        this.server.in(queryParams.ses_id).emit('ec_msg_to_agent', {
+        this.server.in(queryParams.ses_id).emit('ec_msg_to_user', {
             msg: data.msg,
             sent_at: data.sent_at,
             return_type: 'own',
@@ -720,7 +610,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     async handleConnection(client: Socket, ...args: any[]) {
-        console.log(`Client connected: ${client.id}`);
+        console.log(`Socket Client connected: ${client.id}`);
 
         // if client
         // check the token from client.handshake.query.[token && sessId] and get assigned room which is conversation_id
@@ -729,78 +619,89 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'at_connect',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'at_connect')) return;
 
         const roomName = queryParams.ses_id;
 
         // check client type from api
-        const clientType = queryParams.client_type ? queryParams.client_type : 'client';
+        const dynamicInARoom = queryParams.client_type === 'user' ? 'userClientsInARoom' : 'normalClientsInARoom';
 
-        // make these like {
-        // 'sesid<clients browser assigned-id>: {
-        //     client-ids: [<client-ids>],
-        //     client-type: '<user|agent>',
-        //     api-key: 'it will handle to which user|agent rooms to send'
-        // }
-        // }
-
-        if (!this.clientsToARoom.hasOwnProperty(roomName)) {
-            this.clientsToARoom[roomName] = {
-                client_ids: [],
-                client_type: clientType,
+        if (!this[dynamicInARoom].hasOwnProperty(roomName)) {
+            this[dynamicInARoom][roomName] = {
+                socket_client_ids: [],
                 api_key: queryParams.api_key,
             };
         }
 
-        if (!this.clientsToARoom[roomName].client_ids.includes(client.id)) {
-            this.clientsToARoom[roomName].client_ids.push(client.id);
+        if (!this[dynamicInARoom][roomName].socket_client_ids.includes(client.id)) {
+            this[dynamicInARoom][roomName].socket_client_ids.push(client.id);
         }
 
         client.join(roomName);
 
-        console.log(this.clientsToARoom);
+        console.log(this.userClientsInARoom);
+        console.log(this.normalClientsInARoom);
         console.log(this.roomsInAConv);
-
-        //if agent
-        // save to this.apiToAgents = client.id
     }
 
     handleDisconnect(client: Socket) {
-        console.log(`Client disconnected: ${client.id}`);
+        console.log(`Socket Client disconnected: ${client.id}`);
         // console.log(client?.handshake?.query);
 
         const queryParams = client?.handshake?.query;
 
-        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'at_disconnect',
-                reason: 'handshake params are not set properly',
-            });
-
-            return;
-        }
+        if (!this.queryParamsOk(client, queryParams, 'ec_msg_from_user')) return;
 
         const roomName = queryParams.ses_id;
 
-        if (this.clientsToARoom.hasOwnProperty(roomName)) {
-            _.remove(this.clientsToARoom[roomName].client_ids, (item: any) => item === client.id);
+        let idIsDeleted = false;
 
-            if (!this.clientsToARoom[roomName].client_ids.length) {
-                delete this.clientsToARoom[roomName];
+        if (this.normalClientsInARoom.hasOwnProperty(roomName)) {
+            _.remove(this.normalClientsInARoom[roomName].socket_client_ids, (item: any) => {
+                if (item === client.id) {
+                    idIsDeleted = true;
+                }
+
+                return idIsDeleted;
+            });
+
+            if (!this.normalClientsInARoom[roomName].socket_client_ids.length) {
+                delete this.normalClientsInARoom[roomName];
+
+                client.leave(roomName);
             }
-
-            client.leave(roomName);
         }
 
-        console.log(this.clientsToARoom);
+        if (this.userClientsInARoom.hasOwnProperty(roomName) && !idIsDeleted) {
+            _.remove(this.userClientsInARoom[roomName].socket_client_ids, (item: any) => item === client.id);
+
+            if (!this.userClientsInARoom[roomName].socket_client_ids.length) {
+                delete this.userClientsInARoom[roomName];
+
+                client.leave(roomName);
+            }
+        }
+
+        console.log(this.userClientsInARoom);
+        console.log(this.normalClientsInARoom);
+        console.log(this.roomsInAConv);
+    }
+
+    queryParamsOk(client: any, queryParams: any, step: string) {
+        if (!queryParams || !queryParams.ses_id || !queryParams.api_key) {
+            this.sendError(client, step, 'handshake params are not set properly');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    sendError(client: any, step: string, msg = 'you are doing something wrong') {
+        this.server.to(client.id).emit('ec_error', {
+            type: 'warning',
+            step: step,
+            reason: msg,
+        });
     }
 }
