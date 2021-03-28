@@ -74,6 +74,17 @@ export class UsersService {
         });
     }
 
+    findActiveUsers(req: any): Promise<user[]> {
+        return this.prisma.user.findMany({
+            where: {
+                active: true,
+                subscriber_id: {
+                    equals: req.user.data.subscriber_id,
+                },
+            },
+        });
+    }
+
     async findOne(id: string): Promise<user> {
         return this.prisma.user.findFirst({ where: { id: id } });
     }

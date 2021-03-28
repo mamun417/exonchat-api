@@ -21,7 +21,6 @@ export class ConversationsService {
         private dataHelper: DataHelper,
         private subscriberService: SubscribersService,
         private socketSessionService: SocketSessionsService,
-        private userService: UsersService,
     ) {}
 
     async create(createConversationDto: CreateConversationDto) {
@@ -168,11 +167,27 @@ export class ConversationsService {
         return conversation;
     }
 
-    // async findAll(): Promise<Conversation[]> {
-    //     return await this.conversationRepository.find({
-    //         relations: ['messages'],ec_get_agents_online
-    //     });
-    // }
+    async findAll(req: any): Promise<conversation[]> {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+            },
+        });
+    }
+
+    async someClosedConvWithClient(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                message: { some: {} },
+                closed_at: {
+                    not: null,
+                },
+            },
+            take: 10,
+        });
+    }
 
     async findOne(id: string, extraQueries: any = {}): Promise<conversation> {
         return this.prisma.conversation.findFirst({
@@ -183,11 +198,24 @@ export class ConversationsService {
         });
     }
 
-    async findOneWithException(id: string, extraQueries: any = {}): Promise<conversation> {
+    async findOneWithException(id: string, extraQueries: any = {}, errMsg = ''): Promise<conversation> {
         return await this.dataHelper.getSingleDataWithException(
             async () => await this.findOne(id, extraQueries),
             'conversation',
+            errMsg,
         );
+    }
+
+    async conversationMessages(id: string, req: any) {
+        const conversation = await this.findOneWithException(id, {
+            subscriber_id: req.user.data.subscriber_id,
+        });
+
+        return this.prisma.message.findMany({
+            where: {
+                conversation_id: conversation.id,
+            },
+        });
     }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {

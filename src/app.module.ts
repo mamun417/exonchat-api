@@ -14,11 +14,11 @@ import { RolePermissionModule } from './api/role-permissions/role-permission.mod
 
 import { SubscribersModule } from './api/subscriber/subscribers/subscribers.module';
 import { UsersModule } from './api/subscriber/users/users.module';
+
 import { SocketSessionsModule } from './api/subscriber/socket-session/socket-sessions.module';
 import { ConversationsModule } from './api/subscriber/conversations/conversations.module';
 
-import { MessagesModule } from './api/messages/messages.module';
-import { ConversationClientsModule } from './api/conversation-clients/conversation-clients.module';
+import { MessagesModule } from './api/subscriber/messages/messages.module';
 
 @Module({
     imports: [
@@ -30,17 +30,20 @@ import { ConversationClientsModule } from './api/conversation-clients/conversati
             ttl: 60,
             limit: 1000,
         }),
+
         AuthModule,
         AuthorizationModule,
         // RolePermissionModule,
 
         EventsModule,
+
         SubscribersModule,
-        SocketSessionsModule,
         UsersModule,
+
+        SocketSessionsModule,
         ConversationsModule,
-        // MessagesModule,
-        // ConversationClientsModule,
+
+        MessagesModule,
     ],
     controllers: [AppController],
     providers: [

@@ -43,7 +43,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
         );
 
-        this.server.to(client.id).emit('ec_logged_users_updated', {
+        this.server.to(client.id).emit('ec_logged_users_res', {
             users: users,
         });
 
@@ -567,11 +567,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         });
                     });
                 } else {
-                    this.server.to(client.id).emit('ec_error', {
-                        type: 'warning',
-                        step: 'ec_msg_from_user',
-                        reason: 'Somehow client is not present in this conv',
-                    });
+                    this.sendError(client, 'ec_msg_from_user', 'somehow client is not present in this conversation');
 
                     return;
                 }
@@ -585,11 +581,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 });
             }
         } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_msg_from_user',
-                reason: 'You are doing something wrong',
-            });
+            this.sendError(client, 'ec_msg_from_user');
 
             return;
         }
@@ -631,15 +623,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 api_key: queryParams.api_key,
             };
 
-            // const userRooms = Object.keys(this.userClientsInARoom).filter(
-            //     (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
-            // );
+            if (queryParams.client_type === 'user') {
+                const userRooms = Object.keys(this.userClientsInARoom).filter(
+                    (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+                );
 
-            // userRooms.forEach((roomId: any) => {
-            //     this.server.in(roomId).emit('ec_msg_from_user', {
-            //         user_ses_id:
-            //     }); // send to all other users
-            // });
+                userRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_user_logged_in', {
+                        user_ses_id: queryParams.ses_id,
+                    }); // send to all other users
+                });
+            }
         }
 
         if (!this[dynamicInARoom][roomName].socket_client_ids.includes(client.id)) {
@@ -688,6 +682,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 delete this.userClientsInARoom[roomName];
 
                 client.leave(roomName);
+
+                if (queryParams.client_type === 'user') {
+                    const userRooms = Object.keys(this.userClientsInARoom).filter(
+                        (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
+                    );
+
+                    userRooms.forEach((roomId: any) => {
+                        this.server.in(roomId).emit('ec_user_logged_out', {
+                            user_ses_id: queryParams.ses_id,
+                        }); // send to all other users
+                    });
+                }
             }
         }
 

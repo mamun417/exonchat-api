@@ -17,6 +17,12 @@ export class UsersController {
         return this.usersService.findAll(req);
     }
 
+    @UseGuards(JwtAuthGuard)
+    @Get()
+    findActiveUsers(@Request() req: any) {
+        return this.usersService.findActiveUsers(req);
+    }
+
     // @Get(':id')
     // findOne(@Param('id') id: string) {
     //     return this.chatAgentsService.findOne(id);

@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
+import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -30,15 +31,22 @@ export class ConversationsController {
         return this.conversationsService.close(id, closeConversationDto);
     }
 
-    // @Get()
-    // findAll() {
-    //     return this.conversationsService.findAll();
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Get(':id/messages')
+    conversationMessages(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.conversationMessages(id, req);
+    }
 
-    // @Get(':id')
-    // findOne(@Param('id') id: string) {
-    //     return this.conversationsService.findOne(+id);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Get()
+    findAll(@Request() req: any) {
+        return this.conversationsService.findAll(req);
+    }
+
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.conversationsService.findOne(id);
+    }
 
     // @Put(':id')
     // update(@Param('id') id: string, @Body() updateConversationDto: UpdateConversationDto) {
