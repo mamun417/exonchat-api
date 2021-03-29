@@ -101,7 +101,7 @@ model socket_session {
   conversation_sessions conversation_session[]
   created_conversations conversation[]         @relation(name: "created_by")
   closed_conversations  conversation[]         @relation(name: "closed_by")
-  message               message[]
+  messages              message[]
 }
 
 model conversation {
@@ -118,13 +118,13 @@ model conversation {
   closed_by_id          String?
   closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
   conversation_sessions conversation_session[]
-  message               message[]
+  messages              message[]
 }
 
 model conversation_session {
   id                String         @id @default(cuid())
   joined_at         DateTime?      @db.Timestamp(6)
-  leaved_at         DateTime?      @db.Timestamp(6)
+  left_at           DateTime?      @db.Timestamp(6)
   created_at        DateTime       @default(now()) @db.Timestamp(6)
   updated_at        DateTime       @default(now()) @db.Timestamp(6)
   socket_session    socket_session @relation(fields: [socket_session_id], references: [id])

@@ -107,10 +107,10 @@ export class ConversationsService {
             where: {
                 conversation_id: conversation.id,
                 socket_session_id: socketSession.id,
-                leaved_at: null,
+                left_at: null,
             },
             data: {
-                leaved_at: new Date(),
+                left_at: new Date(),
             },
         });
 
@@ -154,10 +154,10 @@ export class ConversationsService {
                 conversation_sessions: {
                     updateMany: {
                         where: {
-                            leaved_at: null,
+                            left_at: null,
                         },
                         data: {
-                            leaved_at: new Date(),
+                            left_at: new Date(),
                         },
                     },
                 },
@@ -172,6 +172,9 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
             },
+            orderBy: {
+                created_at: 'desc',
+            },
         });
     }
 
@@ -180,12 +183,30 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                message: { some: {} },
+                messages: { some: {} },
                 closed_at: {
                     not: null,
                 },
             },
+            orderBy: { created_at: 'desc' },
             take: 10,
+        });
+    }
+
+    async chatRequests(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                messages: { some: {} },
+                closed_at: null,
+            },
+            include: {
+                messages: {
+                    take: 1,
+                },
+            },
+            orderBy: { created_at: 'desc' },
         });
     }
 
@@ -215,6 +236,7 @@ export class ConversationsService {
             where: {
                 conversation_id: conversation.id,
             },
+            orderBy: { created_at: 'desc' },
         });
     }
 

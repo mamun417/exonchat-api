@@ -403,17 +403,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // send to all connected users
         userRooms.forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_is_typing_from_client', {
-                conv_id: convId,
+                conversation_id: convId,
                 msg: data.msg,
-                sent_at: data.sent_at,
+                temp_id: data.temp_id,
             }); // send to all users
         });
 
         // use if needed
         this.server.in(queryParams.ses_id).emit('ec_is_typing_to_client', {
+            conversation_id: convId,
             msg: data.msg,
-            sent_at: data.sent_at,
-            return_type: 'own',
+            temp_id: data.temp_id,
         }); // return back to client so that we can update to all tab
 
         return;
@@ -434,20 +434,41 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             (roomId: any) => this.userClientsInARoom[roomId].api_key === queryParams.api_key,
         );
 
+        let createdMsg: any = null;
+
+        try {
+            const msgRes = await this.httpService
+                .post(`http://localhost:3000/messages`, {
+                    api_key: queryParams.api_key,
+                    conv_id: convId,
+                    ses_id: queryParams.ses_id,
+                    msg: data.msg,
+                })
+                .toPromise();
+
+            createdMsg = msgRes.data;
+        } catch (e) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_leave_conversation',
+                reason: e.response.data,
+            });
+
+            return;
+        }
+
         // send to all connected users
         userRooms.forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_msg_from_client', {
-                conv_id: convId,
-                msg: data.msg,
-                sent_at: data.sent_at,
+                ...createdMsg,
+                temp_id: data.temp_id,
             }); // send to all users
         });
 
         // use if needed
         this.server.in(queryParams.ses_id).emit('ec_msg_to_client', {
-            msg: data.msg,
-            sent_at: data.sent_at,
-            return_type: 'own',
+            ...createdMsg,
+            temp_id: data.temp_id,
         }); // return back to client so that we can update to all tab
 
         return;
@@ -484,9 +505,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 if (clientRooms.length === 1) {
                     clientRooms.forEach((roomId: any) => {
                         this.server.in(roomId).emit('ec_is_typing_from_user', {
-                            conv_id: queryParams.conv_id,
+                            conversation_id: queryParams.conv_id,
                             msg: data.msg,
-                            sent_at: data.sent_at,
+                            temp_id: data.temp_id,
                         });
                     });
                 } else {
@@ -501,9 +522,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 userRooms.forEach((roomId: any) => {
                     this.server.in(roomId).emit('ec_is_typing_from_user', {
-                        conv_id: queryParams.conv_id,
+                        conversation_id: queryParams.conv_id,
                         msg: data.msg,
-                        sent_at: data.sent_at,
+                        temp_id: data.temp_id,
                     }); // send to all other users
                 });
             }
@@ -519,8 +540,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         // use if needed
         this.server.in(queryParams.ses_id).emit('ec_is_typing_to_user', {
-            sent_at: data.sent_at,
-            return_type: 'own',
+            conversation_id: queryParams.conv_id,
+            msg: data.msg,
+            temp_id: data.temp_id,
         }); // return back to client so that we can update to all tab
 
         return;
@@ -542,6 +564,29 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             const convObj = this.roomsInAConv[data.conv_id];
 
+            let createdMsg: any = null;
+
+            try {
+                const msgRes = await this.httpService
+                    .post(`http://localhost:3000/messages`, {
+                        api_key: queryParams.api_key,
+                        conv_id: data.conv_id,
+                        ses_id: queryParams.ses_id,
+                        msg: data.msg,
+                    })
+                    .toPromise();
+
+                createdMsg = msgRes.data;
+            } catch (e) {
+                this.server.to(client.id).emit('ec_error', {
+                    type: 'error',
+                    step: 'ec_leave_conversation',
+                    reason: e.response.data,
+                });
+
+                return;
+            }
+
             if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
                 //
             } else {
@@ -561,9 +606,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 if (clientRooms.length === 1) {
                     clientRooms.forEach((roomId: any) => {
                         this.server.in(roomId).emit('ec_msg_from_user', {
-                            conv_id: queryParams.conv_id,
-                            msg: data.msg,
-                            sent_at: data.sent_at,
+                            ...createdMsg,
+                            temp_id: data.temp_id,
                         });
                     });
                 } else {
@@ -574,24 +618,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 userRooms.forEach((roomId: any) => {
                     this.server.in(roomId).emit('ec_msg_from_user', {
-                        conv_id: queryParams.conv_id,
-                        msg: data.msg,
-                        sent_at: data.sent_at,
+                        ...createdMsg,
+                        temp_id: data.temp_id,
                     }); // send to all other users
                 });
             }
+
+            // use if needed
+            this.server.in(queryParams.ses_id).emit('ec_msg_to_user', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+            }); // return back to client so that we can update to all tab
         } else {
             this.sendError(client, 'ec_msg_from_user');
-
-            return;
         }
-
-        // use if needed
-        this.server.in(queryParams.ses_id).emit('ec_msg_to_user', {
-            msg: data.msg,
-            sent_at: data.sent_at,
-            return_type: 'own',
-        }); // return back to client so that we can update to all tab
 
         return;
     }
