@@ -414,6 +414,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conversation_id: convId,
             msg: data.msg,
             temp_id: data.temp_id,
+            return_type: 'own',
         }); // return back to client so that we can update to all tab
 
         return;
@@ -469,6 +470,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         this.server.in(queryParams.ses_id).emit('ec_msg_to_client', {
             ...createdMsg,
             temp_id: data.temp_id,
+            return_type: 'own',
         }); // return back to client so that we can update to all tab
 
         return;
@@ -543,6 +545,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conversation_id: queryParams.conv_id,
             msg: data.msg,
             temp_id: data.temp_id,
+            return_type: 'own',
         }); // return back to client so that we can update to all tab
 
         return;
@@ -628,6 +631,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.server.in(queryParams.ses_id).emit('ec_msg_to_user', {
                 ...createdMsg,
                 temp_id: data.temp_id,
+                return_type: 'own',
             }); // return back to client so that we can update to all tab
         } else {
             this.sendError(client, 'ec_msg_from_user');
