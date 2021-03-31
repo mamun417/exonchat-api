@@ -26,19 +26,19 @@ export class AuthService {
             throw new HttpException('Already Logged In', HttpStatus.FORBIDDEN);
         }
 
-        const bearerToken = await this.jwtService.sign(
+        const bearerToken = this.jwtService.sign(
             {
                 data: user,
             },
             { expiresIn: 60 * 5 },
         );
 
-        const refreshToken = await this.signRefreshToken({
+        const refreshToken = this.signRefreshToken({
             bearerToken: bearerToken,
             user: user,
         });
 
-        await this.storeRefreshToken(res, refreshToken);
+        this.storeRefreshToken(res, refreshToken);
 
         return res.json({
             bearerToken: bearerToken,
@@ -58,6 +58,8 @@ export class AuthService {
 
             return res.json({ bearerToken }); // send same bearerToken like after login
         } catch (e) {
+            console.log(req);
+
             const refreshToken = req.signedCookies.refreshToken;
 
             if (refreshToken) {
@@ -108,8 +110,7 @@ export class AuthService {
         }
         return null;
     }
-
-    async signRefreshToken(data: any) {
+    signRefreshToken(data: any) {
         return this.jwtService.sign(
             {
                 ...data,
@@ -119,11 +120,13 @@ export class AuthService {
     }
 
     // store in cookie
-    async storeRefreshToken(res: any, token: any) {
+    storeRefreshToken(res: any, token: any) {
         res.cookie('refreshToken', token, {
             maxAge: 60 * 60 * 24 * 7 * 1000,
             httpOnly: true,
             signed: true,
+            sameSite: 'none',
+            secure: true,
         });
     }
 }
