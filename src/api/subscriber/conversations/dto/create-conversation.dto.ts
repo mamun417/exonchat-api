@@ -6,12 +6,6 @@ enum chat_type_enum {
 }
 
 export class CreateConversationDto {
-    @IsNotEmpty()
-    api_key: string;
-
-    @IsNotEmpty()
-    ses_id: string;
-
     @IsEnum(chat_type_enum)
     chat_type: chat_type_enum;
 }

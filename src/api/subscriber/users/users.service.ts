@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { user } from '@prisma/client';
-import { Helper } from 'src/helper/helper';
+import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
 export class UsersService {
-    constructor(private prisma: PrismaService) {}
+    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
 
     async validateForLogin(login_info: any, pass: string): Promise<user> {
         return this.prisma.user.findFirst({
@@ -42,14 +42,10 @@ export class UsersService {
     //     return 'This action adds a new chatAgent';
     // }
 
-    findAll(req: any): Promise<user[]> {
-        console.log(req.user.data.subscriber_id);
-
+    findAll(req: any) {
         return this.prisma.user.findMany({
             where: {
-                subscriber_id: {
-                    equals: req.user.data.subscriber_id,
-                },
+                subscriber_id: req.user.data.subscriber_id,
             },
             include: {
                 role: {
@@ -74,65 +70,35 @@ export class UsersService {
         });
     }
 
-    findActiveUsers(req: any): Promise<user[]> {
+    findActiveUsers(req: any) {
         return this.prisma.user.findMany({
             where: {
                 active: true,
-                subscriber_id: {
-                    equals: req.user.data.subscriber_id,
+                subscriber_id: req.user.data.subscriber_id,
+            },
+        });
+    }
+
+    async findOne(id: string, req: any): Promise<user> {
+        return this.prisma.user.findFirst({ where: { id: id, subscriber_id: req.user.data.subscriber_id } });
+    }
+
+    async findOneWithException(id: string, req: any): Promise<user> {
+        return this.dataHelper.getSingleDataWithException(async () => this.findOne(id, req), 'user');
+    }
+
+    async findOneByIdAndApi(id: string, api_key: string): Promise<user> {
+        return this.prisma.user.findFirst({
+            where: {
+                id,
+                subscriber: {
+                    api_key,
                 },
             },
         });
     }
 
-    async findOne(id: string): Promise<user> {
-        return this.prisma.user.findFirst({ where: { id: id } });
+    async findOneByIdAndApiWithException(id: string, api_key: string): Promise<user> {
+        return this.dataHelper.getSingleDataWithException(async () => this.findOneByIdAndApi(id, api_key), 'user');
     }
-
-    async findOneWithException(id: string): Promise<user> {
-        return await new Helper().getSingleDataWithException(async () => this.findOne(id), 'user');
-    }
-
-    // async update(id: string, updateChatAgentDto: UpdateChatAgentDto): Promise<ChatAgent> {
-    //     const chatAgent = await this.findOne(id);
-
-    //     chatAgent.role_id = updateChatAgentDto.role_id;
-    //     chatAgent.subscriber_id = updateChatAgentDto.subscriber_id;
-    //     chatAgent.email = updateChatAgentDto.email;
-    //     chatAgent.password = updateChatAgentDto.password;
-    //     chatAgent.active = updateChatAgentDto.active;
-
-    //     return await this.chatAgentRepository.save(chatAgent);
-    // }
-
-    // remove(id: number) {
-    //     return `This action removes a #${id} chatAgent`;
-    // }
-
-    // async getRolePermissions(id: string) {
-    //     return await new Helper().getSingleDataWithException(async () => {
-    //         const chatAgent = await this.chatAgentRepository.findOne(id, {
-    //             relations: ['role', 'role.permissions'],
-    //         });
-
-    //         return chatAgent.role.permissions;
-    //     }, 'chat_agents');
-    // }
-
-    // async getUserPermissions(id: string) {
-    //     const rolePermissions = await this.getRolePermissions(id);
-
-    //     const rolePermissionIds = rolePermissions.map((permission) => permission.id);
-
-    //     const userExtraPermissions = await this.userExtraPermissionRepository.find({
-    //         user_id: id,
-    //         include: true,
-    //     });
-
-    //     const userExtraPermissionsIds = userExtraPermissions.map((permission) => permission.permission_id);
-
-    //     const allPermissionIds = _.union(rolePermissionIds, userExtraPermissionsIds);
-
-    //     return await this.permissionRepository.find(allPermissionIds);
-    // }
 }

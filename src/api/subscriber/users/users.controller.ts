@@ -11,6 +11,7 @@ export class UsersController {
     //     return this.chatAgentsService.create(createChatAgentDto);
     // }
 
+    // use permission guard later
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(@Request() req: any) {
@@ -18,7 +19,7 @@ export class UsersController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get()
+    @Get('active')
     findActiveUsers(@Request() req: any) {
         return this.usersService.findActiveUsers(req);
     }

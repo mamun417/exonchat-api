@@ -7,12 +7,14 @@ import { UsersService } from 'src/api/subscriber/users/users.service';
 import { PrismaService } from 'src/prisma.service';
 import { DataHelper } from 'src/helper/data-helper';
 import { socket_session } from '@prisma/client';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class SocketSessionsService {
     constructor(
         private prisma: PrismaService,
         private dataHelper: DataHelper,
+        private authService: AuthService,
         private subscriberService: SubscribersService,
         private userService: UsersService,
     ) {}
@@ -23,7 +25,10 @@ export class SocketSessionsService {
         let userConnector: any = {};
 
         if (createSocketSessionDto.user_id) {
-            userConnector = await this.userService.findOneWithException(createSocketSessionDto.user_id);
+            userConnector = await this.userService.findOneByIdAndApiWithException(
+                createSocketSessionDto.user_id,
+                createSocketSessionDto.api_key,
+            );
 
             userConnector = {
                 user: {
@@ -34,7 +39,7 @@ export class SocketSessionsService {
             };
         }
 
-        return this.prisma.socket_session.create({
+        const createRes = await this.prisma.socket_session.create({
             data: {
                 ip: ip,
                 subscriber: {
@@ -45,6 +50,12 @@ export class SocketSessionsService {
                 ...userConnector,
             },
         });
+
+        return {
+            bearerToken: this.authService.createToken(createRes, 60 * 60 * 24 * 365),
+            data: createRes,
+            for: 'socket',
+        };
     }
 
     // async create(api_key: string, createChatClientDto: CreateChatClientDto) {
@@ -56,14 +67,17 @@ export class SocketSessionsService {
     //     return await this.chatClientRepository.createQueryBuilder().getMany();
     // }
 
-    async findOne(id: string) {
-        return await this.prisma.socket_session.findUnique({
-            where: { id },
+    async findOne(id: string, req: any) {
+        return this.prisma.socket_session.findFirst({
+            where: { id, subscriber_id: req.user.data.subscriber_id },
         });
     }
 
-    async findOneWithException(id: string) {
-        return await this.dataHelper.getSingleDataWithException(async () => await this.findOne(id), 'socket_session');
+    async findOneWithException(id: string, req: any) {
+        return await this.dataHelper.getSingleDataWithException(
+            async () => await this.findOne(id, req),
+            'socket_session',
+        );
     }
 
     // update(id: number, updateChatClientDto: UpdateChatClientDto) {

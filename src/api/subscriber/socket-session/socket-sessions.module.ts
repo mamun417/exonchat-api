@@ -8,9 +8,10 @@ import { SocketSessionsController } from './socket-sessions.controller';
 import { DataHelper } from 'src/helper/data-helper';
 
 import { PrismaService } from 'src/prisma.service';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-    imports: [],
+    imports: [AuthModule],
     controllers: [SocketSessionsController],
     providers: [PrismaService, DataHelper, SocketSessionsService, SubscribersService, UsersService], // DataHelper is needed for SubscriberService
     exports: [SocketSessionsService],

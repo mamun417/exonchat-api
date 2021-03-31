@@ -26,12 +26,7 @@ export class AuthService {
             throw new HttpException('Already Logged In', HttpStatus.FORBIDDEN);
         }
 
-        const bearerToken = this.jwtService.sign(
-            {
-                data: user,
-            },
-            { expiresIn: 60 * 5 },
-        );
+        const bearerToken = this.createToken(user, 60 * 5);
 
         const refreshToken = this.signRefreshToken({
             bearerToken: bearerToken,
@@ -44,6 +39,15 @@ export class AuthService {
             bearerToken: bearerToken,
             data: user,
         });
+    }
+
+    createToken(data: any, expires = 60 * 5) {
+        return this.jwtService.sign(
+            {
+                data,
+            },
+            { expiresIn: expires },
+        );
     }
 
     async refreshToken(req: any, res: any) {
@@ -79,7 +83,7 @@ export class AuthService {
                             user: decodedRefreshToken.user,
                         });
 
-                        await this.storeRefreshToken(res, refreshToken);
+                        this.storeRefreshToken(res, refreshToken);
 
                         return res.json({
                             bearerToken: bearerToken,
@@ -87,13 +91,13 @@ export class AuthService {
                         });
                     }
 
-                    throw new HttpException('Invalid bearer token', HttpStatus.UNAUTHORIZED);
+                    throw new HttpException('Invalid bearer token', HttpStatus.UNPROCESSABLE_ENTITY);
                 } catch (e) {
-                    throw new HttpException(e.message, HttpStatus.UNAUTHORIZED);
+                    throw new HttpException(e.message, HttpStatus.UNPROCESSABLE_ENTITY);
                 }
             }
 
-            throw new HttpException('Refresh token not found', HttpStatus.UNAUTHORIZED);
+            throw new HttpException('Refresh token not found', HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -110,6 +114,7 @@ export class AuthService {
         }
         return null;
     }
+
     signRefreshToken(data: any) {
         return this.jwtService.sign(
             {

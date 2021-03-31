@@ -10,17 +10,11 @@ import { ConversationsController } from './conversations.controller';
 import { DataHelper } from 'src/helper/data-helper';
 
 import { PrismaService } from 'src/prisma.service';
+import { SocketSessionsModule } from '../socket-session/socket-sessions.module';
 
 @Module({
-    imports: [],
+    imports: [SocketSessionsModule],
     controllers: [ConversationsController],
-    providers: [
-        PrismaService,
-        DataHelper,
-        SubscribersService,
-        UsersService,
-        SocketSessionsService,
-        ConversationsService,
-    ],
+    providers: [PrismaService, DataHelper, ConversationsService],
 })
 export class ConversationsModule {}

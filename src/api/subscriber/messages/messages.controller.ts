@@ -1,34 +1,15 @@
-import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
+import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @Controller('messages')
 export class MessagesController {
     constructor(private readonly messagesService: MessagesService) {}
 
+    @UseGuards(JwtAuthGuard)
     @Post()
-    create(@Body() createMessageDto: CreateMessageDto) {
-        return this.messagesService.create(createMessageDto);
+    create(@Request() req: any, @Body() createMessageDto: CreateMessageDto) {
+        return this.messagesService.create(req, createMessageDto);
     }
-
-    // @Get()
-    // async findAll(): Promise<Message[]> {
-    //     return await this.messagesService.findAll();
-    // }
-
-    // @Get(':id')
-    // async findOne(@Param('id') id: string): Promise<Message> {
-    //     return await this.messagesService.findOne(id);
-    // }
-
-    // @Put(':id')
-    // update(@Param('id') id: string, @Body() updateMessageDto: UpdateMessageDto) {
-    //     return this.messagesService.update(+id, updateMessageDto);
-    // }
-
-    // @Delete(':id')
-    // remove(@Param('id') id: string) {
-    //     return this.messagesService.remove(id);
-    // }
 }

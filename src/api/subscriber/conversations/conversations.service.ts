@@ -2,35 +2,23 @@ import { HttpException, HttpStatus, Injectable, Post } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma.service';
 
-import { SubscribersService } from '../subscribers/subscribers.service';
-import { SocketSessionsService } from '../socket-session/socket-sessions.service';
-import { UsersService } from '../users/users.service';
-
 import { CreateConversationDto } from './dto/create-conversation.dto';
-import { JoinConversationDto } from './dto/join-conversation.dto';
-import { LeaveConversationDto } from './dto/leave-conversation.dto';
-import { CloseConversationDto } from './dto/close-conversation.dto';
 
 import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
 export class ConversationsService {
-    constructor(
-        private prisma: PrismaService,
-        private dataHelper: DataHelper,
-        private subscriberService: SubscribersService,
-        private socketSessionService: SocketSessionsService,
-    ) {}
+    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
 
-    async create(createConversationDto: CreateConversationDto) {
-        const subscriber = await this.subscriberService.findOneByApiKeyWithException(createConversationDto.api_key);
-        const socketSession = await this.socketSessionService.findOneWithException(createConversationDto.ses_id);
+    async create(req: any, createConversationDto: CreateConversationDto) {
+        const subscriberId = req.user.data.subscriber_id;
+        const socketSessionId = req.user.data.id;
 
-        if (!socketSession.user_id) {
+        if (!req.user.data.user_id) {
             const convBySesId = await this.prisma.conversation.findFirst({
                 where: {
-                    created_by_id: createConversationDto.ses_id,
+                    created_by_id: socketSessionId,
                 },
             });
 
@@ -45,34 +33,34 @@ export class ConversationsService {
                     create: {
                         joined_at: new Date(),
                         socket_session: {
-                            connect: { id: socketSession.id },
+                            connect: { id: socketSessionId },
                         },
                         subscriber: {
-                            connect: { id: subscriber.id },
+                            connect: { id: subscriberId },
                         },
                     },
                 },
                 subscriber: {
-                    connect: { id: subscriber.id },
+                    connect: { id: subscriberId },
                 },
                 created_by: {
-                    connect: { id: socketSession.id },
+                    connect: { id: socketSessionId },
                 },
             },
         });
     }
 
-    async join(id: string, joinConversationDto: JoinConversationDto) {
-        const subscriber = await this.subscriberService.findOneByApiKeyWithException(joinConversationDto.api_key);
-        const socketSession = await this.socketSessionService.findOneWithException(joinConversationDto.ses_id);
+    async join(id: string, req: any) {
+        const subscriberId = req.user.data.subscriber_id;
+        const socketSessionId = req.user.data.id;
 
-        const conversation = await this.findOneWithException(id, { subscriber_id: subscriber.id });
+        const conversation = await this.findOneWithException(id, { subscriber_id: subscriberId });
 
         const convSes = await this.prisma.conversation_session.findUnique({
             where: {
                 conv_ses_identifier: {
                     conversation_id: conversation.id,
-                    socket_session_id: socketSession.id,
+                    socket_session_id: socketSessionId,
                 },
             },
         });
@@ -83,10 +71,10 @@ export class ConversationsService {
             data: {
                 joined_at: new Date(),
                 subscriber: {
-                    connect: { id: subscriber.id },
+                    connect: { id: subscriberId },
                 },
                 socket_session: {
-                    connect: { id: socketSession.id },
+                    connect: { id: socketSessionId },
                 },
                 conversation: {
                     connect: { id: conversation.id },
@@ -95,18 +83,18 @@ export class ConversationsService {
         });
     }
 
-    async leave(id: string, leaveConversationDto: LeaveConversationDto) {
-        const subscriber = await this.subscriberService.findOneByApiKeyWithException(leaveConversationDto.api_key);
-        const socketSession = await this.socketSessionService.findOneWithException(leaveConversationDto.ses_id);
+    async leave(id: string, req: any) {
+        const subscriberId = req.user.data.subscriber_id;
+        const socketSessionId = req.user.data.id;
 
         const conversation = await this.findOneWithException(id, {
-            subscriber_id: subscriber.id,
+            subscriber_id: subscriberId,
         });
 
         const updated = await this.prisma.conversation_session.updateMany({
             where: {
                 conversation_id: conversation.id,
-                socket_session_id: socketSession.id,
+                socket_session_id: socketSessionId,
                 left_at: null,
             },
             data: {
@@ -122,18 +110,18 @@ export class ConversationsService {
             where: {
                 conv_ses_identifier: {
                     conversation_id: conversation.id,
-                    socket_session_id: socketSession.id,
+                    socket_session_id: socketSessionId,
                 },
             },
         });
     }
 
-    async close(id: string, closeConversationDto: CloseConversationDto) {
-        const subscriber = await this.subscriberService.findOneByApiKeyWithException(closeConversationDto.api_key);
-        const socketSession = await this.socketSessionService.findOneWithException(closeConversationDto.ses_id);
+    async close(id: string, req: any) {
+        const subscriberId = req.user.data.subscriber_id;
+        const socketSessionId = req.user.data.id;
 
         const conversation = await this.findOneWithException(id, {
-            subscriber_id: subscriber.id,
+            subscriber_id: subscriberId,
         });
 
         if (conversation.closed_at) {
@@ -148,7 +136,7 @@ export class ConversationsService {
                 closed_at: new Date(),
                 closed_by: {
                     connect: {
-                        id: socketSession.id,
+                        id: socketSessionId,
                     },
                 },
                 conversation_sessions: {
@@ -186,6 +174,28 @@ export class ConversationsService {
                 messages: { some: {} },
                 closed_at: {
                     not: null,
+                },
+            },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+        });
+    }
+
+    async someClosedMyConvWithClient(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                closed_at: {
+                    not: null,
+                },
+                messages: { some: {} },
+                conversation_sessions: {
+                    every: {
+                        socket_session: {
+                            user_id: req.user.data.id,
+                        },
+                    },
                 },
             },
             orderBy: { created_at: 'desc' },

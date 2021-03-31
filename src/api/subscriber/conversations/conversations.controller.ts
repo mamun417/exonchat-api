@@ -2,50 +2,71 @@ import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } f
 
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
-import { JoinConversationDto } from './dto/join-conversation.dto';
-import { LeaveConversationDto } from './dto/leave-conversation.dto';
-import { CloseConversationDto } from './dto/close-conversation.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @Controller('conversations')
 export class ConversationsController {
     constructor(private readonly conversationsService: ConversationsService) {}
 
+    @UseGuards(JwtAuthGuard)
     @Post()
-    create(@Body() createConversationDto: CreateConversationDto) {
-        return this.conversationsService.create(createConversationDto);
-    }
-
-    @Post(':id')
-    join(@Param('id') id: string, @Body() joinConversationDto: JoinConversationDto) {
-        return this.conversationsService.join(id, joinConversationDto);
-    }
-
-    @Post(':id/leave')
-    leave(@Param('id') id: string, @Body() leaveConversationDto: LeaveConversationDto) {
-        return this.conversationsService.leave(id, leaveConversationDto);
-    }
-
-    @Post(':id/close')
-    close(@Param('id') id: string, @Body() closeConversationDto: CloseConversationDto) {
-        return this.conversationsService.close(id, closeConversationDto);
+    create(@Body() createConversationDto: CreateConversationDto, @Request() req: any) {
+        return this.conversationsService.create(req, createConversationDto);
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get(':id/messages')
-    conversationMessages(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.conversationMessages(id, req);
+    @Post(':id')
+    join(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.join(id, req);
     }
 
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/leave')
+    leave(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.leave(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/close')
+    close(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.close(id, req);
+    }
+
+    // use permission guard
     @UseGuards(JwtAuthGuard)
     @Get()
     findAll(@Request() req: any) {
         return this.conversationsService.findAll(req);
     }
 
+    @UseGuards(JwtAuthGuard)
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.conversationsService.findOne(id);
+    findOne(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.findOne(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('closed')
+    someClosedConvWithClient(@Request() req: any) {
+        return this.conversationsService.someClosedConvWithClient(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('closed/me')
+    someClosedMyConvWithClient(@Request() req: any) {
+        return this.conversationsService.someClosedMyConvWithClient(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('requests')
+    chatRequests(@Request() req: any) {
+        return this.conversationsService.chatRequests(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id/messages')
+    conversationMessages(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.conversationMessages(id, req);
     }
 
     // @Put(':id')

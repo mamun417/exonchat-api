@@ -2,10 +2,10 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
 
-import { PrismaService } from '../../../prisma.service';
+import { PrismaService } from 'src/prisma.service';
 import { subscriber } from '@prisma/client';
 
-import { DataHelper } from '../../../helper/data-helper';
+import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
 export class SubscribersService {

@@ -1,33 +1,24 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { DataHelper } from 'src/helper/data-helper';
 import { PrismaService } from 'src/prisma.service';
 import { ConversationsService } from '../conversations/conversations.service';
-import { SocketSessionsService } from '../socket-session/socket-sessions.service';
-import { SubscribersService } from '../subscribers/subscribers.service';
 
 import { CreateMessageDto } from './dto/create-message.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
 
 @Injectable()
 export class MessagesService {
-    constructor(
-        private prisma: PrismaService,
-        private dataHelper: DataHelper,
-        private subscriberService: SubscribersService,
-        private conversationService: ConversationsService,
-        private socketSessionService: SocketSessionsService,
-    ) {}
+    constructor(private prisma: PrismaService, private conversationService: ConversationsService) {}
 
-    async create(createMessageDto: CreateMessageDto) {
-        const subscriber = await this.subscriberService.findOneByApiKeyWithException(createMessageDto.api_key);
-        const socketSession = await this.socketSessionService.findOneWithException(createMessageDto.ses_id);
+    async create(req: any, createMessageDto: CreateMessageDto) {
+        const subscriberId = req.user.data.subscriber_id;
+        const socketSessionId = req.user.data.id;
+
         const conversation = await this.conversationService.findOneWithException(
             createMessageDto.conv_id,
             {
-                subscriber_id: subscriber.id,
+                subscriber_id: subscriberId,
                 conversation_sessions: {
                     some: {
-                        socket_session_id: { equals: socketSession.id },
+                        socket_session_id: socketSessionId,
                     },
                 },
             },
@@ -39,28 +30,10 @@ export class MessagesService {
         return this.prisma.message.create({
             data: {
                 msg: createMessageDto.msg,
-                subscriber: { connect: { id: subscriber.id } },
+                subscriber: { connect: { id: subscriberId } },
                 conversation: { connect: { id: conversation.id } },
-                socket_session: { connect: { id: socketSession.id } },
+                socket_session: { connect: { id: socketSessionId } },
             },
         });
     }
-
-    // async findAll(): Promise<Message[]> {
-    //     return await this.messagesRepository.find({
-    //         relations: ['conversation'],
-    //     });
-    // }
-
-    // async findOne(id: string): Promise<Message> {
-    //     return await this.messagesRepository.findOne(id);
-    // }
-
-    // async update(id: number, updateMessageDto: UpdateMessageDto) {
-    //     return `This action updates a #${id} message`;
-    // }
-
-    // async remove(id: string): Promise<void> {
-    //     await this.messagesRepository.delete(id);
-    // }
 }
