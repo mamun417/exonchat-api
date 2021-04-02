@@ -50,6 +50,14 @@ export class AuthService {
         );
     }
 
+    verifyToken(token: any) {
+        try {
+            return this.jwtService.verify(token);
+        } catch (e: any) {
+            return null;
+        }
+    }
+
     async refreshToken(req: any, res: any) {
         const bearerToken = this.getBearerToken(req);
 
