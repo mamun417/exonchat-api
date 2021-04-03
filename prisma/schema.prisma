@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["createMany"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -23,6 +22,9 @@ model subscriber {
   conversations         conversation[]
   messages              message[]
   conversation_sessions conversation_session[]
+  intents               intent[]
+  intent_actions        intent_action[]
+  speech_recognition    speech_recognition[]
 }
 
 model user {
@@ -33,10 +35,10 @@ model user {
   online_status     Boolean            @default(true)
   created_at        DateTime           @default(now()) @db.Timestamp(6)
   updated_at        DateTime           @default(now()) @db.Timestamp(6)
-  role              role               @relation(fields: [role_id], references: [id])
-  role_id           String
   subscriber        subscriber         @relation(fields: [subscriber_id], references: [id])
   subscriber_id     String
+  role              role               @relation(fields: [role_id], references: [id])
+  role_id           String
   extra_permissions extra_permission[]
   socket_sessions   socket_session[]
 
@@ -49,12 +51,12 @@ model role {
   slug          String            @db.VarChar
   name          String            @db.VarChar
   description   String?           @db.VarChar
+  created_at    DateTime          @default(now()) @db.Timestamp(6)
+  updated_at    DateTime          @default(now()) @db.Timestamp(6)
   subscriber    subscriber?       @relation(fields: [subscriber_id], references: [id])
   subscriber_id String?
   users         user[]
   permissions   permission[]
-  created_at    DateTime          @default(now()) @db.Timestamp(6)
-  updated_at    DateTime          @default(now()) @db.Timestamp(6)
 }
 
 model permission {
@@ -72,16 +74,16 @@ model permission {
 
 model extra_permission {
   id            String      @id @default(cuid())
+  created_at    DateTime    @default(now()) @db.Timestamp(6)
+  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String? // if has then all the users in this subscriber
   permission    permission  @relation(fields: [permission_id], references: [id])
   permission_id String
   user          user?       @relation(fields: [user_id], references: [id])
   user_id       String?
-  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String? // if has then all the users in this subscriber
   // administrator user pending
   include       Boolean     @default(true)
-  created_at    DateTime    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime    @default(now()) @db.Timestamp(6)
 }
 
 model socket_session {
@@ -94,10 +96,10 @@ model socket_session {
   //   user_type           socket_session_user_type_enum @default(client)
   created_at            DateTime               @default(now()) @db.Timestamp(6)
   updated_at            DateTime               @default(now()) @db.Timestamp(6)
-  user_id               String?
-  user                  user?                  @relation(fields: [user_id], references: [id])
   subscriber_id         String
   subscriber            subscriber             @relation(fields: [subscriber_id], references: [id])
+  user_id               String?
+  user                  user?                  @relation(fields: [user_id], references: [id])
   conversation_sessions conversation_session[]
   created_conversations conversation[]         @relation(name: "created_by")
   closed_conversations  conversation[]         @relation(name: "closed_by")
@@ -150,14 +152,44 @@ model message {
   socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
 }
 
-enum socket_session_user_type_enum {
-  client
-  user
+model speech_recognition {
+  id            String      @id @default(cuid())
+  speech        String
+  forced_intent Boolean     @default(false)
+  confidence    Float       @default(0.0000)
+  resolved      Boolean     @default(false)
+  created_at    DateTime    @default(now()) @db.Timestamp(6)
+  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  subscriber_id String?
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  intent_id     String
+  intent        intent      @relation(fields: [intent_id], references: [id])
 }
 
-enum conversation_type_enum {
-  live_chat
-  user_to_user_chat
+model intent {
+  id                 String               @id @default(cuid())
+  tag                String
+  description        String
+  active             Boolean              @default(false)
+  wit_ai_id          String?
+  created_at         DateTime             @default(now()) @db.Timestamp(6)
+  updated_at         DateTime             @default(now()) @db.Timestamp(6)
+  subscriber_id      String?
+  subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
+  intent_actions     intent_action[]
+  speech_recognition speech_recognition[]
+}
+
+model intent_action {
+  id            String             @id @default(cuid())
+  type          intent_action_type
+  content       String?
+  action_name   String?
+  external_path String?
+  subscriber_id String?
+  subscriber    subscriber?        @relation(fields: [subscriber_id], references: [id])
+  intent_id     String
+  intent        intent             @relation(fields: [intent_id], references: [id])
 }
 
 enum permission_use_for_enum {
@@ -168,4 +200,20 @@ enum permission_use_for_enum {
 enum role_use_for_enum {
   subscriber
   administrator
+}
+
+enum socket_session_user_type_enum {
+  client
+  user
+}
+
+enum conversation_type_enum {
+  live_chat
+  user_to_user_chat
+}
+
+enum intent_action_type {
+  action
+  static
+  external
 }

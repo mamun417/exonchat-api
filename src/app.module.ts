@@ -19,6 +19,7 @@ import { SocketSessionsModule } from './api/subscriber/socket-session/socket-ses
 import { ConversationsModule } from './api/subscriber/conversations/conversations.module';
 
 import { MessagesModule } from './api/subscriber/messages/messages.module';
+import { IntentsModule } from './api/subscriber/intents/intents.module';
 
 @Module({
     imports: [
@@ -44,6 +45,8 @@ import { MessagesModule } from './api/subscriber/messages/messages.module';
         ConversationsModule,
 
         MessagesModule,
+
+        IntentsModule,
     ],
     controllers: [AppController],
     providers: [
