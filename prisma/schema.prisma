@@ -158,12 +158,14 @@ model speech_recognition {
   forced_intent Boolean     @default(false)
   confidence    Float       @default(0.0000)
   resolved      Boolean     @default(false)
+  has_in_ai     Boolean     @default(false)
+  active        Boolean     @default(false)
   created_at    DateTime    @default(now()) @db.Timestamp(6)
   updated_at    DateTime    @default(now()) @db.Timestamp(6)
   subscriber_id String?
   subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  intent_id     String
-  intent        intent      @relation(fields: [intent_id], references: [id])
+  intent_id     String?
+  intent        intent?      @relation(fields: [intent_id], references: [id])
 }
 
 model intent {
@@ -176,7 +178,7 @@ model intent {
   updated_at         DateTime             @default(now()) @db.Timestamp(6)
   subscriber_id      String?
   subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
-  intent_actions     intent_action[]
+  intent_action      intent_action?
   speech_recognition speech_recognition[]
 }
 
