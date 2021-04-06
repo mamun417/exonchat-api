@@ -1,6 +1,6 @@
 import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { SpeechRecognitionService } from './speech-recognition.service';
+import { SpeechRecognitionService } from './speech.service';
 import { CreateSpeechDto } from './dto/create-speech.dto';
 import { UpdateSpeechDto } from './dto/update-speech.dto';
 import { UpdateSpeechActiveStateDto } from './dto/update-speech-active-state.dto';

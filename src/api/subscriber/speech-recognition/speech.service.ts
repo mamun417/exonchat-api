@@ -31,6 +31,10 @@ export class SpeechRecognitionService {
             const intent = await this.intentService.findOneWithException(createSpeechDto.intent_id, req);
 
             intentConnector = { intent: { connect: { id: intent.id } } };
+
+            if (!createSpeechDto.forced_intent) {
+                //handle for ai submit
+            }
         }
 
         return this.prisma.speech_recognition.create({
@@ -44,8 +48,41 @@ export class SpeechRecognitionService {
         });
     }
 
+    //need test
     async update(id: any, req: any, updateSpeechDto: UpdateSpeechDto) {
-        await this.findOneWithException(id, req);
+        const speech = await this.findOneWithException(id, req);
+
+        let intentConnectAndDisconnect = {};
+
+        if (updateSpeechDto.intent_id) {
+            const intent = await this.intentService.findOneWithException(updateSpeechDto.intent_id, req);
+
+            if (updateSpeechDto.intent_id !== speech.intent_id) {
+                intentConnectAndDisconnect = {
+                    intent: { connect: { id: intent.id }, disconnect: { id: speech.intent_id } },
+                };
+
+                if (!updateSpeechDto.forced_intent) {
+                    console.log('handle ai resubmit');
+                }
+
+                // no need to check !speech.forced_intent && updateSpeechDto.forced_intent condition here
+            }
+
+            // if was set to ai but not want now
+            if (!speech.forced_intent && updateSpeechDto.forced_intent) {
+                console.log('remove speech from ai');
+            }
+        }
+
+        return this.prisma.speech_recognition.update({
+            where: { id: speech.id },
+            data: {
+                forced_intent: updateSpeechDto.forced_intent,
+                active: updateSpeechDto.active,
+                ...intentConnectAndDisconnect,
+            },
+        });
     }
 
     async updateActiveState(id: any, req: any, updateSpeechActiveStateDto: UpdateSpeechActiveStateDto) {
