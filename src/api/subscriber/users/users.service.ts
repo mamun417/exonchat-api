@@ -76,6 +76,17 @@ export class UsersService {
                 active: true,
                 subscriber_id: req.user.data.subscriber_id,
             },
+            include: {
+                socket_sessions: {
+                    select: {
+                        id: true,
+                    },
+                    orderBy: {
+                        created_at: 'desc',
+                    },
+                    take: 5,
+                },
+            },
         });
     }
 
