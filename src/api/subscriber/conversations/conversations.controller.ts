@@ -58,7 +58,7 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get('requests')
+    @Get('requests/list')
     chatRequests(@Request() req: any) {
         return this.conversationsService.chatRequests(req);
     }
