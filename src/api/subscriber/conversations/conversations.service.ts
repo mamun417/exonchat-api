@@ -208,6 +208,28 @@ export class ConversationsService {
         });
     }
 
+    async someLeftMyConvWithClient(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                closed_at: {
+                    not: null,
+                },
+                messages: { some: {} },
+                conversation_sessions: {
+                    every: {
+                        socket_session: {
+                            user_id: req.user.data.id,
+                        },
+                    },
+                },
+            },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+        });
+    }
+
     async someClosedConvWithClient(req: any) {
         return this.prisma.conversation.findMany({
             where: {
