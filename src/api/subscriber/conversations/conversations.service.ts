@@ -171,12 +171,10 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                closed_at: {
-                    not: null,
-                },
+                closed_at: null,
                 messages: { some: {} },
                 conversation_sessions: {
-                    some: {
+                    every: {
                         socket_session: {
                             user_id: {
                                 not: null,
@@ -195,12 +193,10 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                closed_at: {
-                    not: null,
-                },
+                closed_at: null,
                 messages: { some: {} },
                 conversation_sessions: {
-                    some: {
+                    every: {
                         socket_session: {
                             user_id: req.user.data.id,
                         },
