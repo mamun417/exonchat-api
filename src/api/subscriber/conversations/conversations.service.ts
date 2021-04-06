@@ -166,6 +166,52 @@ export class ConversationsService {
         });
     }
 
+    async someJoinedConvWithClient(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                closed_at: {
+                    not: null,
+                },
+                messages: { some: {} },
+                conversation_sessions: {
+                    some: {
+                        socket_session: {
+                            user_id: {
+                                not: null,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+        });
+    }
+
+    async someJoinedMyConvWithClient(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                closed_at: {
+                    not: null,
+                },
+                messages: { some: {} },
+                conversation_sessions: {
+                    some: {
+                        socket_session: {
+                            user_id: req.user.data.id,
+                        },
+                    },
+                },
+            },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+        });
+    }
+
     async someClosedConvWithClient(req: any) {
         return this.prisma.conversation.findMany({
             where: {
