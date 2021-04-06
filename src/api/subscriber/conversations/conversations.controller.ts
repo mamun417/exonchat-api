@@ -46,6 +46,18 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Get('joined')
+    someJoinedConvWithClient(@Request() req: any) {
+        return this.conversationsService.someJoinedConvWithClient(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('joined/me')
+    someJoinedMyConvWithClient(@Request() req: any) {
+        return this.conversationsService.someJoinedMyConvWithClient(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Get('closed')
     someClosedConvWithClient(@Request() req: any) {
         return this.conversationsService.someClosedConvWithClient(req);
