@@ -21,6 +21,7 @@ import { ConversationsModule } from './api/subscriber/conversations/conversation
 import { MessagesModule } from './api/subscriber/messages/messages.module';
 import { IntentsModule } from './api/subscriber/intents/intents.module';
 import { SpeechRecognitionModule } from './api/subscriber/speech-recognition/speech.module';
+import { AiModule } from './api/subscriber/ai/ai.module';
 
 @Module({
     imports: [
@@ -49,6 +50,7 @@ import { SpeechRecognitionModule } from './api/subscriber/speech-recognition/spe
 
         IntentsModule,
         SpeechRecognitionModule,
+        AiModule,
     ],
     controllers: [AppController],
     providers: [

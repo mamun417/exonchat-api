@@ -24,7 +24,9 @@ model subscriber {
   conversation_sessions conversation_session[]
   intents               intent[]
   intent_actions        intent_action[]
-  speech_recognition    speech_recognition[]
+  speech_recognitions   speech_recognition[]
+  chat_departments      chat_department[]
+  chat_templates        chat_template[]
 }
 
 model user {
@@ -41,6 +43,8 @@ model user {
   role_id           String
   extra_permissions extra_permission[]
   socket_sessions   socket_session[]
+  chat_departments  chat_department[]
+  chat_template     chat_template[]
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
 }
@@ -165,7 +169,7 @@ model speech_recognition {
   subscriber_id String?
   subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
   intent_id     String?
-  intent        intent?      @relation(fields: [intent_id], references: [id])
+  intent        intent?     @relation(fields: [intent_id], references: [id])
 }
 
 model intent {
@@ -180,6 +184,7 @@ model intent {
   subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
   intent_action      intent_action?
   speech_recognition speech_recognition[]
+  chat_templates     chat_template[]
 }
 
 model intent_action {
@@ -188,10 +193,44 @@ model intent_action {
   content       String?
   action_name   String?
   external_path String?
+  created_at    DateTime           @default(now()) @db.Timestamp(6)
+  updated_at    DateTime           @default(now()) @db.Timestamp(6)
   subscriber_id String?
   subscriber    subscriber?        @relation(fields: [subscriber_id], references: [id])
   intent_id     String
   intent        intent             @relation(fields: [intent_id], references: [id])
+}
+
+model chat_template {
+  id                 String           @id @default(cuid())
+  tag                String
+  description        String
+  content            String
+  active             Boolean          @default(false)
+  created_at         DateTime         @default(now()) @db.Timestamp(6)
+  updated_at         DateTime         @default(now()) @db.Timestamp(6)
+  chat_department_id String?
+  chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
+  subscriber_id      String?
+  subscriber         subscriber?      @relation(fields: [subscriber_id], references: [id])
+  user_id            String?
+  user               user?            @relation(fields: [user_id], references: [id])
+  intent_id          String?
+  intent             intent?          @relation(fields: [intent_id], references: [id])
+}
+
+model chat_department {
+  id            String          @id @default(cuid())
+  tag           String
+  description   String
+  active        Boolean         @default(true)
+  created_at    DateTime        @default(now()) @db.Timestamp(6)
+  updated_at    DateTime        @default(now()) @db.Timestamp(6)
+  subscriber_id String
+  subscriber    subscriber      @relation(fields: [subscriber_id], references: [id])
+  user_id       String
+  user          user            @relation(fields: [user_id], references: [id])
+  chat_template chat_template[]
 }
 
 enum permission_use_for_enum {

@@ -10,4 +10,4 @@ import { AiService } from './ai.service';
     controllers: [AiController],
     providers: [PrismaService, DataHelper, AiService],
 })
-export class MessagesModule {}
+export class AiModule {}
