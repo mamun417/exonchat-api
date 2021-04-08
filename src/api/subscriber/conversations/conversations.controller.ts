@@ -46,9 +46,9 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get(':id/status')
-    findOneWithStatus(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.findOneWithStatus(id, req);
+    @Get(':id/sessions')
+    findOneWithSessions(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.findOneWithSessions(id, req);
     }
 
     @UseGuards(JwtAuthGuard)

@@ -284,48 +284,68 @@ export class ConversationsService {
         });
     }
 
-    async findOneWithStatus(id: string, req: any) {
-        const conv: any = await this.prisma.conversation.findFirst({
+    async findOneWithSessions(id: string, req: any) {
+        return this.prisma.conversation.findFirst({
             where: {
                 id: id,
                 subscriber_id: req.user.data.subscriber_id,
             },
             include: {
-                conversation_sessions: true,
-            },
-        });
-
-        // it doesnt matter if you are left or not
-        if (conv.closed_at) {
-            conv.status = 'closed';
-        }
-
-        const leftConvByMe = this.prisma.conversation.findFirst({
-            where: {
-                id: id,
-                subscriber_id: req.user.data.subscriber_id,
                 conversation_sessions: {
-                    some: {
-                        // some or every could be problemetic. try other way to check this
-                        // ex. get socket_session_id
-                        left_at: { not: null },
-                        socket_session: {
-                            user_id: req.user.data.id,
-                        },
+                    select: {
+                        id: true,
+                        joined_at: true,
+                        left_at: true,
+                        created_at: true,
                     },
+                    include: { socket_session: true },
                 },
             },
         });
-
-        if (leftConvByMe) {
-            conv.status = 'left';
-        }
-
-        // frontend check all conversation_sessions left_at.
-        // if all not null then show all left but conv not close
-        // if no status then unknown
-        return conv;
     }
+
+    // async findOneWithStatus(id: string, req: any) {
+    //     const conv: any = await this.prisma.conversation.findFirst({
+    //         where: {
+    //             id: id,
+    //             subscriber_id: req.user.data.subscriber_id,
+    //         },
+    //         include: {
+    //             conversation_sessions: true,
+    //         },
+    //     });
+
+    //     // it doesnt matter if you are left or not
+    //     if (conv.closed_at) {
+    //         conv.status = 'closed';
+    //     }
+
+    //     const leftConvByMe = this.prisma.conversation.findFirst({
+    //         where: {
+    //             id: id,
+    //             subscriber_id: req.user.data.subscriber_id,
+    //             conversation_sessions: {
+    //                 some: {
+    //                     // some or every could be problemetic. try other way to check this
+    //                     // ex. get socket_session_id
+    //                     left_at: { not: null },
+    //                     socket_session: {
+    //                         user_id: req.user.data.id,
+    //                     },
+    //                 },
+    //             },
+    //         },
+    //     });
+
+    //     if (leftConvByMe) {
+    //         conv.status = 'left';
+    //     }
+
+    //     // frontend check all conversation_sessions left_at.
+    //     // if all not null then show all left but conv not close
+    //     // if no status then unknown
+    //     return conv;
+    // }
 
     async findOne(id: string, extraQueries: any = {}): Promise<conversation> {
         return this.prisma.conversation.findFirst({
