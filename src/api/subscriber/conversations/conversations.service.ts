@@ -306,6 +306,8 @@ export class ConversationsService {
                 subscriber_id: req.user.data.subscriber_id,
                 conversation_sessions: {
                     some: {
+                        // some or every could be problemetic. try other way to check this
+                        // ex. get socket_session_id
                         left_at: { not: null },
                         socket_session: {
                             user_id: req.user.data.id,
