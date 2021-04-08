@@ -44,7 +44,7 @@ model user {
   extra_permissions extra_permission[]
   socket_sessions   socket_session[]
   chat_departments  chat_department[]
-  chat_template     chat_template[]
+  chat_templates    chat_template[]
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
 }
@@ -205,7 +205,7 @@ model chat_template {
   id                 String           @id @default(cuid())
   tag                String
   description        String
-  content            String
+  content            String?
   active             Boolean          @default(false)
   created_at         DateTime         @default(now()) @db.Timestamp(6)
   updated_at         DateTime         @default(now()) @db.Timestamp(6)
@@ -228,8 +228,7 @@ model chat_department {
   updated_at    DateTime        @default(now()) @db.Timestamp(6)
   subscriber_id String
   subscriber    subscriber      @relation(fields: [subscriber_id], references: [id])
-  user_id       String
-  user          user            @relation(fields: [user_id], references: [id])
+  users         user[]
   chat_template chat_template[]
 }
 

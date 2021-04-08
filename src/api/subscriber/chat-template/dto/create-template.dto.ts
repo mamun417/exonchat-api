@@ -17,6 +17,14 @@ export class CreateTemplateDto {
     @IsString()
     intent_id: string;
 
+    @IsOptional()
+    @IsString()
+    department_id: string;
+
+    @IsOptional()
+    @IsBoolean()
+    own: boolean;
+
     @IsBoolean()
     active: boolean;
 }
