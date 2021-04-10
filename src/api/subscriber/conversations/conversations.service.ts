@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma.service';
 
 import { CreateConversationDto } from './dto/create-conversation.dto';
 
-import { conversation } from '@prisma/client';
+import { conversation, socket_session } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
@@ -292,13 +292,13 @@ export class ConversationsService {
             },
             include: {
                 conversation_sessions: {
-                    select: {
-                        id: true,
-                        joined_at: true,
-                        left_at: true,
-                        created_at: true,
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: true,
+                            },
+                        },
                     },
-                    include: { socket_session: true },
                 },
             },
         });
