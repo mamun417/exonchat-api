@@ -22,6 +22,8 @@ import { MessagesModule } from './api/subscriber/messages/messages.module';
 import { IntentsModule } from './api/subscriber/intents/intents.module';
 import { SpeechRecognitionModule } from './api/subscriber/speech-recognition/speech.module';
 import { AiModule } from './api/subscriber/ai/ai.module';
+import { ChatDepartmentModule } from './api/subscriber/chat-department/department.module';
+import { ChatTemplateModule } from './api/subscriber/chat-template/template.module';
 
 @Module({
     imports: [
@@ -47,6 +49,9 @@ import { AiModule } from './api/subscriber/ai/ai.module';
         ConversationsModule,
 
         MessagesModule,
+
+        ChatTemplateModule,
+        ChatDepartmentModule,
 
         IntentsModule,
         SpeechRecognitionModule,

@@ -13,6 +13,10 @@ export class UpdateTemplateDto {
     @IsString()
     intent_id: string;
 
+    @IsOptional()
+    @IsString()
+    department_id: string;
+
     @IsBoolean()
     active: boolean;
 }

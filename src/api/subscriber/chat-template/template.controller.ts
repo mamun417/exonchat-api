@@ -21,11 +21,11 @@ export class ChatTemplateController {
         return this.chatTemplateService.create(req, createTemplateDto);
     }
 
-    // @UseGuards(JwtAuthGuard)
-    // @Post(':id')
-    // update(@Param('id') id: string, @Request() req: any, @Body() updateTemplateDto: UpdateTemplateDto) {
-    //     return this.chatTemplateService.update(id, req, updateTemplateDto);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Post(':id')
+    update(@Param('id') id: string, @Request() req: any, @Body() updateTemplateDto: UpdateTemplateDto) {
+        return this.chatTemplateService.update(id, req, updateTemplateDto);
+    }
 
     @UseGuards(JwtAuthGuard)
     @Post(':id/active-status')

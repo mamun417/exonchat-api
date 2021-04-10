@@ -22,25 +22,41 @@ export class ChatTemplateService {
     async create(req: any, createTemplateDto: CreateTemplateDto) {
         const subscriberId = req.user.data.subscriber_id;
 
+        let template: any = null;
         const connector: any = {};
 
+        if (createTemplateDto.own) {
+            connector.user = { connect: { id: req.user.data.id } };
+
+            template = await this.prisma.chat_template.findFirst({
+                where: {
+                    subscriber_id: subscriberId,
+                    tag: createTemplateDto.tag,
+                    user_id: req.user.data.id,
+                },
+            });
+        } else {
+            template = await this.prisma.chat_template.findFirst({
+                where: {
+                    subscriber_id: subscriberId,
+                    tag: createTemplateDto.tag,
+                    user_id: null,
+                },
+            });
+        }
+
+        if (template) throw new HttpException(`Already Created with this tag`, HttpStatus.CONFLICT);
+
         if (createTemplateDto.department_id) {
-            const chatDepartment = await this.chatDepartmentService.findOneWithException(
-                createTemplateDto.department_id,
-                req,
-            );
+            await this.chatDepartmentService.findOneWithException(createTemplateDto.department_id, req);
 
             connector.chat_Department = { connect: { id: createTemplateDto.department_id } };
         }
 
         if (createTemplateDto.intent_id) {
-            const chatDepartment = await this.intentService.findOneWithException(createTemplateDto.intent_id, req);
+            await this.intentService.findOneWithException(createTemplateDto.intent_id, req);
 
             connector.intent = { connect: { id: createTemplateDto.intent_id } };
-        }
-
-        if (createTemplateDto.own) {
-            connector.user = { connect: { id: req.user.data.id } };
         }
 
         return this.prisma.chat_template.create({
@@ -52,12 +68,61 @@ export class ChatTemplateService {
                 subscriber: { connect: { id: subscriberId } },
                 ...connector,
             },
+            include: { intent: { include: { intent_action: true } } },
         });
     }
 
     //need test
     async update(id: any, req: any, updateTemplateDto: UpdateTemplateDto) {
-        const speech = await this.findOneWithException(id, req);
+        const subscriberId = req.user.data.subscriber_id;
+
+        const template = await this.findOneWithException(id, req);
+
+        if (template.user_id && template.user_id !== req.user.data.id) {
+            throw new HttpException(`You are not the resource owner`, HttpStatus.FORBIDDEN);
+        }
+
+        const connector: any = {};
+        const disconnector: any = {};
+
+        if (updateTemplateDto.department_id) {
+            if (template.department_id !== updateTemplateDto.department_id) {
+                await this.chatDepartmentService.findOneWithException(updateTemplateDto.department_id, req);
+
+                connector.chat_Department = { connect: { id: updateTemplateDto.department_id } };
+                disconnector.chat_Department = { disconnect: { id: template.department_id } };
+            }
+        } else {
+            if (template.department_id) {
+                disconnector.chat_Department = { disconnect: { id: template.department_id } };
+            }
+        }
+
+        if (updateTemplateDto.intent_id) {
+            if (template.intent_id !== updateTemplateDto.intent_id) {
+                await this.intentService.findOneWithException(updateTemplateDto.intent_id, req);
+
+                connector.intent = { connect: { id: updateTemplateDto.intent_id } };
+                disconnector.intent = { disconnect: { id: template.intent_id } };
+            }
+        } else {
+            if (template.intent_id) {
+                disconnector.intent = { disconnect: { id: template.intent_id } };
+            }
+        }
+
+        return this.prisma.chat_template.update({
+            where: { id: id },
+            data: {
+                description: updateTemplateDto.description,
+                content: updateTemplateDto.intent_id ? null : updateTemplateDto.content,
+                active: updateTemplateDto.active,
+                subscriber: { connect: { id: subscriberId } },
+                ...connector,
+                ...disconnector,
+            },
+            include: { intent: { include: { intent_action: true } } },
+        });
     }
 
     async updateActiveState(id: any, req: any, updateTemplateActiveStateDto: UpdateTemplateActiveStateDto) {
@@ -77,8 +142,9 @@ export class ChatTemplateService {
         return this.prisma.chat_template.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
-                AND: [{ user_id: null }, { user_id: req.user.data.id }],
+                OR: [{ user_id: null }, { user_id: req.user.data.id }],
             },
+            include: { intent: { include: { intent_action: true } } },
         });
     }
 

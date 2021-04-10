@@ -5,7 +5,7 @@ import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { UpdateDepartmentActiveStateDto } from './dto/update-department-active-state.dto';
 
-@Controller('speech')
+@Controller('departments')
 export class ChatDepartmentController {
     constructor(private readonly chatDepartmentService: ChatDepartmentService) {}
 
@@ -21,11 +21,11 @@ export class ChatDepartmentController {
         return this.chatDepartmentService.create(req, createDepartmentDto);
     }
 
-    // @UseGuards(JwtAuthGuard)
-    // @Post(':id')
-    // update(@Param('id') id: string, @Request() req: any, @Body() updateDepartmentDto: UpdateDepartmentDto) {
-    //     return this.chatDepartmentService.update(id, req, updateDepartmentDto);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Post(':id')
+    update(@Param('id') id: string, @Request() req: any, @Body() updateDepartmentDto: UpdateDepartmentDto) {
+        return this.chatDepartmentService.update(id, req, updateDepartmentDto);
+    }
 
     @UseGuards(JwtAuthGuard)
     @Post(':id/active-status')
