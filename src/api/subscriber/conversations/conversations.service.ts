@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma.service';
 
 import { CreateConversationDto } from './dto/create-conversation.dto';
 
-import { conversation, socket_session } from '@prisma/client';
+import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
