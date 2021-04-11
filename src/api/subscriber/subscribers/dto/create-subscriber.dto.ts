@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsEmpty, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateSubscriberDto {
     @IsEmail()
@@ -9,11 +9,7 @@ export class CreateSubscriberDto {
 
     @IsString()
     @IsNotEmpty()
-    first_name: string;
-
-    @IsString()
-    @IsNotEmpty()
-    last_name: string;
+    full_name: string;
 
     @IsString()
     @IsNotEmpty()

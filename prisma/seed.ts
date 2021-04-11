@@ -28,6 +28,12 @@ async function main() {
             slug: 'agent',
             name: 'Agent',
             use_for: 'subscriber',
+            permissions: [{ slug: 'client_chat_join', name: 'Client Chat Join', use_for: 'subscriber' }],
+        },
+        {
+            slug: 'user',
+            name: 'User',
+            use_for: 'subscriber',
             permissions: [{ slug: 'chat_join', name: 'Chat Join', use_for: 'subscriber' }],
         },
     ];
@@ -69,6 +75,15 @@ async function main() {
                                 role: {
                                     connect: {
                                         id: _l.find(rolesData, { slug: 'agent' }).id,
+                                    },
+                                },
+                            },
+                            {
+                                email: `${namePart}2@${namePart}.${namePart}`,
+                                password: '123',
+                                role: {
+                                    connect: {
+                                        id: _l.find(rolesData, { slug: 'user' }).id,
                                     },
                                 },
                             },
