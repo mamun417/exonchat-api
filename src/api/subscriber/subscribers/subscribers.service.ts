@@ -20,22 +20,34 @@ export class SubscribersService {
             throw new HttpException('role resource not foound', HttpStatus.NOT_FOUND);
         }
 
+        const subscriber = await this.prisma.subscriber.findUnique({
+            where: { company_name: createSubscriberDto.company_name },
+        });
+
+        if (subscriber) {
+            throw new HttpException('Company with that name taken', HttpStatus.CONFLICT);
+        }
+
         return this.prisma.subscriber.create({
             data: {
                 company_name: createSubscriberDto.company_name,
                 display_name: createSubscriberDto.company_display_name,
                 users: {
-                    create: [
-                        {
-                            email: createSubscriberDto.email,
-                            password: createSubscriberDto.email,
-                            role: {
-                                connect: {
-                                    id: adminRole.id,
-                                },
+                    create: {
+                        email: createSubscriberDto.email,
+                        password: createSubscriberDto.email,
+                        user_meta: {
+                            create: {
+                                full_name: createSubscriberDto.full_name,
+                                display_name: createSubscriberDto.display_name,
                             },
                         },
-                    ],
+                        role: {
+                            connect: {
+                                id: adminRole.id,
+                            },
+                        },
+                    },
                 },
             },
         });

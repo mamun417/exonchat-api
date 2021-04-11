@@ -1,5 +1,7 @@
 import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { InviteUserDto } from './dto/invite-user.dto';
+import { JoinUserDto } from './dto/join-user.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -10,6 +12,23 @@ export class UsersController {
     // create(@Body() createChatAgentDto: CreateChatAgentDto) {
     //     return this.chatAgentsService.create(createChatAgentDto);
     // }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('invitation/invite')
+    invite(@Request() req: any, @Body() inviteUserDto: InviteUserDto) {
+        return this.usersService.invite(req, inviteUserDto);
+    }
+
+    @Post('invitation/join')
+    join(@Body() joinUserDto: JoinUserDto) {
+        return this.usersService.join(joinUserDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('invitation/:id/cancel')
+    cancel(@Param('id') id: string, @Request() req: any) {
+        return this.usersService.cancel(id, req);
+    }
 
     // use permission guard later
     @UseGuards(JwtAuthGuard)

@@ -22,6 +22,24 @@ model subscriber {
   conversations         conversation[]
   messages              message[]
   conversation_sessions conversation_session[]
+  intents               intent[]
+  intent_actions        intent_action[]
+  speech_recognitions   speech_recognition[]
+  chat_departments      chat_department[]
+  chat_templates        chat_template[]
+  user_invitations      user_invitation[]
+}
+
+model user_invitation {
+  id            String                      @id @default(cuid())
+  email         String
+  code          String
+  type          user_invitation_type_enum
+  status        user_invitation_status_enum @default(pending)
+  created_at    DateTime                    @default(now()) @db.Timestamp(6)
+  updated_at    DateTime                    @default(now()) @db.Timestamp(6)
+  subscriber    subscriber                  @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
 }
 
 model user {
@@ -32,14 +50,27 @@ model user {
   online_status     Boolean            @default(true)
   created_at        DateTime           @default(now()) @db.Timestamp(6)
   updated_at        DateTime           @default(now()) @db.Timestamp(6)
-  role              role               @relation(fields: [role_id], references: [id])
-  role_id           String
+  user_meta         user_meta?
   subscriber        subscriber         @relation(fields: [subscriber_id], references: [id])
   subscriber_id     String
+  role              role               @relation(fields: [role_id], references: [id])
+  role_id           String
   extra_permissions extra_permission[]
   socket_sessions   socket_session[]
+  chat_departments  chat_department[]
+  chat_templates    chat_template[]
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
+}
+
+model user_meta {
+  id           String   @id @default(cuid())
+  full_name    String   @db.VarChar
+  display_name String
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+  updated_at   DateTime @default(now()) @db.Timestamp(6)
+  user         user?    @relation(fields: [user_id], references: [id])
+  user_id      String?
 }
 
 model role {
@@ -48,12 +79,12 @@ model role {
   slug          String            @db.VarChar
   name          String            @db.VarChar
   description   String?           @db.VarChar
+  created_at    DateTime          @default(now()) @db.Timestamp(6)
+  updated_at    DateTime          @default(now()) @db.Timestamp(6)
   subscriber    subscriber?       @relation(fields: [subscriber_id], references: [id])
   subscriber_id String?
   users         user[]
   permissions   permission[]
-  created_at    DateTime          @default(now()) @db.Timestamp(6)
-  updated_at    DateTime          @default(now()) @db.Timestamp(6)
 }
 
 model permission {
@@ -71,16 +102,16 @@ model permission {
 
 model extra_permission {
   id            String      @id @default(cuid())
+  created_at    DateTime    @default(now()) @db.Timestamp(6)
+  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String? // if has then all the users in this subscriber
   permission    permission  @relation(fields: [permission_id], references: [id])
   permission_id String
   user          user?       @relation(fields: [user_id], references: [id])
   user_id       String?
-  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String? // if has then all the users in this subscriber
   // administrator user pending
   include       Boolean     @default(true)
-  created_at    DateTime    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime    @default(now()) @db.Timestamp(6)
 }
 
 model socket_session {
@@ -93,10 +124,10 @@ model socket_session {
   //   user_type           socket_session_user_type_enum @default(client)
   created_at            DateTime               @default(now()) @db.Timestamp(6)
   updated_at            DateTime               @default(now()) @db.Timestamp(6)
-  user_id               String?
-  user                  user?                  @relation(fields: [user_id], references: [id])
   subscriber_id         String
   subscriber            subscriber             @relation(fields: [subscriber_id], references: [id])
+  user_id               String?
+  user                  user?                  @relation(fields: [user_id], references: [id])
   conversation_sessions conversation_session[]
   created_conversations conversation[]         @relation(name: "created_by")
   closed_conversations  conversation[]         @relation(name: "closed_by")
@@ -149,14 +180,80 @@ model message {
   socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
 }
 
-enum socket_session_user_type_enum {
-  client
-  user
+model speech_recognition {
+  id            String      @id @default(cuid())
+  speech        String
+  forced_intent Boolean     @default(false)
+  confidence    Float       @default(0.0000)
+  resolved      Boolean     @default(false)
+  has_in_ai     Boolean     @default(false)
+  active        Boolean     @default(false)
+  created_at    DateTime    @default(now()) @db.Timestamp(6)
+  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  subscriber_id String?
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  intent_id     String?
+  intent        intent?     @relation(fields: [intent_id], references: [id])
 }
 
-enum conversation_type_enum {
-  live_chat
-  user_to_user_chat
+model intent {
+  id                 String               @id @default(cuid())
+  tag                String
+  description        String
+  active             Boolean              @default(false)
+  wit_ai_id          String?
+  created_at         DateTime             @default(now()) @db.Timestamp(6)
+  updated_at         DateTime             @default(now()) @db.Timestamp(6)
+  subscriber_id      String?
+  subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
+  intent_action      intent_action?
+  speech_recognition speech_recognition[]
+  chat_templates     chat_template[]
+}
+
+model intent_action {
+  id            String             @id @default(cuid())
+  type          intent_action_type
+  content       String?
+  action_name   String?
+  external_path String?
+  created_at    DateTime           @default(now()) @db.Timestamp(6)
+  updated_at    DateTime           @default(now()) @db.Timestamp(6)
+  subscriber_id String?
+  subscriber    subscriber?        @relation(fields: [subscriber_id], references: [id])
+  intent_id     String
+  intent        intent             @relation(fields: [intent_id], references: [id])
+}
+
+model chat_template {
+  id                 String           @id @default(cuid())
+  tag                String
+  description        String
+  content            String?
+  active             Boolean          @default(false)
+  created_at         DateTime         @default(now()) @db.Timestamp(6)
+  updated_at         DateTime         @default(now()) @db.Timestamp(6)
+  chat_department_id String?
+  chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
+  subscriber_id      String?
+  subscriber         subscriber?      @relation(fields: [subscriber_id], references: [id])
+  user_id            String?
+  user               user?            @relation(fields: [user_id], references: [id])
+  intent_id          String?
+  intent             intent?          @relation(fields: [intent_id], references: [id])
+}
+
+model chat_department {
+  id            String          @id @default(cuid())
+  tag           String
+  description   String
+  active        Boolean         @default(true)
+  created_at    DateTime        @default(now()) @db.Timestamp(6)
+  updated_at    DateTime        @default(now()) @db.Timestamp(6)
+  subscriber_id String
+  subscriber    subscriber      @relation(fields: [subscriber_id], references: [id])
+  users         user[]
+  chat_template chat_template[]
 }
 
 enum permission_use_for_enum {
@@ -167,4 +264,32 @@ enum permission_use_for_enum {
 enum role_use_for_enum {
   subscriber
   administrator
+}
+
+enum user_invitation_status_enum {
+  pending
+  expired
+  cancelled
+  success
+}
+
+enum user_invitation_type_enum {
+  user
+  agent
+}
+
+enum socket_session_user_type_enum {
+  client
+  user
+}
+
+enum conversation_type_enum {
+  live_chat
+  user_to_user_chat
+}
+
+enum intent_action_type {
+  action
+  static
+  external
 }

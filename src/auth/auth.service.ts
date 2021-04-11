@@ -70,7 +70,7 @@ export class AuthService {
 
             return res.json({ bearerToken }); // send same bearerToken like after login
         } catch (e) {
-            console.log(req);
+            // console.log(req);
 
             const refreshToken = req.signedCookies.refreshToken;
 

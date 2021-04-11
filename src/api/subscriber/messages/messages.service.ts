@@ -27,6 +27,8 @@ export class MessagesService {
 
         if (conversation.closed_at) throw new HttpException('conversation is closed', HttpStatus.NOT_ACCEPTABLE);
 
+        // save msg to speech
+
         return this.prisma.message.create({
             data: {
                 msg: createMessageDto.msg,
@@ -36,4 +38,6 @@ export class MessagesService {
             },
         });
     }
+
+    async aiReply() {}
 }

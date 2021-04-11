@@ -19,6 +19,11 @@ import { SocketSessionsModule } from './api/subscriber/socket-session/socket-ses
 import { ConversationsModule } from './api/subscriber/conversations/conversations.module';
 
 import { MessagesModule } from './api/subscriber/messages/messages.module';
+import { IntentsModule } from './api/subscriber/intents/intents.module';
+import { SpeechRecognitionModule } from './api/subscriber/speech-recognition/speech.module';
+import { AiModule } from './api/subscriber/ai/ai.module';
+import { ChatDepartmentModule } from './api/subscriber/chat-department/department.module';
+import { ChatTemplateModule } from './api/subscriber/chat-template/template.module';
 
 @Module({
     imports: [
@@ -44,6 +49,13 @@ import { MessagesModule } from './api/subscriber/messages/messages.module';
         ConversationsModule,
 
         MessagesModule,
+
+        ChatTemplateModule,
+        ChatDepartmentModule,
+
+        IntentsModule,
+        SpeechRecognitionModule,
+        AiModule,
     ],
     controllers: [AppController],
     providers: [

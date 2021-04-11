@@ -30,6 +30,20 @@ export class SocketSessionsService {
                 createSocketSessionDto.api_key,
             );
 
+            const socket_session = await this.prisma.socket_session.findFirst({
+                where: {
+                    user_id: userConnector.id,
+                },
+            });
+
+            if (socket_session) {
+                return {
+                    bearerToken: this.authService.createToken(socket_session, 60 * 60 * 24 * 365),
+                    data: socket_session,
+                    for: 'socket',
+                };
+            }
+
             userConnector = {
                 user: {
                     connect: {
