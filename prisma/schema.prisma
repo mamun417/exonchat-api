@@ -286,6 +286,7 @@ enum socket_session_user_type_enum {
 enum conversation_type_enum {
   live_chat
   user_to_user_chat
+  group_chat
 }
 
 enum intent_action_type {

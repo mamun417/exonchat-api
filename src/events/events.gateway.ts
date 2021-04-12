@@ -69,13 +69,76 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_init_user_to_user_chat')
+    async init_user_to_user_chat(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
+        let conv_data = [];
+
+        try {
+            const convRes: any = await this.httpService
+                .get('http://localhost:3000/conversations/user_to_user/me', {
+                    headers: { Authorization: `Bearer ${client.handshake.query.token}` },
+                })
+                .toPromise();
+
+            conv_data = convRes.data;
+        } catch (e) {
+            console.log(e.response.data);
+
+            this.sendError(client, 'ec_init_conv_from_user', e.response.data);
+
+            return;
+        }
+
+        const roomName = data.ses_user.id;
+
+        if (conv_data.length) {
+            conv_data.forEach((conv: any) => {
+                if (!this.roomsInAConv.hasOwnProperty(conv.id)) {
+                    this.roomsInAConv[conv.id] = { room_ids: _.map(conv.conversation_sessions, 'socket_session_id') };
+
+                    this.roomsInAConv[conv.id].users_only = true;
+                }
+            });
+        }
+    }
+
+    @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_init_conv_from_user')
     async init_conversation_from_user(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        const conv_id = '123'; // get from api
+        let conv_data = null;
+        let conv_id = null;
+
+        if (!data.ses_ids || !data.chat_type) {
+            this.sendError(client, 'ec_init_conv_from_user', 'invalid params');
+            return;
+        }
+
+        try {
+            const convRes: any = await this.httpService
+                .post(
+                    'http://localhost:3000/conversations',
+                    {
+                        chat_type: data.chat_type,
+                        ses_ids: data.ses_ids,
+                    },
+                    { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
+                )
+                .toPromise();
+
+            conv_data = convRes.data;
+            conv_id = convRes.data.id;
+        } catch (e) {
+            console.log(e.response.data);
+
+            this.sendError(client, 'ec_init_conv_from_user', e.response.data);
+
+            return;
+        }
+
         const roomName = data.ses_user.id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
-            this.roomsInAConv[conv_id] = { room_ids: [roomName] };
+            this.roomsInAConv[conv_id] = { room_ids: [roomName, ...data.ses_ids] };
 
             if (data.users_only) {
                 this.roomsInAConv[conv_id].users_only = true;
@@ -92,7 +155,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         this.server.in(roomName).emit('ec_conv_initiated_from_user', {
             data: {
-                conv_id: '123',
+                conv_id,
+                conv_data,
             },
             status: 'success',
         });
