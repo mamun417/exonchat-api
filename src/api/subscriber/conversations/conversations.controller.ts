@@ -16,8 +16,18 @@ export class ConversationsController {
 
     @UseGuards(JwtAuthGuard)
     @Post(':id')
-    join(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.join(id, req);
+    async join(@Param('id') id: string, @Request() req: any) {
+        const joinInfo = await this.conversationsService.join(id, req);
+        const sessionRes: any = await this.findOneWithSessions(id, req);
+
+        // filter own socket_session_id no need other socket session information
+        const ownSocketSession = sessionRes.conversation_sessions
+            .filter((conversationSession: any) => {
+                return conversationSession.socket_session.id == joinInfo.socket_session_id;
+            })
+            .shift();
+
+        return ownSocketSession;
     }
 
     @UseGuards(JwtAuthGuard)
