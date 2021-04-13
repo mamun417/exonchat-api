@@ -38,6 +38,4 @@ export class MessagesService {
             },
         });
     }
-
-    async aiReply() {}
 }

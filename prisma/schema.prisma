@@ -168,16 +168,16 @@ model conversation_session {
 }
 
 model message {
-  id                String         @id @default(cuid())
+  id                String          @id @default(cuid())
   msg               String
-  created_at        DateTime       @default(now()) @db.Timestamp(6)
-  updated_at        DateTime       @default(now()) @db.Timestamp(6)
+  created_at        DateTime        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime        @default(now()) @db.Timestamp(6)
   conversation_id   String
-  conversation      conversation   @relation(fields: [conversation_id], references: [id])
+  conversation      conversation    @relation(fields: [conversation_id], references: [id])
   subscriber_id     String
-  subscriber        subscriber     @relation(fields: [subscriber_id], references: [id])
-  socket_session_id String
-  socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
+  subscriber        subscriber      @relation(fields: [subscriber_id], references: [id])
+  socket_session_id String?
+  socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
 }
 
 model speech_recognition {

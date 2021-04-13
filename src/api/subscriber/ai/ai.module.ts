@@ -4,10 +4,11 @@ import { PrismaService } from 'src/prisma.service';
 import { DataHelper } from 'src/helper/data-helper';
 import { SocketSessionsModule } from '../socket-session/socket-sessions.module';
 import { AiService } from './ai.service';
+import { ConversationsService } from '../conversations/conversations.service';
 
 @Module({
     imports: [SocketSessionsModule],
     controllers: [AiController],
-    providers: [PrismaService, DataHelper, AiService],
+    providers: [PrismaService, DataHelper, AiService, ConversationsService],
 })
 export class AiModule {}

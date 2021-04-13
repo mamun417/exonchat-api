@@ -8,7 +8,7 @@ export class AiController {
     constructor(private readonly aiService: AiService) {}
 
     @UseGuards(JwtAuthGuard)
-    @Get('reply')
+    @Post('reply')
     create(@Request() req: any, @Body() createMessageDto: ReplyAiDto) {
         return this.aiService.aiReply(req, createMessageDto);
     }

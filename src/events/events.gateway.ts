@@ -249,6 +249,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 .toPromise();
 
             conv_ses_data = convSesRes.data;
+
+            // if join then turn off ai reply
+            if (
+                this.roomsInAConv[data.conv_id].hasOwnProperty('ai_is_replying') &&
+                this.roomsInAConv[data.conv_id].ai_is_replying
+            ) {
+                this.roomsInAConv[data.conv_id].ai_is_replying = false;
+            }
         } catch (e) {
             console.log(e.response.data);
 
@@ -490,19 +498,62 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         } catch (e) {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
-                step: 'ec_leave_conversation',
+                step: 'ec_msg_from_client',
                 reason: e.response.data,
             });
 
             return;
         }
 
+        let aiReplyMsg: any = null;
+
+        if (!this.roomsInAConv[convId].hasOwnProperty('ai_is_replying') || this.roomsInAConv[convId].ai_is_replying) {
+            try {
+                const aiReplyRes = await this.httpService
+                    .post(
+                        `http://localhost:3000/ai/reply`,
+                        {
+                            conv_id: convId,
+                            msg: data.msg,
+                        },
+                        { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
+                    )
+                    .toPromise();
+
+                aiReplyMsg = aiReplyRes.data;
+
+                if (aiReplyMsg) {
+                    this.roomsInAConv[convId].ai_is_replying =
+                        aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved;
+                }
+            } catch (e) {
+                console.log(e, 'ai_error');
+
+                // this.server.to(client.id).emit('ec_error', {
+                //     type: 'ai_error',
+                //     step: 'ec_msg_from_client',
+                //     reason: e.response.data,
+                // });
+
+                // return;
+            }
+        }
+
         // send to all connected users
         userRooms.forEach((roomId: any) => {
+            // for ai is replying check also reply res is not for null content
             this.server.in(roomId).emit('ec_msg_from_client', {
                 ...createdMsg,
                 temp_id: data.temp_id,
+                ai_is_replying: aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved,
             }); // send to all users
+
+            if (aiReplyMsg) {
+                this.server.in(roomId).emit('ec_reply_from_ai', {
+                    ...aiReplyMsg,
+                    ai_is_replying: aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved,
+                });
+            }
         });
 
         // use if needed
@@ -511,6 +562,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             temp_id: data.temp_id,
             return_type: 'own',
         }); // return back to client so that we can update to all tab
+
+        if (aiReplyMsg) {
+            this.server.in(data.ses_user.id).emit('ec_reply_from_ai', {
+                ...aiReplyMsg,
+            });
+        }
 
         return;
     }
