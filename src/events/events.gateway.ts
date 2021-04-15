@@ -331,11 +331,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
-            const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
+
+            const userRooms = Object.keys(this.userClientsInARoom).filter(
+                (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id,
+            );
+
+            let roomsInAConvCopy = this.roomsInAConv[data.conv_id].room_ids;
 
             delete this.roomsInAConv[data.conv_id];
 
-            roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
+            userRooms.forEach((room: any) => {
+                roomsInAConvCopy = roomsInAConvCopy.filter((copyRoom: any) => copyRoom !== room);
+
                 this.server.in(room).emit('ec_is_closed_from_conversation', {
                     data: {
                         conv_data,
@@ -344,6 +351,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     status: 'success',
                 });
             });
+
+            // if closed from client then it can be empty so check for error free
+            if (roomsInAConvCopy.length) {
+                // for now only one room id will present & it is clients
+                roomsInAConvCopy.forEach((room: string) => {
+                    this.server.in(room).emit('ec_is_closed_from_conversation', {
+                        data: {
+                            conv_data,
+                            conv_id,
+                        },
+                        status: 'success',
+                    });
+                });
+            }
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',

@@ -56,12 +56,11 @@ export class ConversationsService {
 
         const conversation = await this.findOneWithException(id, { subscriber_id: subscriberId });
 
-        const convSes = await this.prisma.conversation_session.findUnique({
+        const convSes = await this.prisma.conversation_session.findFirst({
             where: {
-                conv_ses_identifier: {
-                    conversation_id: conversation.id,
-                    socket_session_id: socketSessionId,
-                },
+                conversation_id: conversation.id,
+                socket_session_id: socketSessionId,
+                left_at: null,
             },
         });
 
@@ -78,6 +77,13 @@ export class ConversationsService {
                 },
                 conversation: {
                     connect: { id: conversation.id },
+                },
+            },
+            include: {
+                socket_session: {
+                    include: {
+                        user: true,
+                    },
                 },
             },
         });
@@ -113,6 +119,13 @@ export class ConversationsService {
                     socket_session_id: socketSessionId,
                 },
             },
+            include: {
+                socket_session: {
+                    include: {
+                        user: true,
+                    },
+                },
+            },
         });
     }
 
@@ -128,7 +141,7 @@ export class ConversationsService {
             throw new HttpException('Already closed from this conversation', HttpStatus.CONFLICT);
         }
 
-        await this.prisma.conversation.update({
+        return await this.prisma.conversation.update({
             where: {
                 id: id,
             },
@@ -150,9 +163,14 @@ export class ConversationsService {
                     },
                 },
             },
+            include: {
+                closed_by: {
+                    include: {
+                        user: true,
+                    },
+                },
+            },
         });
-
-        return conversation;
     }
 
     async findAll(req: any): Promise<conversation[]> {
@@ -291,6 +309,11 @@ export class ConversationsService {
                 subscriber_id: req.user.data.subscriber_id,
             },
             include: {
+                closed_by: {
+                    include: {
+                        user: true,
+                    },
+                },
                 conversation_sessions: {
                     include: {
                         socket_session: {

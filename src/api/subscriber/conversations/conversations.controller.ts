@@ -1,4 +1,4 @@
-import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -17,17 +17,7 @@ export class ConversationsController {
     @UseGuards(JwtAuthGuard)
     @Post(':id')
     async join(@Param('id') id: string, @Request() req: any) {
-        const joinInfo = await this.conversationsService.join(id, req);
-        const sessionRes: any = await this.findOneWithSessions(id, req);
-
-        // filter own socket_session_id no need other socket session information
-        const ownSocketSession = sessionRes.conversation_sessions
-            .filter((conversationSession: any) => {
-                return conversationSession.socket_session.id == joinInfo.socket_session_id;
-            })
-            .shift();
-
-        return ownSocketSession;
+        return await this.conversationsService.join(id, req);
     }
 
     @UseGuards(JwtAuthGuard)
