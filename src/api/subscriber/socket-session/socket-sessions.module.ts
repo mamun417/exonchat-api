@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { SubscribersService } from 'src/api/subscriber/subscribers/subscribers.service';
+import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { UsersService } from 'src/api/subscriber/users/users.service';
 import { SocketSessionsService } from './socket-sessions.service';
 import { SocketSessionsController } from './socket-sessions.controller';

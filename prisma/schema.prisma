@@ -8,26 +8,85 @@ datasource db {
 }
 
 model subscriber {
-  id                    String                 @id @default(cuid())
-  company_name          String                 @unique
-  display_name          String
-  api_key               String                 @unique @default(cuid())
-  active                Boolean                @default(false)
-  created_at            DateTime               @default(now()) @db.Timestamp(6)
-  updated_at            DateTime               @default(now()) @db.Timestamp(6)
-  roles                 role[]
-  extra_permissions     extra_permission[]
-  users                 user[]
-  socket_sessions       socket_session[]
-  conversations         conversation[]
-  messages              message[]
-  conversation_sessions conversation_session[]
-  intents               intent[]
-  intent_actions        intent_action[]
-  speech_recognitions   speech_recognition[]
-  chat_departments      chat_department[]
-  chat_templates        chat_template[]
-  user_invitations      user_invitation[]
+  id                         String                  @id @default(cuid())
+  company_name               String                  @unique
+  display_name               String
+  api_key                    String                  @unique @default(cuid())
+  active                     Boolean                 @default(false)
+  created_at                 DateTime                @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime                @default(now()) @db.Timestamp(6)
+  subscription               subscriber_subscription @relation(fields: [subscriber_subscription_id], references: [id])
+  subscriber_subscription_id String
+  roles                      role[]
+  extra_permissions          extra_permission[]
+  users                      user[]
+  socket_sessions            socket_session[]
+  conversations              conversation[]
+  messages                   message[]
+  conversation_sessions      conversation_session[]
+  intents                    intent[]
+  intent_actions             intent_action[]
+  speech_recognitions        speech_recognition[]
+  chat_departments           chat_department[]
+  chat_templates             chat_template[]
+  user_invitations           user_invitation[]
+}
+
+model subscription {
+  id                         String                      @id @default(cuid())
+  slug                       String
+  display_name               String
+  one_day_price              Int
+  active                     Boolean                     @default(false)
+  subscription               subscriber_subscription     @relation(fields: [subscriber_subscription_id], references: [id])
+  subscriber_subscription_id String
+  package_element_values     package_element_value[]
+  subscription_days_to_names subscription_days_to_name[]
+}
+
+model subscriber_subscription {
+  id            String         @id @default(cuid())
+  created_at    DateTime       @default(now()) @db.Timestamp(6)
+  updated_at    DateTime       @default(now()) @db.Timestamp(6)
+  subscriber    subscriber[]
+  subscriptions subscription[]
+}
+
+model subscription_days_to_name {
+  id              String       @id @default(cuid())
+  subscription    subscription @relation(fields: [subscription_id], references: [id])
+  subscription_id String
+  days_to_name    days_to_name @relation(fields: [days_to_name_id], references: [id])
+  days_to_name_id String
+  price           Int?
+}
+
+// each subscription package element
+model package_element {
+  id            String                 @id @default(cuid())
+  slug          String
+  display_name  String
+  value         package_element_value?
+  static        Boolean                @default(false)
+  ui_visibility Boolean                @default(true)
+  active        Boolean                @default(false)
+}
+
+// will be use in all the subscription packages if not changed individually
+model package_element_value {
+  id              String          @id @default(cuid())
+  element         package_element @relation(fields: [element_id], references: [id])
+  element_id      String
+  subscription    subscription    @relation(fields: [subscription_id], references: [id])
+  subscription_id String
+}
+
+model days_to_name {
+  id                        String                      @id @default(cuid())
+  slug                      String
+  display_name              String
+  in_days                   Int
+  subscription_days_to_name subscription_days_to_name[]
 }
 
 model user_invitation {
