@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
 
@@ -9,7 +9,7 @@ import { DataHelper } from 'src/helper/data-helper';
 
 @Injectable()
 export class SubscribersService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
+    constructor(private prisma: PrismaService, private dataHelper: DataHelper, private httpService: HttpService) {}
 
     async create(createSubscriberDto: CreateSubscriberDto): Promise<subscriber> {
         const adminRole = await this.prisma.role.findFirst({
@@ -27,6 +27,29 @@ export class SubscribersService {
         if (subscriber) {
             throw new HttpException('Company with that name taken', HttpStatus.CONFLICT);
         }
+
+        let aiAppCreateRes: any = {};
+
+        try {
+            aiAppCreateRes = await this.httpService
+                .post(
+                    'https://api.wit.ai/apps',
+                    {
+                        name: createSubscriberDto.company_name,
+                        lang: 'en',
+                        private: true,
+                    },
+                    { headers: { Authorization: `Bearer RQS72FDRDHMIHM36JEM3WIAL5M4BK4SO` } },
+                )
+                .toPromise();
+        } catch (e) {
+            console.log(e.response.data);
+            throw new HttpException('App create failed', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        const freeSubscription = await this.prisma.subscription.findUnique({
+            where: { slug: 'free' },
+        });
 
         return this.prisma.subscriber.create({
             data: {
@@ -47,6 +70,18 @@ export class SubscribersService {
                                 id: adminRole.id,
                             },
                         },
+                    },
+                },
+                ai: {
+                    create: {
+                        app_name: createSubscriberDto.company_name,
+                        app_id: aiAppCreateRes.data.app_id,
+                        access_token: aiAppCreateRes.data.access_token,
+                    },
+                },
+                subscriber_subscription: {
+                    create: {
+                        subscription: { connect: { id: freeSubscription.id } },
                     },
                 },
             },

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
 import { CreateIntentDto } from './dto/create-intent.dto';
@@ -10,7 +10,7 @@ import { UpdateIntentActiveStateDto } from './dto/update-intent-active-state.dto
 
 @Injectable()
 export class IntentsService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
+    constructor(private prisma: PrismaService, private dataHelper: DataHelper, private httpService: HttpService) {}
 
     async create(req: any, createIntentDto: CreateIntentDto) {
         const subscriberId = req.user.data.subscriber_id;

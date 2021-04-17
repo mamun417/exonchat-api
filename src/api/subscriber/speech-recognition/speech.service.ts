@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
 import { speech_recognition } from '@prisma/client';
@@ -11,7 +11,12 @@ import { IntentsService } from '../intents/intents.service';
 
 @Injectable()
 export class SpeechRecognitionService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper, private intentService: IntentsService) {}
+    constructor(
+        private prisma: PrismaService,
+        private dataHelper: DataHelper,
+        private intentService: IntentsService,
+        private httpService: HttpService,
+    ) {}
 
     async create(req: any, createSpeechDto: CreateSpeechDto) {
         const subscriberId = req.user.data.subscriber_id;

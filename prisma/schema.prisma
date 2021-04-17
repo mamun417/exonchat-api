@@ -15,8 +15,9 @@ model subscriber {
   active                     Boolean                 @default(false)
   created_at                 DateTime                @default(now()) @db.Timestamp(6)
   updated_at                 DateTime                @default(now()) @db.Timestamp(6)
-  subscription               subscriber_subscription @relation(fields: [subscriber_subscription_id], references: [id])
+  subscriber_subscription    subscriber_subscription @relation(fields: [subscriber_subscription_id], references: [id])
   subscriber_subscription_id String
+  ai                         subscription_ai?
   roles                      role[]
   extra_permissions          extra_permission[]
   users                      user[]
@@ -32,24 +33,33 @@ model subscriber {
   user_invitations           user_invitation[]
 }
 
+model subscription_ai {
+  id            String     @id @default(cuid())
+  access_token  String
+  app_id        String
+  app_name      String
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+}
+
 model subscription {
   id                         String                      @id @default(cuid())
-  slug                       String
+  slug                       String                      @unique
   display_name               String
   one_day_price              Int
   active                     Boolean                     @default(false)
-  subscription               subscriber_subscription     @relation(fields: [subscriber_subscription_id], references: [id])
-  subscriber_subscription_id String
+  subscriber_subscriptions   subscriber_subscription[]
   package_element_values     package_element_value[]
   subscription_days_to_names subscription_days_to_name[]
 }
 
 model subscriber_subscription {
-  id            String         @id @default(cuid())
-  created_at    DateTime       @default(now()) @db.Timestamp(6)
-  updated_at    DateTime       @default(now()) @db.Timestamp(6)
-  subscriber    subscriber[]
-  subscriptions subscription[]
+  id              String       @id @default(cuid())
+  created_at      DateTime     @default(now()) @db.Timestamp(6)
+  updated_at      DateTime     @default(now()) @db.Timestamp(6)
+  subscriber      subscriber?
+  subscription    subscription @relation(fields: [subscription_id], references: [id])
+  subscription_id String
 }
 
 model subscription_days_to_name {

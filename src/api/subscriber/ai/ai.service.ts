@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { ConversationsService } from '../conversations/conversations.service';
 
@@ -6,7 +6,11 @@ import { ReplyAiDto } from './dto/reply-ai.dto';
 
 @Injectable()
 export class AiService {
-    constructor(private prisma: PrismaService, private conversationService: ConversationsService) {}
+    constructor(
+        private prisma: PrismaService,
+        private conversationService: ConversationsService,
+        private httpService: HttpService,
+    ) {}
 
     async aiReply(req: any, replyAiDto: ReplyAiDto) {
         const subscriberId = req.user.data.subscriber_id;
