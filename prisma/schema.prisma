@@ -17,7 +17,7 @@ model subscriber {
   updated_at                 DateTime                @default(now()) @db.Timestamp(6)
   subscriber_subscription    subscriber_subscription @relation(fields: [subscriber_subscription_id], references: [id])
   subscriber_subscription_id String
-  ai                         subscription_ai?
+  ai                         subscriber_ai?
   roles                      role[]
   extra_permissions          extra_permission[]
   users                      user[]
@@ -33,13 +33,13 @@ model subscriber {
   user_invitations           user_invitation[]
 }
 
-model subscription_ai {
+model subscriber_ai {
   id            String     @id @default(cuid())
   access_token  String
   app_id        String
   app_name      String
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String
+  subscriber_id String     @unique
 }
 
 model subscription {
@@ -250,19 +250,22 @@ model message {
 }
 
 model speech_recognition {
-  id            String      @id @default(cuid())
-  speech        String
-  forced_intent Boolean     @default(false)
-  confidence    Float       @default(0.0000)
-  resolved      Boolean     @default(false)
-  has_in_ai     Boolean     @default(false)
-  active        Boolean     @default(false)
-  created_at    DateTime    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime    @default(now()) @db.Timestamp(6)
-  subscriber_id String?
-  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  intent_id     String?
-  intent        intent?     @relation(fields: [intent_id], references: [id])
+  id                 String      @id @default(cuid())
+  speech             String
+  forced_intent      Boolean     @default(false)
+  confidence         Float       @default(0.0000)
+  resolved           Boolean     @default(false) // after submit get the result
+  has_in_ai          Boolean     @default(false) // submitted to ai
+  submit_to_ai       Boolean     @default(false) // submit to ai
+  remove_from_ai     Boolean     @default(false) // it will handle removing speech from ai. [after remove has_in_ai to false(sys)]
+  active             Boolean     @default(false)
+  ai_last_checked_at DateTime?   @db.Timestamp(6) // check confidence time to time
+  created_at         DateTime    @default(now()) @db.Timestamp(6)
+  updated_at         DateTime    @default(now()) @db.Timestamp(6)
+  subscriber_id      String?
+  subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
+  intent_id          String?
+  intent             intent?     @relation(fields: [intent_id], references: [id])
 }
 
 model intent {

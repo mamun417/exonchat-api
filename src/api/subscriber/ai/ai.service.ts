@@ -1,4 +1,5 @@
 import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
+import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { PrismaService } from 'src/prisma.service';
 import { ConversationsService } from '../conversations/conversations.service';
 
@@ -9,6 +10,7 @@ export class AiService {
     constructor(
         private prisma: PrismaService,
         private conversationService: ConversationsService,
+        private subscriberService: SubscribersService,
         private httpService: HttpService,
     ) {}
 
@@ -27,7 +29,8 @@ export class AiService {
                     },
                 },
             },
-            'conversation with other resource does not match',
+            {},
+            'conversation with other resources does not match',
         );
 
         if (conversation.closed_at) throw new HttpException('conversation is closed', HttpStatus.NOT_ACCEPTABLE);
@@ -54,7 +57,40 @@ export class AiService {
         }
 
         if (!getIntent && 'check for can auto get from ai & auto confidence level') {
+            const subscriberAi = await this.subscriberService.findAiInfoBySubscriberIdWithExecption(
+                subscriberId,
+                'Somehow subscriber ai not connected. Please contact support',
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+
+            const confidenceLevel = 0.7;
             // ai response
+            try {
+                const aiRes: any = await this.httpService
+                    .get(`https://api.wit.ai/message?q=${replyAiDto.msg}`, {
+                        headers: { Authorization: `Bearer ${subscriberAi.access_token}` },
+                    })
+                    .toPromise();
+
+                if (
+                    aiRes.data &&
+                    aiRes.data.intents &&
+                    aiRes.data.intents.length &&
+                    'aiRes.data.intents[0].confidence > confidenceLevel'
+                ) {
+                    finalIntent = await this.prisma.intent.findFirst({
+                        where: {
+                            tag: aiRes.data.intents[0].name,
+                            subscriber_id: subscriberId,
+                        },
+                        include: {
+                            intent_action: true,
+                        },
+                    });
+                }
+            } catch (e) {
+                console.log(e.response.data);
+            }
         }
 
         let content = null;

@@ -113,6 +113,23 @@ export class SubscribersService {
         );
     }
 
+    async findAiInfoBySubscriberId(id: string) {
+        return this.prisma.subscriber_ai.findUnique({
+            where: {
+                subscriber_id: id,
+            },
+        });
+    }
+
+    async findAiInfoBySubscriberIdWithExecption(id: string, errMsg = '', httpStatus: any = null) {
+        return await this.dataHelper.getSingleDataWithException(
+            async () => await this.findAiInfoBySubscriberId(id),
+            'subscriber_ai',
+            errMsg,
+            httpStatus,
+        );
+    }
+
     // async getChatClientsByApiKey(api_key: string): Promise<ChatClient[]> {
     //     const subscriber = await this.subscribeRepository.findOne({
     //         where: {

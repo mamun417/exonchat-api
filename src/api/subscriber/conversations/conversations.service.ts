@@ -433,18 +433,24 @@ export class ConversationsService {
     //     return conv;
     // }
 
-    async findOne(id: string, extraQueries: any = {}): Promise<conversation> {
+    async findOne(id: string, extraQueries: any = {}, joins: any = {}): Promise<conversation> {
         return this.prisma.conversation.findFirst({
             where: {
                 id: id,
                 ...extraQueries,
             },
+            ...joins,
         });
     }
 
-    async findOneWithException(id: string, extraQueries: any = {}, errMsg = ''): Promise<conversation> {
+    async findOneWithException(
+        id: string,
+        extraQueries: any = {},
+        joins: any = {},
+        errMsg = '',
+    ): Promise<conversation> {
         return await this.dataHelper.getSingleDataWithException(
-            async () => await this.findOne(id, extraQueries),
+            async () => await this.findOne(id, extraQueries, joins),
             'conversation',
             errMsg,
         );
