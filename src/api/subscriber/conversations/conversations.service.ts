@@ -397,6 +397,13 @@ export class ConversationsService {
                 conversation_id: conversation.id,
             },
             orderBy: { created_at: 'desc' },
+            include: {
+                socket_session: {
+                    include: {
+                        user: true,
+                    },
+                },
+            },
         });
     }
 
