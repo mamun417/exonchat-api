@@ -10,7 +10,7 @@ export class CreateConversationDto {
     @IsEnum(chat_type_enum)
     chat_type: chat_type_enum;
 
-    @ValidateIf((o) => o.chat_type === 'group_chat')
+    @ValidateIf((o) => o.chat_type !== 'live_chat')
     @IsArray()
     @ArrayNotEmpty()
     ses_ids: Array<string>;
