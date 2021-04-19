@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateSocketSessionDto } from './dto/create-socket-session.dto';
 
-import { SubscribersService } from 'src/api/subscriber/subscribers/subscribers.service';
+import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { UsersService } from 'src/api/subscriber/users/users.service';
 
 import { PrismaService } from 'src/prisma.service';

@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
 import { speech_recognition } from '@prisma/client';
@@ -11,7 +11,12 @@ import { IntentsService } from '../intents/intents.service';
 
 @Injectable()
 export class SpeechRecognitionService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper, private intentService: IntentsService) {}
+    constructor(
+        private prisma: PrismaService,
+        private dataHelper: DataHelper,
+        private intentService: IntentsService,
+        private httpService: HttpService,
+    ) {}
 
     async create(req: any, createSpeechDto: CreateSpeechDto) {
         const subscriberId = req.user.data.subscriber_id;
@@ -33,7 +38,7 @@ export class SpeechRecognitionService {
             intentConnector = { intent: { connect: { id: intent.id } } };
 
             if (!createSpeechDto.forced_intent) {
-                //handle for ai submit
+                //sys script will handle this.
             }
         }
 
@@ -41,6 +46,7 @@ export class SpeechRecognitionService {
             data: {
                 speech: createSpeechDto.speech,
                 forced_intent: createSpeechDto.forced_intent,
+                submit_to_ai: !createSpeechDto.forced_intent && !!createSpeechDto.intent_id, // submit to ai if not forced & has intent id
                 active: createSpeechDto.active,
                 subscriber: { connect: { id: subscriberId } },
                 ...intentConnector,
@@ -52,27 +58,41 @@ export class SpeechRecognitionService {
     async update(id: any, req: any, updateSpeechDto: UpdateSpeechDto) {
         const speech = await this.findOneWithException(id, req);
 
+        // get last values
+        let resolvedFieldValue: any = speech.resolved;
+        let submitToAiFieldValue: any = speech.submit_to_ai;
+        let removeFromAiFieldValue: any = speech.remove_from_ai;
+
         let intentConnectAndDisconnect = {};
 
+        // very difficult conditions. need test
         if (updateSpeechDto.intent_id) {
             const intent = await this.intentService.findOneWithException(updateSpeechDto.intent_id, req);
 
             if (updateSpeechDto.intent_id !== speech.intent_id) {
                 intentConnectAndDisconnect = {
-                    intent: { connect: { id: intent.id }, disconnect: { id: speech.intent_id } },
+                    intent: { connect: { id: intent.id }, disconnect: { id: speech.intent_id } }, // test if null disconnects ok
                 };
 
                 if (!updateSpeechDto.forced_intent) {
-                    console.log('handle ai resubmit');
+                    submitToAiFieldValue = true; // it will resubmit
+                    resolvedFieldValue = false; // after resubmit get updated info
                 }
 
                 // no need to check !speech.forced_intent && updateSpeechDto.forced_intent condition here
             }
-
-            // if was set to ai but not want now
-            if (!speech.forced_intent && updateSpeechDto.forced_intent) {
-                console.log('remove speech from ai');
+        } else {
+            if (speech.intent_id) {
+                intentConnectAndDisconnect = {
+                    intent: { disconnect: { id: speech.intent_id } },
+                };
             }
+        }
+
+        // doesn't matter if intent id match or not
+        if (speech.intent_id && !speech.forced_intent && speech.has_in_ai && updateSpeechDto.forced_intent) {
+            removeFromAiFieldValue = true;
+            resolvedFieldValue = false; // it will prevent from get ai result
         }
 
         return this.prisma.speech_recognition.update({
@@ -80,6 +100,9 @@ export class SpeechRecognitionService {
             data: {
                 forced_intent: updateSpeechDto.forced_intent,
                 active: updateSpeechDto.active,
+                resolved: resolvedFieldValue,
+                submit_to_ai: submitToAiFieldValue,
+                remove_from_ai: removeFromAiFieldValue,
                 ...intentConnectAndDisconnect,
             },
         });

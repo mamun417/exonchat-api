@@ -8,26 +8,95 @@ datasource db {
 }
 
 model subscriber {
-  id                    String                 @id @default(cuid())
-  company_name          String                 @unique
-  display_name          String
-  api_key               String                 @unique @default(cuid())
-  active                Boolean                @default(false)
-  created_at            DateTime               @default(now()) @db.Timestamp(6)
-  updated_at            DateTime               @default(now()) @db.Timestamp(6)
-  roles                 role[]
-  extra_permissions     extra_permission[]
-  users                 user[]
-  socket_sessions       socket_session[]
-  conversations         conversation[]
-  messages              message[]
-  conversation_sessions conversation_session[]
-  intents               intent[]
-  intent_actions        intent_action[]
-  speech_recognitions   speech_recognition[]
-  chat_departments      chat_department[]
-  chat_templates        chat_template[]
-  user_invitations      user_invitation[]
+  id                         String                  @id @default(cuid())
+  company_name               String                  @unique
+  display_name               String
+  api_key                    String                  @unique @default(cuid())
+  active                     Boolean                 @default(false)
+  created_at                 DateTime                @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime                @default(now()) @db.Timestamp(6)
+  subscriber_subscription    subscriber_subscription @relation(fields: [subscriber_subscription_id], references: [id])
+  subscriber_subscription_id String
+  ai                         subscriber_ai?
+  roles                      role[]
+  extra_permissions          extra_permission[]
+  users                      user[]
+  socket_sessions            socket_session[]
+  conversations              conversation[]
+  messages                   message[]
+  conversation_sessions      conversation_session[]
+  intents                    intent[]
+  intent_actions             intent_action[]
+  speech_recognitions        speech_recognition[]
+  chat_departments           chat_department[]
+  chat_templates             chat_template[]
+  user_invitations           user_invitation[]
+}
+
+model subscriber_ai {
+  id            String     @id @default(cuid())
+  access_token  String
+  app_id        String
+  app_name      String
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String     @unique
+}
+
+model subscription {
+  id                         String                      @id @default(cuid())
+  slug                       String                      @unique
+  display_name               String
+  one_day_price              Int
+  active                     Boolean                     @default(false)
+  subscriber_subscriptions   subscriber_subscription[]
+  package_element_values     package_element_value[]
+  subscription_days_to_names subscription_days_to_name[]
+}
+
+model subscriber_subscription {
+  id              String       @id @default(cuid())
+  created_at      DateTime     @default(now()) @db.Timestamp(6)
+  updated_at      DateTime     @default(now()) @db.Timestamp(6)
+  subscriber      subscriber?
+  subscription    subscription @relation(fields: [subscription_id], references: [id])
+  subscription_id String
+}
+
+model subscription_days_to_name {
+  id              String       @id @default(cuid())
+  subscription    subscription @relation(fields: [subscription_id], references: [id])
+  subscription_id String
+  days_to_name    days_to_name @relation(fields: [days_to_name_id], references: [id])
+  days_to_name_id String
+  price           Int?
+}
+
+// each subscription package element
+model package_element {
+  id            String                 @id @default(cuid())
+  slug          String
+  display_name  String
+  value         package_element_value?
+  static        Boolean                @default(false)
+  ui_visibility Boolean                @default(true)
+  active        Boolean                @default(false)
+}
+
+// will be use in all the subscription packages if not changed individually
+model package_element_value {
+  id              String          @id @default(cuid())
+  element         package_element @relation(fields: [element_id], references: [id])
+  element_id      String
+  subscription    subscription    @relation(fields: [subscription_id], references: [id])
+  subscription_id String
+}
+
+model days_to_name {
+  id                        String                      @id @default(cuid())
+  slug                      String
+  display_name              String
+  in_days                   Int
+  subscription_days_to_name subscription_days_to_name[]
 }
 
 model user_invitation {
@@ -168,32 +237,35 @@ model conversation_session {
 }
 
 model message {
-  id                String         @id @default(cuid())
+  id                String          @id @default(cuid())
   msg               String
-  created_at        DateTime       @default(now()) @db.Timestamp(6)
-  updated_at        DateTime       @default(now()) @db.Timestamp(6)
+  created_at        DateTime        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime        @default(now()) @db.Timestamp(6)
   conversation_id   String
-  conversation      conversation   @relation(fields: [conversation_id], references: [id])
+  conversation      conversation    @relation(fields: [conversation_id], references: [id])
   subscriber_id     String
-  subscriber        subscriber     @relation(fields: [subscriber_id], references: [id])
-  socket_session_id String
-  socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
+  subscriber        subscriber      @relation(fields: [subscriber_id], references: [id])
+  socket_session_id String?
+  socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
 }
 
 model speech_recognition {
-  id            String      @id @default(cuid())
-  speech        String
-  forced_intent Boolean     @default(false)
-  confidence    Float       @default(0.0000)
-  resolved      Boolean     @default(false)
-  has_in_ai     Boolean     @default(false)
-  active        Boolean     @default(false)
-  created_at    DateTime    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime    @default(now()) @db.Timestamp(6)
-  subscriber_id String?
-  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  intent_id     String?
-  intent        intent?     @relation(fields: [intent_id], references: [id])
+  id                 String      @id @default(cuid())
+  speech             String
+  forced_intent      Boolean     @default(false)
+  confidence         Float       @default(0.0000)
+  resolved           Boolean     @default(false) // after submit get the result
+  has_in_ai          Boolean     @default(false) // submitted to ai
+  submit_to_ai       Boolean     @default(false) // submit to ai
+  remove_from_ai     Boolean     @default(false) // it will handle removing speech from ai. [after remove has_in_ai to false(sys)]
+  active             Boolean     @default(false)
+  ai_last_checked_at DateTime?   @db.Timestamp(6) // check confidence time to time
+  created_at         DateTime    @default(now()) @db.Timestamp(6)
+  updated_at         DateTime    @default(now()) @db.Timestamp(6)
+  subscriber_id      String?
+  subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
+  intent_id          String?
+  intent             intent?     @relation(fields: [intent_id], references: [id])
 }
 
 model intent {
@@ -201,7 +273,7 @@ model intent {
   tag                String
   description        String
   active             Boolean              @default(false)
-  wit_ai_id          String?
+  ai_id              String?
   created_at         DateTime             @default(now()) @db.Timestamp(6)
   updated_at         DateTime             @default(now()) @db.Timestamp(6)
   subscriber_id      String?
@@ -286,6 +358,7 @@ enum socket_session_user_type_enum {
 enum conversation_type_enum {
   live_chat
   user_to_user_chat
+  group_chat
 }
 
 enum intent_action_type {

@@ -22,6 +22,7 @@ export class MessagesService {
                     },
                 },
             },
+            {},
             'conversation with other resource does not match',
         );
 
@@ -38,6 +39,4 @@ export class MessagesService {
             },
         });
     }
-
-    async aiReply() {}
 }

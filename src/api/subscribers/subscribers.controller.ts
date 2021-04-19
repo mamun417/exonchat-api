@@ -2,6 +2,8 @@ import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common'
 import { SubscribersService } from './subscribers.service';
 import { CreateSubscriberDto } from './dto/create-subscriber.dto';
 import { UpdateSubscriberDto } from './dto/update-subscriber.dto';
+import { Role } from 'src/authorizarion/role.enum';
+import { RequireRole } from 'src/authorizarion/roles.decorator';
 
 @Controller('subscribers')
 export class SubscribersController {
@@ -13,6 +15,7 @@ export class SubscribersController {
         return this.subscribersService.create(createSubscriberDto);
     }
 
+    @RequireRole(Role.SuperAdmin)
     @Get()
     findAll() {
         return this.subscribersService.findAll();

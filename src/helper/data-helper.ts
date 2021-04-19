@@ -1,7 +1,12 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 
 export class DataHelper {
-    async getSingleDataWithException(callback, resource_location = '', errMsg = '') {
+    async getSingleDataWithException(
+        callback: any,
+        resource_location = '',
+        errMsg = '',
+        httpStatus: any = HttpStatus.NOT_FOUND,
+    ) {
         const data = await callback();
 
         if (!data) {
@@ -13,7 +18,7 @@ export class DataHelper {
                 }
             }
 
-            throw new HttpException(errMsg, HttpStatus.NOT_FOUND);
+            throw new HttpException(errMsg, httpStatus);
         }
 
         return data;

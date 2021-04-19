@@ -51,6 +51,17 @@ async function main() {
         }),
     );
 
+    const subscriptions = await Promise.all([
+        await prisma.subscription.create({
+            data: {
+                slug: 'free',
+                display_name: 'Free',
+                one_day_price: 0,
+                active: true,
+            },
+        }),
+    ]);
+
     const subscriberData = await Promise.all(
         ['test', 'other'].map(async (namePart, key) => {
             await prisma.subscriber.create({
@@ -88,6 +99,11 @@ async function main() {
                                 },
                             },
                         ],
+                    },
+                    subscriber_subscription: {
+                        create: {
+                            subscription: { connect: { id: subscriptions[0].id } },
+                        },
                     },
                 },
             });

@@ -6,15 +6,21 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 
 import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
+import { SocketSessionsService } from '../socket-session/socket-sessions.service';
 
 @Injectable()
 export class ConversationsService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
+    constructor(
+        private prisma: PrismaService,
+        private dataHelper: DataHelper,
+        private socketSessionService: SocketSessionsService,
+    ) {}
 
     async create(req: any, createConversationDto: CreateConversationDto) {
         const subscriberId = req.user.data.subscriber_id;
         const socketSessionId = req.user.data.id;
 
+        // if client
         if (!req.user.data.user_id) {
             const convBySesId = await this.prisma.conversation.findFirst({
                 where: {
@@ -23,11 +29,73 @@ export class ConversationsService {
             });
 
             if (convBySesId) throw new HttpException(`Already Created with this Session ID`, HttpStatus.CONFLICT);
+        } else {
+            if (createConversationDto.ses_ids.includes(socketSessionId))
+                throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
+
+            if (createConversationDto.chat_type === 'user_to_user_chat' && createConversationDto.ses_ids.length > 1)
+                throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
+
+            for (const ses_id in createConversationDto.ses_ids) {
+                await this.socketSessionService.findOneWithException(ses_id, req);
+            }
+
+            if (createConversationDto.chat_type === 'user_to_user_chat') {
+                const conv = await this.prisma.conversation.findFirst({
+                    where: {
+                        users_only: true,
+                        type: 'user_to_user_chat',
+                        subscriber_id: subscriberId,
+                        conversation_sessions: {
+                            some: {
+                                socket_session_id: createConversationDto.ses_ids[0],
+                            },
+                        },
+                    },
+                });
+
+                if (conv) {
+                    throw new HttpException(`Conv with that user already exists`, HttpStatus.CONFLICT);
+                }
+
+                return this.prisma.conversation.create({
+                    data: {
+                        users_only: true,
+                        type: 'user_to_user_chat',
+                        conversation_sessions: {
+                            create: [
+                                {
+                                    joined_at: new Date(),
+                                    socket_session: {
+                                        connect: { id: socketSessionId },
+                                    },
+                                    subscriber: {
+                                        connect: { id: subscriberId },
+                                    },
+                                },
+                                {
+                                    joined_at: new Date(),
+                                    socket_session: {
+                                        connect: { id: createConversationDto.ses_ids[0] },
+                                    },
+                                    subscriber: {
+                                        connect: { id: subscriberId },
+                                    },
+                                },
+                            ],
+                        },
+                        created_by: { connect: { id: socketSessionId } },
+                        subscriber: { connect: { id: subscriberId } },
+                    },
+                });
+            } else {
+                throw new HttpException(`Not implemented Yet`, HttpStatus.NOT_IMPLEMENTED);
+            }
         }
 
         return this.prisma.conversation.create({
             data: {
-                users_only: createConversationDto.chat_type === 'user_to_user_chat' ? true : false,
+                users_only: createConversationDto.chat_type === 'live_chat' ? false : true,
                 type: createConversationDto.chat_type,
                 conversation_sessions: {
                     create: {
@@ -180,6 +248,24 @@ export class ConversationsService {
             },
             orderBy: {
                 created_at: 'desc',
+            },
+        });
+    }
+
+    async findAllUserToUserConvWithMe(req: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: true,
+                type: 'user_to_user_chat',
+                conversation_sessions: {
+                    every: {
+                        socket_session_id: req.user.data.id,
+                    },
+                },
+            },
+            include: {
+                conversation_sessions: true,
             },
         });
     }
@@ -370,18 +456,24 @@ export class ConversationsService {
     //     return conv;
     // }
 
-    async findOne(id: string, extraQueries: any = {}): Promise<conversation> {
+    async findOne(id: string, extraQueries: any = {}, joins: any = {}): Promise<conversation> {
         return this.prisma.conversation.findFirst({
             where: {
                 id: id,
                 ...extraQueries,
             },
+            ...joins,
         });
     }
 
-    async findOneWithException(id: string, extraQueries: any = {}, errMsg = ''): Promise<conversation> {
+    async findOneWithException(
+        id: string,
+        extraQueries: any = {},
+        joins: any = {},
+        errMsg = '',
+    ): Promise<conversation> {
         return await this.dataHelper.getSingleDataWithException(
-            async () => await this.findOne(id, extraQueries),
+            async () => await this.findOne(id, extraQueries, joins),
             'conversation',
             errMsg,
         );
