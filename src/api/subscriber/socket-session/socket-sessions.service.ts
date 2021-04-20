@@ -30,17 +30,18 @@ export class SocketSessionsService {
                 createSocketSessionDto.api_key,
             );
 
-            const socket_session = await this.prisma.socket_session.findFirst({
+            const socket_session: any = await this.prisma.socket_session.findFirst({
                 where: {
                     user_id: userConnector.id,
                 },
             });
 
             if (socket_session) {
+                socket_session.token_type = 'socket';
                 return {
                     bearerToken: this.authService.createToken(socket_session, 60 * 60 * 24 * 365),
                     data: socket_session,
-                    for: 'socket',
+                    type: 'socket',
                 };
             }
 
@@ -53,7 +54,7 @@ export class SocketSessionsService {
             };
         }
 
-        const createRes = await this.prisma.socket_session.create({
+        const createRes: any = await this.prisma.socket_session.create({
             data: {
                 ip: ip,
                 subscriber: {
@@ -65,10 +66,12 @@ export class SocketSessionsService {
             },
         });
 
+        createRes.token_type = 'socket';
+
         return {
             bearerToken: this.authService.createToken(createRes, 60 * 60 * 24 * 365),
             data: createRes,
-            for: 'socket',
+            type: 'socket',
         };
     }
 

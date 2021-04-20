@@ -51,27 +51,11 @@ export class SubscribersService {
             where: { slug: 'free' },
         });
 
-        return this.prisma.subscriber.create({
+        // use transasction
+        const createdSubscriber = await this.prisma.subscriber.create({
             data: {
                 company_name: createSubscriberDto.company_name,
                 display_name: createSubscriberDto.company_display_name,
-                users: {
-                    create: {
-                        email: createSubscriberDto.email,
-                        password: createSubscriberDto.email,
-                        user_meta: {
-                            create: {
-                                full_name: createSubscriberDto.full_name,
-                                display_name: createSubscriberDto.display_name,
-                            },
-                        },
-                        role: {
-                            connect: {
-                                id: adminRole.id,
-                            },
-                        },
-                    },
-                },
                 ai: {
                     create: {
                         app_name: createSubscriberDto.company_name,
@@ -86,6 +70,33 @@ export class SubscribersService {
                 },
             },
         });
+
+        await this.prisma.user.create({
+            data: {
+                email: createSubscriberDto.email,
+                password: createSubscriberDto.email,
+                user_meta: {
+                    create: {
+                        full_name: createSubscriberDto.full_name,
+                        display_name: createSubscriberDto.display_name,
+                    },
+                },
+                role: {
+                    connect: {
+                        id: adminRole.id,
+                    },
+                },
+                socket_sessions: {
+                    create: {
+                        ip: 'user',
+                        subscriber: { connect: { id: createdSubscriber.id } },
+                    },
+                },
+                subscriber: { connect: { id: createdSubscriber.id } },
+            },
+        });
+
+        return createdSubscriber;
     }
 
     async findAll(): Promise<subscriber[]> {

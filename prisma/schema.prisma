@@ -31,6 +31,7 @@ model subscriber {
   chat_departments           chat_department[]
   chat_templates             chat_template[]
   user_invitations           user_invitation[]
+  ui_settings                user_ui_setting_value[]
 }
 
 model subscriber_ai {
@@ -112,22 +113,23 @@ model user_invitation {
 }
 
 model user {
-  id                String             @id @default(cuid())
-  email             String             @db.VarChar
-  password          String             @db.VarChar
-  active            Boolean            @default(false)
-  online_status     Boolean            @default(true)
-  created_at        DateTime           @default(now()) @db.Timestamp(6)
-  updated_at        DateTime           @default(now()) @db.Timestamp(6)
+  id                String                  @id @default(cuid())
+  email             String                  @db.VarChar
+  password          String                  @db.VarChar
+  active            Boolean                 @default(false)
+  online_status     Boolean                 @default(true)
+  created_at        DateTime                @default(now()) @db.Timestamp(6)
+  updated_at        DateTime                @default(now()) @db.Timestamp(6)
   user_meta         user_meta?
-  subscriber        subscriber         @relation(fields: [subscriber_id], references: [id])
+  subscriber        subscriber              @relation(fields: [subscriber_id], references: [id])
   subscriber_id     String
-  role              role               @relation(fields: [role_id], references: [id])
+  role              role                    @relation(fields: [role_id], references: [id])
   role_id           String
   extra_permissions extra_permission[]
   socket_sessions   socket_session[]
   chat_departments  chat_department[]
   chat_templates    chat_template[]
+  ui_settings       user_ui_setting_value[]
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
 }
@@ -140,6 +142,30 @@ model user_meta {
   updated_at   DateTime @default(now()) @db.Timestamp(6)
   user         user?    @relation(fields: [user_id], references: [id])
   user_id      String?
+}
+
+model ui_setting {
+  id                     String                    @id @default(cuid())
+  slug                   String
+  display_name           String
+  description            String?
+  default_value          String?
+  created_at             DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at             DateTime                  @default(now()) @db.Timestamp(6)
+  user_type              ui_setting_user_type_enum // it will determine where n with page to show
+  user_ui_setting_values user_ui_setting_value[]
+}
+
+model user_ui_setting_value {
+  id            String      @id @default(cuid())
+  created_at    DateTime    @default(now()) @db.Timestamp(6)
+  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  user          user?       @relation(fields: [user_id], references: [id])
+  user_id       String? // not user ? then for subscriber
+  subscriber    subscriber  @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+  ui_setting    ui_setting? @relation(fields: [ui_setting_id], references: [id])
+  ui_setting_id String?
 }
 
 model role {
@@ -365,4 +391,11 @@ enum intent_action_type {
   action
   static
   external
+}
+
+enum ui_setting_user_type_enum {
+  all
+  user
+  subscriber
+  administrator
 }

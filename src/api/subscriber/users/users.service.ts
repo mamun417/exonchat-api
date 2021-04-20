@@ -119,6 +119,12 @@ export class UsersService {
                         display_name: joinUserDto.display_name,
                     },
                 },
+                socket_sessions: {
+                    create: {
+                        ip: 'user',
+                        subscriber: { connect: { id: invitation.subscriber_id } },
+                    },
+                },
             },
         });
 

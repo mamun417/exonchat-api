@@ -10,7 +10,7 @@ export class MessagesService {
 
     async create(req: any, createMessageDto: CreateMessageDto) {
         const subscriberId = req.user.data.subscriber_id;
-        const socketSessionId = req.user.data.id;
+        const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.conversationService.findOneWithException(
             createMessageDto.conv_id,

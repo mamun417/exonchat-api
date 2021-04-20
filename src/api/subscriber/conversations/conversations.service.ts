@@ -18,7 +18,7 @@ export class ConversationsService {
 
     async create(req: any, createConversationDto: CreateConversationDto) {
         const subscriberId = req.user.data.subscriber_id;
-        const socketSessionId = req.user.data.id;
+        const socketSessionId = req.user.data.socket_session.id;
 
         // if client
         if (!req.user.data.user_id) {
@@ -120,7 +120,7 @@ export class ConversationsService {
 
     async join(id: string, req: any) {
         const subscriberId = req.user.data.subscriber_id;
-        const socketSessionId = req.user.data.id;
+        const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.findOneWithException(id, { subscriber_id: subscriberId });
 
@@ -159,7 +159,7 @@ export class ConversationsService {
 
     async leave(id: string, req: any) {
         const subscriberId = req.user.data.subscriber_id;
-        const socketSessionId = req.user.data.id;
+        const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.findOneWithException(id, {
             subscriber_id: subscriberId,
@@ -199,7 +199,7 @@ export class ConversationsService {
 
     async close(id: string, req: any) {
         const subscriberId = req.user.data.subscriber_id;
-        const socketSessionId = req.user.data.id;
+        const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.findOneWithException(id, {
             subscriber_id: subscriberId,
@@ -260,7 +260,7 @@ export class ConversationsService {
                 type: 'user_to_user_chat',
                 conversation_sessions: {
                     some: {
-                        socket_session_id: req.user.data.id,
+                        socket_session_id: req.user.data.socket_session.id,
                     },
                 },
             },

@@ -32,7 +32,7 @@ export class ChatDepartmentService {
         if (createDepartmentDto.user_ids && createDepartmentDto.user_ids.length) {
             userConnector = { users: { connect: [] } };
 
-            for (const user_id in createDepartmentDto.user_ids) {
+            for (const user_id of createDepartmentDto.user_ids) {
                 await this.userService.findOneWithException(user_id, req);
 
                 userConnector.users.connect.push({ id: user_id });
@@ -64,7 +64,7 @@ export class ChatDepartmentService {
             userConnector = { users: { connect: [] } };
             userDisconnector = { users: { disconnect: [] } };
 
-            for (const user_id in updateDepartmentDto.user_ids) {
+            for (const user_id of updateDepartmentDto.user_ids) {
                 await this.userService.findOneWithException(user_id, req);
 
                 if (!usersInDepartment.includes(user_id)) userConnector.users.connect.push({ id: user_id });
