@@ -548,7 +548,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved;
                 }
             } catch (e) {
-                console.log(e, 'ai_error');
+                console.log(e.response.data, 'ai_error');
 
                 // this.server.to(client.id).emit('ec_error', {
                 //     type: 'ai_error',
@@ -566,7 +566,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.server.in(roomId).emit('ec_msg_from_client', {
                 ...createdMsg,
                 temp_id: data.temp_id,
-                ai_is_replying: aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved,
+                ai_is_replying: aiReplyMsg && aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved,
             }); // send to all users
 
             if (aiReplyMsg) {
