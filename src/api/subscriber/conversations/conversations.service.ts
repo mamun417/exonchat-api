@@ -36,7 +36,7 @@ export class ConversationsService {
             if (createConversationDto.chat_type === 'user_to_user_chat' && createConversationDto.ses_ids.length > 1)
                 throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
 
-            for (const ses_id in createConversationDto.ses_ids) {
+            for (const ses_id of createConversationDto.ses_ids) {
                 await this.socketSessionService.findOneWithException(ses_id, req); // also check is user
             }
 
@@ -95,7 +95,7 @@ export class ConversationsService {
 
         return this.prisma.conversation.create({
             data: {
-                users_only: createConversationDto.chat_type === 'live_chat' ? false : true,
+                users_only: createConversationDto.chat_type !== 'live_chat',
                 type: createConversationDto.chat_type,
                 conversation_sessions: {
                     create: {
@@ -259,7 +259,7 @@ export class ConversationsService {
                 users_only: true,
                 type: 'user_to_user_chat',
                 conversation_sessions: {
-                    every: {
+                    some: {
                         socket_session_id: req.user.data.id,
                     },
                 },

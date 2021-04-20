@@ -75,7 +75,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         try {
             const convRes: any = await this.httpService
-                .get('http://localhost:3000/conversations/user_to_user/me', {
+                .get('http://localhost:3000/conversations/user-to-user/me', {
                     headers: { Authorization: `Bearer ${client.handshake.query.token}` },
                 })
                 .toPromise();
