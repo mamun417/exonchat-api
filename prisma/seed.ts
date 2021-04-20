@@ -79,6 +79,12 @@ async function main() {
                                         id: _l.find(rolesData, { slug: 'admin' }).id,
                                     },
                                 },
+                                user_meta: {
+                                    create: {
+                                        display_name: namePart,
+                                        full_name: namePart,
+                                    },
+                                },
                             },
                             {
                                 email: `${namePart}1@${namePart}.${namePart}`,
@@ -88,6 +94,12 @@ async function main() {
                                         id: _l.find(rolesData, { slug: 'agent' }).id,
                                     },
                                 },
+                                user_meta: {
+                                    create: {
+                                        display_name: namePart,
+                                        full_name: namePart,
+                                    },
+                                },
                             },
                             {
                                 email: `${namePart}2@${namePart}.${namePart}`,
@@ -95,6 +107,12 @@ async function main() {
                                 role: {
                                     connect: {
                                         id: _l.find(rolesData, { slug: 'user' }).id,
+                                    },
+                                },
+                                user_meta: {
+                                    create: {
+                                        display_name: namePart,
+                                        full_name: namePart,
                                     },
                                 },
                             },
@@ -109,6 +127,18 @@ async function main() {
             });
         }),
     );
+
+    const users = await prisma.user.findMany();
+
+    for (const user of users) {
+        await prisma.socket_session.create({
+            data: {
+                ip: 'user',
+                user: { connect: { id: user.id } },
+                subscriber: { connect: { id: user.subscriber_id } },
+            },
+        });
+    }
 }
 
 main()

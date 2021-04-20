@@ -36,7 +36,7 @@ export class ConversationsService {
             if (createConversationDto.chat_type === 'user_to_user_chat' && createConversationDto.ses_ids.length > 1)
                 throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
 
-            for (const ses_id in createConversationDto.ses_ids) {
+            for (const ses_id of createConversationDto.ses_ids) {
                 await this.socketSessionService.findOneWithException(ses_id, req); // also check is user
             }
 

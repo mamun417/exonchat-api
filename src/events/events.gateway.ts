@@ -68,8 +68,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
+    // load each users coversation so that they can send msg
     @UseGuards(WsJwtGuard)
-    @SubscribeMessage('ec_init_user_to_user_chat')
+    @SubscribeMessage('ec_reload_user_to_user_chat')
     async init_user_to_user_chat(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         let conv_data = [];
 
@@ -84,7 +85,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         } catch (e) {
             console.log(e.response.data);
 
-            this.sendError(client, 'ec_init_conv_from_user', e.response.data);
+            this.sendError(client, 'ec_reload_user_to_user_chat', e.response.data);
 
             return;
         }
@@ -144,10 +145,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[conv_id].users_only = true;
             }
         } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_init_conv_from_user',
-                reason: 'conv id already exists',
+            this.server.in(roomName).emit('ec_conv_initiated_from_user', {
+                data: {
+                    conv_id,
+                    conv_data,
+                },
+                type: 'warning',
+                status: 'conflict',
+                reason: 'conv already exists in socket',
             });
 
             return;
@@ -704,7 +709,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
 
             if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
-                //
+                const usersRooms = convObj.room_ids.filter((roomId: any) => data.ses_user.id !== roomId);
+
+                // for user to user chat only one will contain & for other many
+                usersRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_msg_from_user', {
+                        ...createdMsg,
+                        temp_id: data.temp_id,
+                    }); // send to all other users
+                });
             } else {
                 const userRooms = Object.keys(this.userClientsInARoom).filter(
                     (roomId: any) =>
