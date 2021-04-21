@@ -52,19 +52,7 @@ export class AuthService {
 
     verifyToken(token: any) {
         try {
-            const finalData: any = {};
-
-            const verifiedData = this.jwtService.verify(token);
-
-            if (verifiedData.hasOwnProperty('token_type') && verifiedData.token_type === 'socket') {
-                return {
-                    id: verifiedData.user_id,
-                    subscriber_id: verifiedData.subscriber_id,
-                    socket_session: verifiedData,
-                };
-            } else {
-                return verifiedData;
-            }
+            return this.jwtService.verify(token);
         } catch (e: any) {
             return null;
         }

@@ -37,10 +37,15 @@ export class SocketSessionsService {
             });
 
             if (socket_session) {
-                socket_session.token_type = 'socket';
+                const dataForToken = {
+                    ...userConnector,
+                    socket_session: socket_session,
+                    token_type: 'socket',
+                };
+
                 return {
-                    bearerToken: this.authService.createToken(socket_session, 60 * 60 * 24 * 365),
-                    data: socket_session,
+                    bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 365),
+                    data: dataForToken,
                     type: 'socket',
                 };
             }
@@ -66,11 +71,15 @@ export class SocketSessionsService {
             },
         });
 
-        createRes.token_type = 'socket';
+        const dataForToken = {
+            ...userConnector,
+            socket_session: createRes,
+            token_type: 'socket',
+        };
 
         return {
-            bearerToken: this.authService.createToken(createRes, 60 * 60 * 24 * 365),
-            data: createRes,
+            bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 365),
+            data: dataForToken,
             type: 'socket',
         };
     }

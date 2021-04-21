@@ -30,6 +30,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // client is webchat user
     // user = user/agent
 
+    // verified token data has in data.ses_user
+    // if user then data.ses_user contains user info then socket_session
+    // in socket_session has session info.
+    // you will see that in some places not containing data.ses_ser.socket_session.subscriber_id
+    // but only data.ses_user.subscriber_id. its only for user end. if you dont get the data that means
+    // your ses is not for user
+
     private userClientsInARoom: any = {}; // users/agents
     private normalClientsInARoom: any = {}; // normal clients from site web-chat
     private roomsInAConv: any = {};
@@ -90,7 +97,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        const roomName = data.ses_user.id;
+        const roomName = data.ses_user.socket_session.id;
 
         if (conv_data.length) {
             conv_data.forEach((conv: any) => {
@@ -136,7 +143,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        const roomName = data.ses_user.id;
+        const roomName = data.ses_user.socket_session.id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
             this.roomsInAConv[conv_id] = { room_ids: [roomName, ...data.ses_ids] };
@@ -205,7 +212,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        const roomName = data.ses_user.id;
+        const roomName = data.ses_user.socket_session.id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
             this.roomsInAConv[conv_id] = { room_ids: [roomName] };
@@ -277,13 +284,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // call check api for conv_id, sub_id & ses_id
         const user_info = {}; //get user info
 
-        const roomName = data.ses_user.id;
+        const roomName = data.ses_user.socket_session.id;
 
         // call join conversation api and get msg. there will handle join limit also
         // if done
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
-            if (!this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.id)) {
-                this.roomsInAConv[data.conv_id].room_ids.push(data.ses_user.id);
+            if (!this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)) {
+                this.roomsInAConv[data.conv_id].room_ids.push(data.ses_user.socket_session.id);
             }
 
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
@@ -338,14 +345,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         // call check api for conv_id, sub_id & ses_id
 
-        const roomName = data.ses_user.id;
+        const roomName = data.ses_user.socket_session.id;
 
         console.log(this.roomsInAConv);
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
-            _.remove(this.roomsInAConv[data.conv_id].room_ids, (item: any) => item === data.ses_user.id);
+            _.remove(this.roomsInAConv[data.conv_id].room_ids, (item: any) => item === data.ses_user.socket_session.id);
 
             roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_leaved_from_conversation', {
@@ -404,13 +411,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         // call check api for conv_id, sub_id & ses_id
 
-        const roomName = data.ses_user.id;
+        const roomName = data.ses_user.socket_session.id;
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
 
             const userRooms = Object.keys(this.userClientsInARoom).filter(
-                (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id,
+                (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
             );
 
             let roomsInAConvCopy = this.roomsInAConv[data.conv_id].room_ids;
@@ -466,12 +473,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @SubscribeMessage('ec_is_typing_from_client')
     async typingFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-            return convObj.room_ids.includes(data.ses_user.id);
+            return convObj.room_ids.includes(data.ses_user.socket_session.id);
         }); // get conv_id from ses id
 
         // get all users with the sub_id
         const userRooms = Object.keys(this.userClientsInARoom).filter(
-            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id,
+            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
         );
 
         // send to all connected users
@@ -484,7 +491,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         });
 
         // use if needed
-        this.server.in(data.ses_user.id).emit('ec_is_typing_to_client', {
+        this.server.in(data.ses_user.socket_session.id).emit('ec_is_typing_to_client', {
             conversation_id: convId,
             msg: data.msg,
             temp_id: data.temp_id,
@@ -498,12 +505,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @SubscribeMessage('ec_msg_from_client')
     async msgFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-            return convObj.room_ids.includes(data.ses_user.id);
+            return convObj.room_ids.includes(data.ses_user.socket_session.id);
         }); // get conv_id from ses id
 
         // get all users with the sub_id
         const userRooms = Object.keys(this.userClientsInARoom).filter(
-            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id,
+            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
         );
 
         let createdMsg: any = null;
@@ -583,14 +590,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         });
 
         // use if needed
-        this.server.in(data.ses_user.id).emit('ec_msg_to_client', {
+        this.server.in(data.ses_user.socket_session.id).emit('ec_msg_to_client', {
             ...createdMsg,
             temp_id: data.temp_id,
             return_type: 'own',
         }); // return back to client so that we can update to all tab
 
         if (aiReplyMsg) {
-            this.server.in(data.ses_user.id).emit('ec_reply_from_ai', {
+            this.server.in(data.ses_user.socket_session.id).emit('ec_reply_from_ai', {
                 ...aiReplyMsg,
             });
         }
@@ -603,7 +610,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async typingFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         if (
             this.roomsInAConv.hasOwnProperty(data.conv_id) &&
-            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.id)
+            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
         ) {
             const convObj = this.roomsInAConv[data.conv_id];
 
@@ -660,7 +667,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         // use if needed
-        this.server.in(data.ses_user.id).emit('ec_is_typing_to_user', {
+        this.server.in(data.ses_user.socket_session.id).emit('ec_is_typing_to_user', {
             conversation_id: data.conv_id,
             msg: data.msg,
             temp_id: data.temp_id,
@@ -675,7 +682,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async msgFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         if (
             this.roomsInAConv.hasOwnProperty(data.conv_id) &&
-            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.id)
+            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
         ) {
             // check if the conv only for users
             // if for users send to only those conv rooms
@@ -709,7 +716,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
 
             if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
-                const usersRooms = convObj.room_ids.filter((roomId: any) => data.ses_user.id !== roomId);
+                const usersRooms = convObj.room_ids.filter((roomId: any) => data.ses_user.socket_session.id !== roomId);
 
                 // for user to user chat only one will contain & for other many
                 usersRooms.forEach((roomId: any) => {
@@ -754,7 +761,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
 
             // use if needed
-            this.server.in(data.ses_user.id).emit('ec_msg_to_user', {
+            this.server.in(data.ses_user.socket_session.id).emit('ec_msg_to_user', {
                 ...createdMsg,
                 temp_id: data.temp_id,
                 return_type: 'own',
@@ -778,7 +785,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // let roomName = room_name
         // this.client.join(roomName)
 
-        let ses_user = null;
+        let socket_session = null;
 
         const queryParams = client?.handshake?.query;
 
@@ -786,8 +793,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             const decodedToken = this.authService.verifyToken(queryParams.token);
 
             if (decodedToken) {
-                ses_user = decodedToken.data;
-                console.log(ses_user);
+                socket_session = decodedToken.data.socket_session;
+                console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');
             }
@@ -795,7 +802,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.sendError(client, 'at_connect', 'token invalid');
         }
 
-        const roomName = ses_user.id;
+        const roomName = socket_session.id;
 
         // check client type from api
         const dynamicInARoom = queryParams.client_type === 'user' ? 'userClientsInARoom' : 'normalClientsInARoom';
@@ -803,17 +810,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         if (!this[dynamicInARoom].hasOwnProperty(roomName)) {
             this[dynamicInARoom][roomName] = {
                 socket_client_ids: [],
-                sub_id: ses_user.subscriber_id,
+                sub_id: socket_session.subscriber_id,
             };
 
             if (queryParams.client_type === 'user') {
                 const userRooms = Object.keys(this.userClientsInARoom).filter(
-                    (roomId: any) => this.userClientsInARoom[roomId].sub_id === ses_user.subscriber_id,
+                    (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
                 );
 
                 userRooms.forEach((roomId: any) => {
                     this.server.in(roomId).emit('ec_user_logged_in', {
-                        user_ses_id: ses_user.id,
+                        user_ses_id: socket_session.id,
                     }); // send to all other users
                 });
             }
@@ -834,7 +841,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         console.log(`Socket Client disconnected: ${client.id}`);
         // console.log(client?.handshake?.query);
 
-        let ses_user = null;
+        let socket_session = null;
 
         const queryParams = client?.handshake?.query;
 
@@ -842,8 +849,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             const decodedToken = this.authService.verifyToken(queryParams.token);
 
             if (decodedToken) {
-                ses_user = decodedToken.data;
-                console.log(ses_user);
+                socket_session = decodedToken.data;
+                console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');
             }
@@ -851,7 +858,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.sendError(client, 'at_connect', 'token invalid');
         }
 
-        const roomName = ses_user.id;
+        const roomName = socket_session.id;
 
         let idIsDeleted = false;
 
@@ -881,12 +888,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 if (queryParams.client_type === 'user') {
                     const userRooms = Object.keys(this.userClientsInARoom).filter(
-                        (roomId: any) => this.userClientsInARoom[roomId].sub_id === ses_user.subscriber_id,
+                        (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
                     );
 
                     userRooms.forEach((roomId: any) => {
                         this.server.in(roomId).emit('ec_user_logged_out', {
-                            user_ses_id: ses_user.id,
+                            user_ses_id: socket_session.id,
                         }); // send to all other users
                     });
                 }
