@@ -15,7 +15,7 @@ export class AiService {
     ) {}
 
     async aiReply(req: any, replyAiDto: ReplyAiDto) {
-        const subscriberId = req.user.data.subscriber_id;
+        const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
         // check ai can reply setting
 

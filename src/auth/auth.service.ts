@@ -1,17 +1,27 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException, Res, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/api/subscriber/users/users.service';
+import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class AuthService {
-    constructor(private usersService: UsersService, private jwtService: JwtService) {}
+    constructor(private usersService: UsersService, private jwtService: JwtService, private prisma: PrismaService) {}
 
     async validateUserForLogin(login_info: string, pass: string): Promise<any> {
-        const user = await this.usersService.validateForLogin(login_info, pass);
+        const user: any = await this.usersService.validateForLogin(login_info, pass);
 
         if (!user) {
             throw new HttpException(`Invalid Login Credentials`, HttpStatus.NOT_FOUND);
         }
+
+        const socket_session: any = await this.prisma.socket_session.findFirst({
+            where: {
+                user_id: user.id,
+            },
+        });
+
+        //add socket session also so that if called by sokcet token api this can handle without problem
+        user.socket_session = socket_session;
 
         if (user && user.password === pass) {
             const { password, ...result } = user;

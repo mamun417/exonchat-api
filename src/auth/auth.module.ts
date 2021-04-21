@@ -11,6 +11,7 @@ import { jwtConstants } from './constants/constants';
 import { AuthService } from './auth.service';
 
 import { UsersModule } from 'src/api/subscriber/users/users.module';
+import { PrismaService } from 'src/prisma.service';
 
 @Module({
     imports: [
@@ -21,7 +22,7 @@ import { UsersModule } from 'src/api/subscriber/users/users.module';
         }),
         UsersModule,
     ],
-    providers: [AuthService, LocalStrategy, JwtStrategy],
+    providers: [AuthService, LocalStrategy, JwtStrategy, PrismaService],
     exports: [AuthService],
 })
 export class AuthModule {}

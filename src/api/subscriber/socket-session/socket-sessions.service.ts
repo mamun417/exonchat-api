@@ -95,7 +95,7 @@ export class SocketSessionsService {
 
     async findOne(id: string, req: any) {
         return this.prisma.socket_session.findFirst({
-            where: { id, subscriber_id: req.user.data.subscriber_id },
+            where: { id, subscriber_id: req.user.data.socket_session.subscriber_id },
         });
     }
 

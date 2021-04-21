@@ -90,7 +90,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             conv_data = convRes.data;
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
 
             this.sendError(client, 'ec_reload_user_to_user_chat', e.response.data);
 
@@ -136,7 +136,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
 
             this.sendError(client, 'ec_init_conv_from_user', e.response.data);
 
@@ -205,7 +205,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
 
             this.sendError(client, 'ec_init_conv_from_client', e.response.data);
 
@@ -270,7 +270,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[data.conv_id].ai_is_replying = false;
             }
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
 
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
@@ -332,7 +332,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             conv_ses_data = convSesRes.data;
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
 
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
@@ -398,7 +398,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
 
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
@@ -512,6 +512,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         const userRooms = Object.keys(this.userClientsInARoom).filter(
             (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
         );
+
+        console.log(data);
 
         let createdMsg: any = null;
 
@@ -849,7 +851,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             const decodedToken = this.authService.verifyToken(queryParams.token);
 
             if (decodedToken) {
-                socket_session = decodedToken.data;
+                socket_session = decodedToken.data.socket_session;
                 console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');

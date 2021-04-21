@@ -17,11 +17,11 @@ export class ConversationsService {
     ) {}
 
     async create(req: any, createConversationDto: CreateConversationDto) {
-        const subscriberId = req.user.data.subscriber_id;
+        const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
         // if client
-        if (!req.user.data.user_id) {
+        if (!req.user.data.socket_session.user_id) {
             const convBySesId = await this.prisma.conversation.findFirst({
                 where: {
                     created_by_id: socketSessionId,
@@ -158,7 +158,7 @@ export class ConversationsService {
     }
 
     async leave(id: string, req: any) {
-        const subscriberId = req.user.data.subscriber_id;
+        const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.findOneWithException(id, {
@@ -198,7 +198,7 @@ export class ConversationsService {
     }
 
     async close(id: string, req: any) {
-        const subscriberId = req.user.data.subscriber_id;
+        const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.findOneWithException(id, {
@@ -392,7 +392,7 @@ export class ConversationsService {
         return this.prisma.conversation.findFirst({
             where: {
                 id: id,
-                subscriber_id: req.user.data.subscriber_id,
+                subscriber_id: req.user.data.socket_session.subscriber_id,
             },
             include: {
                 closed_by: {
@@ -481,7 +481,7 @@ export class ConversationsService {
 
     async conversationMessages(id: string, req: any) {
         const conversation = await this.findOneWithException(id, {
-            subscriber_id: req.user.data.subscriber_id,
+            subscriber_id: req.user.data.socket_session.subscriber_id,
         });
 
         return this.prisma.message.findMany({

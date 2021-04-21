@@ -9,7 +9,7 @@ export class MessagesService {
     constructor(private prisma: PrismaService, private conversationService: ConversationsService) {}
 
     async create(req: any, createMessageDto: CreateMessageDto) {
-        const subscriberId = req.user.data.subscriber_id;
+        const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
         const conversation = await this.conversationService.findOneWithException(
