@@ -69,11 +69,13 @@ async function main() {
                     company_name: namePart,
                     display_name: namePart,
                     api_key: namePart,
+                    active: true,
                     users: {
                         create: [
                             {
                                 email: `${namePart}@${namePart}.${namePart}`,
                                 password: '123',
+                                active: true,
                                 role: {
                                     connect: {
                                         id: _l.find(rolesData, { slug: 'admin' }).id,
@@ -89,6 +91,7 @@ async function main() {
                             {
                                 email: `${namePart}1@${namePart}.${namePart}`,
                                 password: '123',
+                                active: true,
                                 role: {
                                     connect: {
                                         id: _l.find(rolesData, { slug: 'agent' }).id,
@@ -104,6 +107,7 @@ async function main() {
                             {
                                 email: `${namePart}2@${namePart}.${namePart}`,
                                 password: '123',
+                                active: true,
                                 role: {
                                     connect: {
                                         id: _l.find(rolesData, { slug: 'user' }).id,
