@@ -32,6 +32,7 @@ model subscriber {
   chat_templates             chat_template[]
   user_invitations           user_invitation[]
   ui_settings                user_ui_setting_value[]
+  attachments                attachment[]
 }
 
 model subscriber_ai {
@@ -227,6 +228,7 @@ model socket_session {
   created_conversations conversation[]         @relation(name: "created_by")
   closed_conversations  conversation[]         @relation(name: "closed_by")
   messages              message[]
+  attachments           attachment[]
 }
 
 model conversation {
@@ -244,6 +246,7 @@ model conversation {
   closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
   conversation_sessions conversation_session[]
   messages              message[]
+  attachments           attachment[]
 }
 
 model conversation_session {
@@ -264,9 +267,10 @@ model conversation_session {
 
 model message {
   id                String          @id @default(cuid())
-  msg               String
+  msg               String?
   created_at        DateTime        @default(now()) @db.Timestamp(6)
   updated_at        DateTime        @default(now()) @db.Timestamp(6)
+  attachments       attachment[]
   conversation_id   String
   conversation      conversation    @relation(fields: [conversation_id], references: [id])
   subscriber_id     String
@@ -276,7 +280,15 @@ model message {
 }
 
 model attachment {
-  id String @id @default(cuid())
+  id                String          @id @default(cuid())
+  message_id        String
+  message           message         @relation(fields: [message_id], references: [id])
+  conversation_id   String
+  conversation      conversation    @relation(fields: [conversation_id], references: [id])
+  subscriber_id     String
+  subscriber        subscriber      @relation(fields: [subscriber_id], references: [id])
+  socket_session_id String?
+  socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
 }
 
 model speech_recognition {

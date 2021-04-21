@@ -8,7 +8,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 export class MessagesService {
     constructor(private prisma: PrismaService, private conversationService: ConversationsService) {}
 
-    async create(req: any, createMessageDto: CreateMessageDto) {
+    async create(req: any, attachments: any, createMessageDto: CreateMessageDto) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
