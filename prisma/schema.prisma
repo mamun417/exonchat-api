@@ -275,6 +275,10 @@ model message {
   socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
 }
 
+model attachment {
+  id String @id @default(cuid())
+}
+
 model speech_recognition {
   id                 String      @id @default(cuid())
   speech             String

@@ -37,9 +37,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // but only data.ses_user.subscriber_id. its only for user end. if you dont get the data that means
     // your ses is not for user
 
-    private userClientsInARoom: any = {}; // users/agents
-    private normalClientsInARoom: any = {}; // normal clients from site web-chat
-    private roomsInAConv: any = {};
+    private userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
+    private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
+    private roomsInAConv: any = {}; // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool}}
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_get_logged_users') // get users list when needed
@@ -52,6 +52,31 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         this.server.to(client.id).emit('ec_logged_users_res', {
             users: users,
         });
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_get_clients_ses_id_status')
+    async getClientsSesIdStatus(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+        const roomName = data.ses_user.socket_session.id;
+
+        let status = 'left';
+
+        if (data.hasOwnProperty('client_ses_id') && data.client_ses_id) {
+            if (
+                this.normalClientsInARoom.hasOwnProperty(data.client_ses_id) &&
+                this.normalClientsInARoom[data.client_ses_id].socket_client_ids.length &&
+                this.normalClientsInARoom[data.client_ses_id].sub_id === data.ses_user.subscriber_id
+            ) {
+                status = 'online';
+            }
+
+            this.server.in(roomName).emit('ec_get_clients_ses_id_status_res', {
+                ses_id: data.client_ses_id,
+                status: status,
+            });
+        }
 
         return;
     }
