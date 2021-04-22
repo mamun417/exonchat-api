@@ -46,11 +46,22 @@ export class ConversationsService {
                         users_only: true,
                         type: 'user_to_user_chat',
                         subscriber_id: subscriberId,
-                        conversation_sessions: {
-                            some: {
-                                socket_session_id: createConversationDto.ses_ids[0],
+                        AND: [
+                            {
+                                conversation_sessions: {
+                                    some: {
+                                        socket_session_id: socketSessionId,
+                                    },
+                                },
                             },
-                        },
+                            {
+                                conversation_sessions: {
+                                    some: {
+                                        socket_session_id: createConversationDto.ses_ids[0],
+                                    },
+                                },
+                            },
+                        ],
                     },
                 });
 
