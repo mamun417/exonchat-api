@@ -36,7 +36,18 @@ export class MessagesService {
 
         if (conversation.closed_at) throw new HttpException('conversation is closed', HttpStatus.NOT_ACCEPTABLE);
 
-        // save msg to speech
+        let attachmentsConnector: any = {};
+
+        if (createMessageDto.attachments && createMessageDto.attachments.length) {
+            attachmentsConnector = { attachments: { connect: [] } };
+            for (const attcId of createMessageDto.attachments) {
+                await this.findOneAttachmentWithException(attcId, req);
+
+                attachmentsConnector.attachments.connect.push({ id: attcId });
+            }
+        }
+
+        // save msg to speech also by checking auto_save_new_msg_to_speech
 
         return this.prisma.message.create({
             data: {
@@ -44,6 +55,10 @@ export class MessagesService {
                 subscriber: { connect: { id: subscriberId } },
                 conversation: { connect: { id: conversation.id } },
                 socket_session: { connect: { id: socketSessionId } },
+                ...attachmentsConnector,
+            },
+            include: {
+                attachments: true,
             },
         });
     }
@@ -82,6 +97,8 @@ export class MessagesService {
     }
 
     async findOneAttachment(id: any, req: any) {
+        if (!id) return null; // sometime id can be null
+
         const subscriberId = req.user.data.socket_session.subscriber_id;
 
         return this.prisma.attachment.findFirst({

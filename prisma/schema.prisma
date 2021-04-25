@@ -282,6 +282,7 @@ model attachment {
   id                String          @id @default(cuid())
   original_name     String
   uploaded          Boolean         @default(false)
+  size              Int             @default(0) @db.Integer
   created_at        DateTime        @default(now()) @db.Timestamp(6)
   updated_at        DateTime        @default(now()) @db.Timestamp(6)
   messages          message[]

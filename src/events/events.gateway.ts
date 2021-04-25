@@ -549,6 +549,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     {
                         conv_id: convId,
                         msg: data.msg,
+                        attachments: data.attachments,
                     },
                     { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                 )
@@ -726,6 +727,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         {
                             conv_id: data.conv_id,
                             msg: data.msg,
+                            attachments: data.attachments,
                         },
                         { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                     )
