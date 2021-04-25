@@ -246,7 +246,6 @@ model conversation {
   closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
   conversation_sessions conversation_session[]
   messages              message[]
-  attachments           attachment[]
 }
 
 model conversation_session {
@@ -281,10 +280,11 @@ model message {
 
 model attachment {
   id                String          @id @default(cuid())
-  message_id        String
-  message           message         @relation(fields: [message_id], references: [id])
-  conversation_id   String
-  conversation      conversation    @relation(fields: [conversation_id], references: [id])
+  original_name     String
+  uploaded          Boolean         @default(false)
+  created_at        DateTime        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime        @default(now()) @db.Timestamp(6)
+  messages          message[]
   subscriber_id     String
   subscriber        subscriber      @relation(fields: [subscriber_id], references: [id])
   socket_session_id String?

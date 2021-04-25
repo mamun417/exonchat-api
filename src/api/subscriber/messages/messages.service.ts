@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { DataHelper } from 'src/helper/data-helper';
 import { PrismaService } from 'src/prisma.service';
 import { ConversationsService } from '../conversations/conversations.service';
 
@@ -6,9 +7,13 @@ import { CreateMessageDto } from './dto/create-message.dto';
 
 @Injectable()
 export class MessagesService {
-    constructor(private prisma: PrismaService, private conversationService: ConversationsService) {}
+    constructor(
+        private prisma: PrismaService,
+        private dataHelper: DataHelper,
+        private conversationService: ConversationsService,
+    ) {}
 
-    async create(req: any, attachments: any, createMessageDto: CreateMessageDto) {
+    async create(req: any, createMessageDto: CreateMessageDto) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
@@ -38,5 +43,46 @@ export class MessagesService {
                 socket_session: { connect: { id: socketSessionId } },
             },
         });
+    }
+
+    async attachmentUpdateStatus(id: any, req: any) {
+        this.findOneAttachmentWithException(id, req);
+
+        return this.prisma.attachment.update({
+            where: {
+                id: id,
+            },
+            data: {
+                uploaded: true,
+            },
+        });
+    }
+
+    async attachmentDelete(id: any, req: any) {
+        this.findOneAttachmentWithException(id, req);
+
+        return this.prisma.attachment.delete({
+            where: {
+                id: id,
+            },
+        });
+    }
+
+    async findOneAttachment(id: any, req: any) {
+        const subscriberId = req.user.data.socket_session.subscriber_id;
+
+        return this.prisma.attachment.findFirst({
+            where: {
+                id: id,
+                subscriber_id: subscriberId,
+            },
+        });
+    }
+
+    async findOneAttachmentWithException(id: string, req: any) {
+        return await this.dataHelper.getSingleDataWithException(
+            async () => await this.findOneAttachment(id, req),
+            'attachment',
+        );
     }
 }
