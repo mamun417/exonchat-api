@@ -37,6 +37,13 @@ export class MessagesService {
                 conversation: { connect: { id: conversation.id } },
                 socket_session: { connect: { id: socketSessionId } },
             },
+            include: {
+                socket_session: {
+                    include: {
+                        user: true,
+                    },
+                },
+            },
         });
     }
 }
