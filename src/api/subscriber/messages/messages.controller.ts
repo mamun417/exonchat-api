@@ -19,7 +19,8 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { editFileName, imageFileFilter } from './filter/attachment.filter';
-import { extname } from 'path';
+import { extname, join } from 'path';
+import { mkdirSync } from 'fs';
 
 @Controller('messages')
 export class MessagesController {
@@ -40,7 +41,11 @@ export class MessagesController {
                     const subscriberId = req.user.data.socket_session.subscriber_id;
                     const socketSessionId = req.user.data.socket_session.id;
 
-                    callback(null, `./uploads/attachments/${subscriberId}/${socketSessionId}`);
+                    const fullPath = `${join(process.cwd(), 'uploads')}/attachments/${subscriberId}/${socketSessionId}`;
+
+                    mkdirSync(fullPath, { recursive: true });
+
+                    callback(null, fullPath);
                 },
                 filename: editFileName,
             }),

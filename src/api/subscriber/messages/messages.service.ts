@@ -5,6 +5,9 @@ import { ConversationsService } from '../conversations/conversations.service';
 
 import { CreateMessageDto } from './dto/create-message.dto';
 
+import { unlinkSync } from 'fs';
+import { join, extname } from 'path';
+
 @Injectable()
 export class MessagesService {
     constructor(
@@ -46,7 +49,7 @@ export class MessagesService {
     }
 
     async attachmentUpdateStatus(id: any, req: any) {
-        this.findOneAttachmentWithException(id, req);
+        await this.findOneAttachmentWithException(id, req);
 
         return this.prisma.attachment.update({
             where: {
@@ -59,7 +62,17 @@ export class MessagesService {
     }
 
     async attachmentDelete(id: any, req: any) {
-        this.findOneAttachmentWithException(id, req);
+        const attachment: any = await this.findOneAttachmentWithException(id, req);
+
+        const fileExtName = extname(attachment.original_name);
+        const attachmentsPath = `${join(process.cwd(), 'uploads')}/attachments`;
+        const fullPath = `${attachmentsPath}/${attachment.subscriber_id}/${attachment.socket_session_id}/${id}${fileExtName}`;
+
+        try {
+            unlinkSync(fullPath);
+        } catch (e) {
+            throw new HttpException('file remove error. please contact support', HttpStatus.NOT_FOUND);
+        }
 
         return this.prisma.attachment.delete({
             where: {
