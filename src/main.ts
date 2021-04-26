@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AllExceptionsFilter } from './exception/http-exception.filter';
 import * as cookieParser from 'cookie-parser';
 import { jwtConstants } from './auth/constants/constants';
+import { RedisIoAdapter } from './adapters/redis-io-adapter';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -14,6 +15,8 @@ async function bootstrap() {
         credentials: true,
         preflightContinue: false,
     });
+
+    // app.useWebSocketAdapter(new RedisIoAdapter());
 
     // app.useGlobalFilters(new AllExceptionsFilter());
     await app.listen(3000);

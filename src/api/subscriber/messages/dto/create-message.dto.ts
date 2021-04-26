@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateMessageDto {
     @IsString()
@@ -8,4 +8,8 @@ export class CreateMessageDto {
     @IsString()
     @IsNotEmpty()
     conv_id: string;
+
+    @IsOptional()
+    @IsArray()
+    attachments: Array<string>;
 }

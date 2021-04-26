@@ -24,6 +24,7 @@ import { SpeechRecognitionModule } from './api/subscriber/speech-recognition/spe
 import { AiModule } from './api/subscriber/ai/ai.module';
 import { ChatDepartmentModule } from './api/subscriber/chat-department/department.module';
 import { ChatTemplateModule } from './api/subscriber/chat-template/template.module';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
     imports: [
@@ -34,6 +35,10 @@ import { ChatTemplateModule } from './api/subscriber/chat-template/template.modu
         ThrottlerModule.forRoot({
             ttl: 60,
             limit: 1000,
+        }),
+
+        MulterModule.register({
+            dest: './uploads',
         }),
 
         AuthModule,

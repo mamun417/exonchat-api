@@ -501,6 +501,7 @@ export class ConversationsService {
             },
             orderBy: { created_at: 'desc' },
             include: {
+                attachments: true,
                 socket_session: {
                     include: {
                         user: true,
