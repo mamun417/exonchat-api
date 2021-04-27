@@ -28,6 +28,18 @@ export class IntentsController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Delete(':id')
+    delete(@Param('id') id: string, @Request() req: any) {
+        return this.intentsService.delete(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id')
+    findOne(@Param('id') id: string, @Request() req: any) {
+        return this.intentsService.findOne(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post(':id/active-status')
     updateActiveState(
         @Param('id') id: string,

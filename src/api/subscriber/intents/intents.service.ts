@@ -101,6 +101,17 @@ export class IntentsService {
         });
     }
 
+    async delete(id: any, req: any) {
+        await this.findOneWithException(id, req);
+
+        return this.prisma.intent.delete({
+            where: { id: id },
+            include: {
+                intent_action: true,
+            },
+        });
+    }
+
     async findOne(id: string, req: any): Promise<intent> {
         return this.prisma.intent.findFirst({
             where: {
