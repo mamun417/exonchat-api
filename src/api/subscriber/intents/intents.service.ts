@@ -104,11 +104,14 @@ export class IntentsService {
     async delete(id: any, req: any) {
         await this.findOneWithException(id, req);
 
+        await this.prisma.intent_action.deleteMany({
+            where: {
+                intent_id: id,
+            },
+        });
+
         return this.prisma.intent.delete({
             where: { id: id },
-            include: {
-                intent_action: true,
-            },
         });
     }
 
