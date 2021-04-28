@@ -16,6 +16,12 @@ export class SocketSessionsController {
     async findOne(@Param('id') id: string, @Request() req: any) {
         return this.socketSessionsService.findOneWithException(id, req);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id/client-conversation')
+    async findOneClientConv(@Param('id') id: string, @Request() req: any) {
+        return this.socketSessionsService.findOneClientConv(id, req);
+    }
     // @Post('subscriber/:api_key')
     // async create(@Param('api_key') api_key: string, @Body() createChatClientDto: CreateChatClientDto) {
     //     return this.chatClientsService.create(api_key, createChatClientDto);

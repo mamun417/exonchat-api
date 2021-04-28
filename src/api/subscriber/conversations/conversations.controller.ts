@@ -48,7 +48,7 @@ export class ConversationsController {
     @UseGuards(JwtAuthGuard)
     @Get(':id')
     findOne(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.findOne(id, req);
+        return this.conversationsService.findOne(id, { subscriber_id: req.user.data.socket_session.subscriber_id });
     }
 
     @UseGuards(JwtAuthGuard)

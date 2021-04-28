@@ -93,6 +93,42 @@ export class SocketSessionsService {
     //     return await this.chatClientRepository.createQueryBuilder().getMany();
     // }
 
+    async findOneClientConv(id: string, req: any) {
+        const socketSession: any = await this.prisma.socket_session.findFirst({
+            where: {
+                id,
+                subscriber_id: req.user.data.socket_session.subscriber_id,
+                user_id: null,
+                conversation_sessions: {
+                    every: {
+                        socket_session_id: req.user.data.socket_session.id,
+                        conversation: {
+                            users_only: false,
+                            closed_at: null,
+                        },
+                    },
+                },
+            },
+            include: {
+                conversation_sessions: {
+                    include: {
+                        conversation: {
+                            include: {
+                                conversation_sessions: true, // this needed
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (socketSession && socketSession.conversation_sessions.length === 1) {
+            return socketSession.conversation_sessions[0].conversation;
+        }
+
+        return null;
+    }
+
     async findOne(id: string, req: any) {
         return this.prisma.socket_session.findFirst({
             where: { id, subscriber_id: req.user.data.socket_session.subscriber_id },
