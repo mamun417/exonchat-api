@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import * as _l from 'lodash';
 
 export class DataHelper {
     async getSingleDataWithException(
@@ -22,5 +23,45 @@ export class DataHelper {
         }
 
         return data;
+    }
+
+    paginationAndFilter(validFields: any = [], query: any = {}) {
+        // valid fields [p, pp, col_name direct resolves to AND Equal {name: col_name, type: 'string to type', query_type:'default'}], default is whole string match
+        // relation filter not supported yet
+        const finalObj = { pagination: {}, where: {} };
+
+        //check any of one has for manage pagination
+        if (
+            (validFields.includes('p') || validFields.includes('pp')) &&
+            (query.hasOwnProperty('p') || query.hasOwnProperty('pp'))
+        ) {
+            const page = query.hasOwnProperty('p') ? parseInt(query.p) : 1;
+            const perPage = query.hasOwnProperty('pp') ? parseInt(query.pp) : 10;
+
+            finalObj.pagination = {
+                skip: page * perPage - perPage,
+                take: perPage,
+            };
+        }
+
+        _l.without(validFields, 'p', 'pp').forEach((field: any) => {
+            // now only supports filter by actual col name
+            // default is now only AND for all.
+            // only boolean support
+            if (_l.isPlainObject(field)) {
+                if (Object.keys(query).includes(field.name)) {
+                    if (field.type === 'boolean') {
+                        finalObj.where[field.name] = query[field.name].toLowerCase() === 'true' ? true : false;
+                    }
+                }
+            }
+
+            // if first condition ok this condition wont work
+            if (Object.keys(query).includes(field)) {
+                finalObj.where[field] = query[field];
+            }
+        });
+
+        return finalObj;
     }
 }

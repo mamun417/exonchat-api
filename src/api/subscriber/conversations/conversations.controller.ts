@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -37,6 +37,12 @@ export class ConversationsController {
     @Get()
     findAll(@Request() req: any) {
         return this.conversationsService.findAll(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('clients-conversation')
+    clientsConversations(@Request() req: any, @Query() query) {
+        return this.conversationsService.clientsConversations(req, query);
     }
 
     @UseGuards(JwtAuthGuard)
