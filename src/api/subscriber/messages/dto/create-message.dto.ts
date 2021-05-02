@@ -1,6 +1,7 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreateMessageDto {
+    @ValidateIf((o: any) => !o.attachments || !o.attachments.length)
     @IsString()
     @IsNotEmpty()
     msg: string;

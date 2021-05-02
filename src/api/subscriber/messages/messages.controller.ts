@@ -90,8 +90,21 @@ export class MessagesController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Delete('attachments/:id/user-controll')
+    async revokeAttachmentControll(@Param('id') imageId: any, @Request() req: any) {
+        return this.messagesService.revokeAttachmentControll(imageId, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Delete('attachments/:id')
     async attachmentDelete(@Param('id') imageId: any, @Request() req: any) {
         return this.messagesService.attachmentDelete(imageId, req);
+    }
+
+    // move these to attachment module
+    @UseGuards(JwtAuthGuard)
+    @Get('attachments')
+    async getAll(@Request() req: any) {
+        return this.messagesService.getAllAttachments(req);
     }
 }

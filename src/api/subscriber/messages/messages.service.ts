@@ -63,6 +63,21 @@ export class MessagesService {
         });
     }
 
+    async getAllAttachments(req: any) {
+        const subscriberId = req.user.data.socket_session.subscriber_id;
+        const socketSessionId = req.user.data.socket_session.id;
+
+        return this.prisma.attachment.findMany({
+            where: {
+                subscriber_id: subscriberId,
+                socket_session_id: socketSessionId,
+                uploaded: true,
+                user_has_controll: true,
+            },
+            orderBy: { created_at: 'desc' },
+        });
+    }
+
     async attachmentUpdateStatus(id: any, req: any) {
         await this.findOneAttachmentWithException(id, req);
 
@@ -72,6 +87,34 @@ export class MessagesService {
             },
             data: {
                 uploaded: true,
+            },
+        });
+    }
+
+    async revokeAttachmentControll(id: any, req: any) {
+        await this.findOneAttachmentByOwnSesIdWithException(id, req);
+
+        const removableAttachment = await this.prisma.attachment.findFirst({
+            where: {
+                id: id,
+                messages: { none: {} },
+            },
+        });
+
+        if (removableAttachment) {
+            return this.prisma.attachment.delete({
+                where: {
+                    id: id,
+                },
+            });
+        }
+
+        return await this.prisma.attachment.update({
+            where: {
+                id: id,
+            },
+            data: {
+                user_has_controll: false,
             },
         });
     }
@@ -101,6 +144,26 @@ export class MessagesService {
                 },
             },
         });
+    }
+
+    async findOneAttachmentByOwnSesId(id: any, req: any) {
+        const subscriberId = req.user.data.socket_session.subscriber_id;
+        const socketSessionId = req.user.data.socket_session.id;
+
+        return this.prisma.attachment.findFirst({
+            where: {
+                id: id,
+                subscriber_id: subscriberId,
+                socket_session_id: socketSessionId,
+            },
+        });
+    }
+
+    async findOneAttachmentByOwnSesIdWithException(id: string, req: any) {
+        return await this.dataHelper.getSingleDataWithException(
+            async () => await this.findOneAttachmentByOwnSesId(id, req),
+            'attachment',
+        );
     }
 
     async findOneAttachment(id: any, req: any) {
