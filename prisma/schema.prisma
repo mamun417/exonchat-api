@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["orderByRelation"]
 }
 
@@ -108,6 +108,7 @@ model user_invitation {
   code          String
   type          user_invitation_type_enum
   status        user_invitation_status_enum @default(pending)
+  active        Boolean                     @default(true)
   created_at    DateTime                    @default(now()) @db.Timestamp(6)
   updated_at    DateTime                    @default(now()) @db.Timestamp(6)
   subscriber    subscriber                  @relation(fields: [subscriber_id], references: [id])

@@ -3,7 +3,9 @@ import { PrismaService } from 'src/prisma.service';
 import { user } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 import { InviteUserDto } from './dto/invite-user.dto';
+import { InvitationUpdateDto } from './dto/invitation-update.dto';
 import { JoinUserDto } from './dto/join-user.dto';
+import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
 
 @Injectable()
 export class UsersService {
@@ -44,6 +46,19 @@ export class UsersService {
     //     return 'This action adds a new chatAgent';
     // }
 
+    async updateUserActiveState(id: any, req: any, updateDto: UpdateUserActiveStateDto) {
+        await this.findOneWithException(id, req);
+
+        return this.prisma.user.update({
+            where: {
+                id: id,
+            },
+            data: {
+                active: updateDto.active,
+            },
+        });
+    }
+
     async invite(req: any, inviteUserDto: InviteUserDto) {
         const subscriberId = req.user.data.subscriber_id;
 
@@ -79,12 +94,45 @@ export class UsersService {
                 code: '1234',
                 subscriber: { connect: { id: subscriberId } },
                 type: inviteUserDto.type,
+                active: inviteUserDto.active,
             },
         });
 
         // send mail with invitationCreated.id
 
         return { msg: msg, status: 'success' };
+    }
+
+    async updateInvitation(id: any, req: any, invitationUpdateDto: InvitationUpdateDto) {
+        const invitation: any = await this.findOneInvitationBySubscriberWithException(id, req);
+
+        if (invitation.status === 'success') {
+            return this.prisma.user_invitation.update({
+                where: {
+                    id: id,
+                },
+                data: {
+                    type: invitationUpdateDto.type,
+                    active: invitationUpdateDto.active,
+                },
+            });
+        }
+
+        throw new HttpException('Invitation was success. So cant delete', HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    async deleteInvitation(id: any, req: any) {
+        const invitation: any = await this.findOneInvitationBySubscriberWithException(id, req);
+
+        if (invitation.status !== 'success') {
+            return this.prisma.user_invitation.delete({
+                where: {
+                    id: id,
+                },
+            });
+        }
+
+        throw new HttpException('Invitation was success. So cant delete', HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     async join(joinUserDto: JoinUserDto) {
@@ -110,7 +158,7 @@ export class UsersService {
             data: {
                 email: invitation.email,
                 password: joinUserDto.password,
-                active: true,
+                active: invitation.active,
                 subscriber: { connect: { id: invitation.subscriber_id } },
                 role: { connect: { id: role.id } },
                 user_meta: {
@@ -153,6 +201,14 @@ export class UsersService {
         } else {
             throw new HttpException('Invitation already processed', HttpStatus.CONFLICT);
         }
+    }
+
+    async findAllInvitation(req: any) {
+        return this.prisma.user_invitation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+            },
+        });
     }
 
     async findAll(req: any) {
@@ -203,6 +259,34 @@ export class UsersService {
         });
     }
 
+    async findOneInvitation(id: string) {
+        return this.prisma.user_invitation.findFirst({
+            where: {
+                id: id,
+            },
+        });
+    }
+
+    async findOneInvitationWithException(id: string): Promise<user> {
+        return this.dataHelper.getSingleDataWithException(async () => this.findOneInvitation(id), 'user');
+    }
+
+    async findOneInvitationBySubscriber(id: string, req: any) {
+        return this.prisma.user_invitation.findFirst({
+            where: {
+                id: id,
+                subscriber_id: req.user.data.subscriber_id,
+            },
+        });
+    }
+
+    async findOneInvitationBySubscriberWithException(id: string, req: any): Promise<user> {
+        return this.dataHelper.getSingleDataWithException(
+            async () => this.findOneInvitationBySubscriber(id, req),
+            'user',
+        );
+    }
+
     async findOne(id: string, req: any): Promise<user> {
         return this.prisma.user.findFirst({ where: { id: id, subscriber_id: req.user.data.subscriber_id } });
     }
@@ -224,18 +308,6 @@ export class UsersService {
 
     async findOneByIdAndApiWithException(id: string, api_key: string): Promise<user> {
         return this.dataHelper.getSingleDataWithException(async () => this.findOneByIdAndApi(id, api_key), 'user');
-    }
-
-    async findOneInvitation(id: string) {
-        return this.prisma.user_invitation.findUnique({
-            where: {
-                id: id,
-            },
-        });
-    }
-
-    async findOneInvitationWithException(id: string) {
-        return this.dataHelper.getSingleDataWithException(async () => this.findOneInvitation(id), 'invitation');
     }
 
     async findOneBySubscriberIdInvitation(id: string, subscriber_id: string) {

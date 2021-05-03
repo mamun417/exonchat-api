@@ -5,14 +5,10 @@ enum user_type_enum {
     agent = 'agent',
 }
 
-export class InviteUserDto {
-    @IsNotEmpty()
-    email: string;
-
+export class InvitationUpdateDto {
     @IsEnum(user_type_enum)
     type: user_type_enum;
 
-    @IsOptional()
     @IsBoolean()
     active = true;
 }
