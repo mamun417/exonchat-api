@@ -5,7 +5,7 @@ import { CreateSpeechDto } from './dto/create-speech.dto';
 import { UpdateSpeechDto } from './dto/update-speech.dto';
 import { UpdateSpeechActiveStateDto } from './dto/update-speech-active-state.dto';
 
-@Controller('speech')
+@Controller('speeches')
 export class SpeechRecognitionController {
     constructor(private readonly speechRecognitionService: SpeechRecognitionService) {}
 
