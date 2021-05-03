@@ -129,6 +129,9 @@ export class SpeechRecognitionService {
             orderBy: {
                 created_at: 'desc',
             },
+            include: {
+                intent: true,
+            },
         });
     }
 
