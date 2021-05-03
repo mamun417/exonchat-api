@@ -529,16 +529,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_msg_from_client')
     async msgFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-            return convObj.room_ids.includes(data.ses_user.socket_session.id);
-        }); // get conv_id from ses id
+        let convId = this.convIdFromSession(data);
 
-        // get all users with the sub_id
-        const userRooms = Object.keys(this.userClientsInARoom).filter(
-            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
-        );
+        if (!convId) {
+            const convObj = await this.clientConvFromSession(data, client);
 
-        console.log(data);
+            if (!convObj) return;
+
+            convId = convObj.id;
+
+            if (!this.roomsInAConv.hasOwnProperty(convId)) {
+                this.roomsInAConv[convId] = {
+                    room_ids: _.map(convObj.conversation_sessions, 'socket_session_id'),
+                };
+            }
+        }
 
         let createdMsg: any = null;
 
@@ -568,7 +573,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         let aiReplyMsg: any = null;
 
-        if (!this.roomsInAConv[convId].hasOwnProperty('ai_is_replying') || this.roomsInAConv[convId].ai_is_replying) {
+        if (this.convAICanReplying(data)) {
             try {
                 const aiReplyRes = await this.httpService
                     .post(
@@ -584,38 +589,28 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 aiReplyMsg = aiReplyRes.data;
 
                 if (aiReplyMsg) {
-                    this.roomsInAConv[convId].ai_is_replying =
-                        aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved;
+                    this.roomsInAConv[convId].ai_is_replying = !!aiReplyMsg.ai_resolved;
                 }
             } catch (e) {
                 console.log(e.response.data, 'ai_error');
-
-                // this.server.to(client.id).emit('ec_error', {
-                //     type: 'ai_error',
-                //     step: 'ec_msg_from_client',
-                //     reason: e.response.data,
-                // });
-
-                // return;
+                // if need send to emited user
             }
         }
 
         // send to all connected users
-        userRooms.forEach((roomId: any) => {
-            // for ai is replying check also reply res is not for null content
-            this.server.in(roomId).emit('ec_msg_from_client', {
+        this.sendToAllUsers(data, 'ec_msg_from_client', {
+            ...createdMsg,
+            temp_id: data.temp_id,
+            ai_is_replying: aiReplyMsg && !!aiReplyMsg.ai_resolved,
+        });
+
+        if (aiReplyMsg) {
+            this.sendToAllUsers(data, 'ec_reply_from_ai', {
                 ...createdMsg,
                 temp_id: data.temp_id,
-                ai_is_replying: aiReplyMsg && aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved,
-            }); // send to all users
-
-            if (aiReplyMsg) {
-                this.server.in(roomId).emit('ec_reply_from_ai', {
-                    ...aiReplyMsg,
-                    ai_is_replying: aiReplyMsg.hasOwnProperty('ai_resolved') && aiReplyMsg.ai_resolved,
-                });
-            }
-        });
+                ai_is_replying: aiReplyMsg && !!aiReplyMsg.ai_resolved,
+            });
+        }
 
         // use if needed
         this.server.in(data.ses_user.socket_session.id).emit('ec_msg_to_client', {
@@ -708,98 +703,238 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_msg_from_user')
     async msgFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        if (
-            this.roomsInAConv.hasOwnProperty(data.conv_id) &&
-            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
-        ) {
-            // check if the conv only for users
-            // if for users send to only those conv rooms
-            // else send to every other users then the client
+        if (!(await this.convRoomsHasSessionRecheck(data, client))) return;
 
-            const convObj = this.roomsInAConv[data.conv_id];
+        let createdMsg: any = null;
 
-            let createdMsg: any = null;
+        try {
+            const msgRes = await this.httpService
+                .post(
+                    `http://localhost:3000/messages`,
+                    {
+                        conv_id: data.conv_id,
+                        msg: data.msg,
+                        attachments: data.attachments,
+                    },
+                    { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
+                )
+                .toPromise();
 
-            try {
-                const msgRes = await this.httpService
-                    .post(
-                        `http://localhost:3000/messages`,
-                        {
-                            conv_id: data.conv_id,
-                            msg: data.msg,
-                            attachments: data.attachments,
-                        },
-                        { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
-                    )
-                    .toPromise();
+            createdMsg = msgRes.data;
+        } catch (e) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_msg_from_user',
+                reason: e.response.data,
+            });
 
-                createdMsg = msgRes.data;
-            } catch (e) {
-                this.server.to(client.id).emit('ec_error', {
-                    type: 'error',
-                    step: 'ec_leave_conversation',
-                    reason: e.response.data,
+            return;
+        }
+
+        if (this.convIsUserOnly(data)) {
+            this.sendToAConvUsersWithoutMe(data, 'ec_msg_from_user', { ...createdMsg, temp_id: data.temp_id });
+        } else {
+            // it will contain single elm for now
+            const clientRooms = this.convClientRoom(data);
+
+            if (clientRooms.length) {
+                clientRooms.forEach((roomId: any) => {
+                    this.server.in(roomId).emit('ec_msg_from_user', {
+                        ...createdMsg,
+                        temp_id: data.temp_id,
+                    });
                 });
+            } else {
+                this.sendError(client, 'ec_msg_from_user', 'somehow client is not present in this conversation');
 
                 return;
             }
 
-            if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
-                const usersRooms = convObj.room_ids.filter((roomId: any) => data.ses_user.socket_session.id !== roomId);
-
-                // for user to user chat only one will contain & for other many
-                usersRooms.forEach((roomId: any) => {
-                    this.server.in(roomId).emit('ec_msg_from_user', {
-                        ...createdMsg,
-                        temp_id: data.temp_id,
-                    }); // send to all other users
-                });
-            } else {
-                const userRooms = Object.keys(this.userClientsInARoom).filter(
-                    (roomId: any) =>
-                        this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id &&
-                        !this.userClientsInARoom[roomId].socket_client_ids.includes(
-                            client.id, // ignore from same user
-                        ),
-                );
-
-                // it will contain single elm for now
-                const clientRooms = convObj.room_ids.filter(
-                    (roomId: any) => this.normalClientsInARoom[roomId]?.sub_id === data.ses_user.subscriber_id,
-                );
-
-                if (clientRooms.length === 1) {
-                    clientRooms.forEach((roomId: any) => {
-                        this.server.in(roomId).emit('ec_msg_from_user', {
-                            ...createdMsg,
-                            temp_id: data.temp_id,
-                        });
-                    });
-                } else {
-                    this.sendError(client, 'ec_msg_from_user', 'somehow client is not present in this conversation');
-
-                    return;
-                }
-
-                userRooms.forEach((roomId: any) => {
-                    this.server.in(roomId).emit('ec_msg_from_user', {
-                        ...createdMsg,
-                        temp_id: data.temp_id,
-                    }); // send to all other users
-                });
-            }
-
-            // use if needed
-            this.server.in(data.ses_user.socket_session.id).emit('ec_msg_to_user', {
+            this.sendToAllUsersWithoutMe(data, 'ec_msg_from_user', {
                 ...createdMsg,
                 temp_id: data.temp_id,
-                return_type: 'own',
-            }); // return back to client so that we can update to all tab
-        } else {
-            this.sendError(client, 'ec_msg_from_user');
+            });
         }
 
+        // use if needed
+        this.server.in(data.ses_user.socket_session.id).emit('ec_msg_to_user', {
+            ...createdMsg,
+            temp_id: data.temp_id,
+            return_type: 'own',
+        }); // return back to client so that we can update to all tab
+
         return;
+    }
+
+    ownConvObj(data: any) {
+        return this.roomsInAConv[data.conv_id];
+    }
+
+    convIdFromSession(data: any) {
+        return _.findKey(this.roomsInAConv, (convObj: any) =>
+            convObj.room_ids.includes(data.ses_user.socket_session.id),
+        );
+    }
+
+    // its only for support if system restart happens
+    // OR all connected conv relation are cleaned when user|client closed from this conv
+    async clientConvFromSession(data: any, client: any) {
+        try {
+            const convRes: any = await this.httpService
+                .get(`http://localhost:3000/socket-sessions/${data.ses_user.socket_session.id}/client-conversation`, {
+                    headers: { Authorization: `Bearer ${client.handshake.query.token}` },
+                })
+                .toPromise();
+
+            if (!convRes.data) {
+                this.sendError(client, 'ec_client_conv_check', 'conversation no longer valid');
+            } else {
+                if (!this.roomsInAConv.hasOwnProperty(convRes.data.id)) {
+                    this.roomsInAConv[convRes.data.id] = {
+                        room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
+                    };
+                }
+
+                return convRes.data;
+            }
+        } catch (e) {
+            this.sendError(client, 'ec_client_conv_check', e.response.data);
+        }
+
+        return false;
+    }
+
+    convAICanReplying(data: any) {
+        const convObj = this.ownConvObj(data);
+        return convObj && (!convObj.hasOwnProperty('ai_is_replying') || convObj.ai_is_replying);
+    }
+
+    usersRoomsWithoutMe(data: any) {
+        return Object.keys(this.userClientsInARoom).filter(
+            (roomId: any) =>
+                this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id &&
+                !this.userClientsInARoom[roomId].socket_client_ids.includes(
+                    data.ses_user.socket_session.id, // ignore from same user
+                ),
+        );
+    }
+
+    usersRooms(data: any) {
+        return Object.keys(this.userClientsInARoom).filter(
+            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
+        );
+    }
+
+    convClientRoom(data: any) {
+        return this.ownConvObj(data).room_ids.filter(
+            (roomId: any) => this.normalClientsInARoom[roomId]?.sub_id === data.ses_user.socket_session.subscriber_id,
+        );
+    }
+
+    sendToAllUsersWithoutMe(data: any, emitName: any, dataObj: any) {
+        this.usersRoomsWithoutMe(data).forEach((roomId: any) => {
+            this.server.in(roomId).emit(emitName, dataObj);
+        });
+    }
+
+    sendToAllUsers(data: any, emitName: any, dataObj: any) {
+        this.usersRooms(data).forEach((roomId: any) => {
+            this.server.in(roomId).emit(emitName, dataObj);
+        });
+    }
+
+    sendToAConvUsersWithoutMe(data: any, emitName: string, dataObj: any) {
+        const rooms = this.ownConvObj(data).room_ids.filter(
+            (roomId: any) => data.ses_user.socket_session.id !== roomId,
+        );
+
+        rooms.forEach((roomId: any) => {
+            this.server.in(roomId).emit(emitName, dataObj);
+        });
+    }
+
+    // its only for support if system restart happens
+    // OR all connected conv relation are cleaned when user|client closed from this conv
+    async convRoomsHasSessionRecheck(data: any, client: any) {
+        if (this.convRoomsHasSession(data, client)) return true;
+
+        if (
+            (await this.recheckSysHasConv(data, client)) &&
+            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
+        )
+            return true;
+
+        this.sendError(client, 'ec_root', 'this conversation not found in the system');
+
+        return false;
+    }
+
+    convRoomsHasSession(data: any, client: any) {
+        if (
+            this.checkConvId(data, client) &&
+            this.sysHasConv(data, client) &&
+            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
+        )
+            return true;
+
+        this.sendError(client, 'ec_root', 'this conversation not found in the system');
+
+        return false;
+    }
+
+    // check if conv_id is passed through data
+    checkConvId(data: any, client: any) {
+        if (!data.hasOwnProperty('conv_id')) return data.conv_id;
+
+        this.sendError(client, 'ec_root', 'this conversation not found in the system');
+
+        return null;
+    }
+
+    sysHasConv(data: any, client: any) {
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) return data.conv_id;
+
+        this.sendError(client, 'ec_root', 'conversation not found in the system');
+
+        return false;
+    }
+
+    // dont call it directly. call convRoomsHasSessionRecheck
+    async recheckSysHasConv(data: any, client: any) {
+        const convId = data.conv_id;
+
+        try {
+            const convRes: any = await this.httpService
+                .get(`http://localhost:3000/conversations/${convId}/sessions`, {
+                    headers: { Authorization: `Bearer ${client.handshake.query.token}` },
+                })
+                .toPromise();
+
+            if (!convRes.data) {
+                this.sendError(client, 'ec_recheck_conv', 'conversation not found');
+            } else if (convRes.data.closed_at) {
+                this.sendError(client, 'ec_recheck_conv', 'conversation is closed');
+            } else {
+                if (!this.roomsInAConv.hasOwnProperty(convId)) {
+                    this.roomsInAConv[convId] = {
+                        room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
+                    };
+
+                    this.roomsInAConv[convId].users_only = convRes.data.users_only;
+                }
+
+                return true;
+            }
+        } catch (e) {
+            this.sendError(client, 'ec_recheck_conv', e.response.data);
+        }
+
+        return false;
+    }
+
+    // dont call it directly
+    convIsUserOnly(data: any) {
+        return !!this.roomsInAConv[data.conv_id].users_only;
     }
 
     afterInit(server: Server) {

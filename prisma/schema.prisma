@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["orderByRelation"]
 }
 
 datasource db {
@@ -283,6 +284,7 @@ model attachment {
   original_name     String
   uploaded          Boolean         @default(false)
   size              Int             @default(0) @db.Integer
+  user_has_controll Boolean         @default(true) // if false user deleted from uploads list but msg can resolve
   created_at        DateTime        @default(now()) @db.Timestamp(6)
   updated_at        DateTime        @default(now()) @db.Timestamp(6)
   messages          message[]

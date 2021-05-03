@@ -263,6 +263,48 @@ export class ConversationsService {
         });
     }
 
+    async clientsConversations(req: any, query: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                messages: { some: {} },
+            },
+            include: {
+                conversation_sessions: true,
+                messages: {
+                    take: 1,
+                    orderBy: {
+                        updated_at: 'desc',
+                    },
+                },
+            },
+            orderBy: {
+                // currently orderby does not work for many entry
+                // like here i needed messages orderby time
+                updated_at: 'desc',
+            },
+        });
+
+        // i have to take from message for sorting order
+        // but here includes does not work
+        // return this.prisma.message.groupBy({
+        //     by: ['conversation_id'],
+        //     where: {
+        //         subscriber_id: req.user.data.subscriber_id,
+        //         conversation: {
+        //             users_only: false,
+        //         },
+        //     },
+        //     includes: {
+        //         conver
+        //     },
+        //     orderBy: {
+        //         updated_at: 'desc',
+        //     },
+        // });
+    }
+
     async findAllUserToUserConvWithMe(req: any) {
         return this.prisma.conversation.findMany({
             where: {

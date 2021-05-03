@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
@@ -40,6 +40,12 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Get('clients-conversation')
+    clientsConversations(@Request() req: any, @Query() query) {
+        return this.conversationsService.clientsConversations(req, query);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Get('user-to-user/me')
     findAllUserToUserConvWithMe(@Request() req: any) {
         return this.conversationsService.findAllUserToUserConvWithMe(req);
@@ -48,7 +54,7 @@ export class ConversationsController {
     @UseGuards(JwtAuthGuard)
     @Get(':id')
     findOne(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.findOne(id, req);
+        return this.conversationsService.findOne(id, { subscriber_id: req.user.data.socket_session.subscriber_id });
     }
 
     @UseGuards(JwtAuthGuard)

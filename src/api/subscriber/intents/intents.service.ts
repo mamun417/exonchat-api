@@ -87,10 +87,18 @@ export class IntentsService {
         });
     }
 
-    async findAll(req: any) {
+    async findAll(req: any, query: any) {
+        const filterHelper = this.dataHelper.paginationAndFilter(
+            ['p', 'pp', { name: 'active', type: 'boolean' }],
+            query,
+        );
+
+        console.log(filterHelper);
+
         return this.prisma.intent.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
+                ...filterHelper.where,
             },
             include: {
                 intent_action: true,
@@ -98,6 +106,7 @@ export class IntentsService {
             orderBy: {
                 created_at: 'desc',
             },
+            ...filterHelper.pagination,
         });
     }
 

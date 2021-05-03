@@ -1,4 +1,4 @@
-import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { IntentsService } from './intents.service';
 import { CreateIntentDto } from './dto/create-intent.dto';
@@ -11,8 +11,8 @@ export class IntentsController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Request() req: any) {
-        return this.intentsService.findAll(req);
+    findAll(@Request() req: any, @Query() query: any) {
+        return this.intentsService.findAll(req, query);
     }
 
     @UseGuards(JwtAuthGuard)
