@@ -1,7 +1,9 @@
 import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { InvitationUpdateDto } from './dto/invitation-update.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { JoinUserDto } from './dto/join-user.dto';
+import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -14,20 +16,32 @@ export class UsersController {
     // }
 
     @UseGuards(JwtAuthGuard)
-    @Post('invitation/invite')
+    @Post(':id/active-status')
+    updateActiveState(@Param('id') id: string, @Request() req: any, @Body() updateUserDto: UpdateUserActiveStateDto) {
+        return this.usersService.updateUserActiveState(id, req, updateUserDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('invitations/invite')
     invite(@Request() req: any, @Body() inviteUserDto: InviteUserDto) {
         return this.usersService.invite(req, inviteUserDto);
     }
 
-    @Post('invitation/join')
+    @Post('invitations/join')
     join(@Body() joinUserDto: JoinUserDto) {
         return this.usersService.join(joinUserDto);
     }
 
     @UseGuards(JwtAuthGuard)
-    @Post('invitation/:id/cancel')
+    @Post('invitations/:id/cancel')
     cancel(@Param('id') id: string, @Request() req: any) {
         return this.usersService.cancel(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('invitations/:id/update')
+    updateInvitation(@Param('id') id: string, @Request() req: any, @Body() updateInvitationDto: InvitationUpdateDto) {
+        return this.usersService.updateInvitation(id, req, updateInvitationDto);
     }
 
     // use permission guard later
@@ -35,6 +49,12 @@ export class UsersController {
     @Get()
     findAll(@Request() req: any) {
         return this.usersService.findAll(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('invitations')
+    findAllInvitation(@Request() req: any) {
+        return this.usersService.findAllInvitation(req);
     }
 
     @UseGuards(JwtAuthGuard)

@@ -32,9 +32,9 @@ export class IntentsService {
                 intent_action: {
                     create: {
                         type: createIntentDto.type,
-                        action_name: createIntentDto.action_name,
-                        content: createIntentDto.content,
-                        external_path: createIntentDto.external_path,
+                        action_name: createIntentDto.type === 'action' ? createIntentDto.action_name : '',
+                        content: createIntentDto.type === 'static' ? createIntentDto.content : '',
+                        external_path: createIntentDto.type === 'external' ? createIntentDto.external_path : '',
                         subscriber: {
                             connect: { id: subscriberId },
                         },
@@ -61,9 +61,9 @@ export class IntentsService {
                 intent_action: {
                     update: {
                         type: updateIntentDto.type,
-                        action_name: updateIntentDto.action_name,
-                        content: updateIntentDto.content,
-                        external_path: updateIntentDto.external_path,
+                        action_name: updateIntentDto.type === 'action' ? updateIntentDto.action_name : '',
+                        content: updateIntentDto.type === 'static' ? updateIntentDto.content : '',
+                        external_path: updateIntentDto.type === 'external' ? updateIntentDto.external_path : '',
                     },
                 },
             },
