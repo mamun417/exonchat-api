@@ -130,6 +130,9 @@ export class IntentsService {
                 id: id,
                 subscriber_id: req.user.data.subscriber_id,
             },
+            include: {
+                intent_action: true,
+            },
         });
     }
 
