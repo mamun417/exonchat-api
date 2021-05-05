@@ -21,11 +21,11 @@ export class SpeechRecognitionController {
         return this.speechRecognitionService.create(req, createSpeechDto);
     }
 
-    // @UseGuards(JwtAuthGuard)
-    // @Post(':id')
-    // update(@Param('id') id: string, @Request() req: any, @Body() updateSpeechDto: UpdateSpeechDto) {
-    //     return this.speechRecognitionService.update(id, req, updateSpeechDto);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Post(':id')
+    update(@Param('id') id: string, @Request() req: any, @Body() updateSpeechDto: UpdateSpeechDto) {
+        return this.speechRecognitionService.update(id, req, updateSpeechDto);
+    }
 
     @UseGuards(JwtAuthGuard)
     @Post(':id/active-status')

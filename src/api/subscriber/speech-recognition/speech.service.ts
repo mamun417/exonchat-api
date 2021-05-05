@@ -105,6 +105,9 @@ export class SpeechRecognitionService {
                 remove_from_ai: removeFromAiFieldValue,
                 ...intentConnectAndDisconnect,
             },
+            include: {
+                intent: true,
+            },
         });
     }
 
