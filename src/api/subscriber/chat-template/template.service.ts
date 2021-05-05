@@ -25,7 +25,20 @@ export class ChatTemplateService {
         let template: any = null;
         const connector: any = {};
 
-        if (createTemplateDto.own) {
+        const adminUser = await this.prisma.user.findFirst({
+            where: { id: req.user.data.id, role: { slug: 'admin' } },
+        });
+
+        //only admin will see own input. all others are own by default
+        if (adminUser && !createTemplateDto.own) {
+            template = await this.prisma.chat_template.findFirst({
+                where: {
+                    subscriber_id: subscriberId,
+                    tag: createTemplateDto.tag,
+                    user_id: null,
+                },
+            });
+        } else {
             connector.user = { connect: { id: req.user.data.id } };
 
             template = await this.prisma.chat_template.findFirst({
@@ -33,14 +46,6 @@ export class ChatTemplateService {
                     subscriber_id: subscriberId,
                     tag: createTemplateDto.tag,
                     user_id: req.user.data.id,
-                },
-            });
-        } else {
-            template = await this.prisma.chat_template.findFirst({
-                where: {
-                    subscriber_id: subscriberId,
-                    tag: createTemplateDto.tag,
-                    user_id: null,
                 },
             });
         }
@@ -72,7 +77,7 @@ export class ChatTemplateService {
         });
     }
 
-    //need test
+    //you cant change owner of the template. for that delete & create a new one
     async update(id: any, req: any, updateTemplateDto: UpdateTemplateDto) {
         const subscriberId = req.user.data.subscriber_id;
 
