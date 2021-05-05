@@ -11,7 +11,7 @@ export class CreateSpeechDto {
 
     @ValidateIf((o: any) => o.intent_id)
     @IsBoolean()
-    forced_intent = false; // if forced then it wont send to ai
+    forced = false; // if forced then it wont send to ai
 
     @IsBoolean()
     active: boolean;

@@ -29,6 +29,7 @@ export class IntentsService {
                 tag: createIntentDto.tag,
                 description: createIntentDto.description,
                 active: createIntentDto.active,
+                submit_to_ai: createIntentDto.submit_to_ai,
                 intent_action: {
                     create: {
                         type: createIntentDto.type,
@@ -51,13 +52,21 @@ export class IntentsService {
     }
 
     async update(id: any, req: any, updateIntentDto: UpdateIntentDto) {
-        await this.findOneWithException(id, req);
+        const intent = await this.findOneWithException(id, req);
+
+        let removeFromAi = intent.remove_from_ai;
+
+        if (intent.submit_to_ai && !updateIntentDto.submit_to_ai) {
+            removeFromAi = true;
+        }
 
         return this.prisma.intent.update({
             where: { id: id },
             data: {
                 description: updateIntentDto.description,
                 active: updateIntentDto.active,
+                submit_to_ai: updateIntentDto.submit_to_ai,
+                remove_from_ai: removeFromAi,
                 intent_action: {
                     update: {
                         type: updateIntentDto.type,
@@ -98,6 +107,7 @@ export class IntentsService {
         return this.prisma.intent.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
+                for_delete: false,
                 ...filterHelper.where,
             },
             include: {
@@ -113,14 +123,11 @@ export class IntentsService {
     async delete(id: any, req: any) {
         await this.findOneWithException(id, req);
 
-        await this.prisma.intent_action.deleteMany({
-            where: {
-                intent_id: id,
-            },
-        });
-
-        return this.prisma.intent.delete({
+        return this.prisma.intent.update({
             where: { id: id },
+            data: {
+                for_delete: true,
+            },
         });
     }
 

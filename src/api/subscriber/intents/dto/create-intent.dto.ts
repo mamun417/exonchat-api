@@ -18,6 +18,9 @@ export class CreateIntentDto {
     @IsEnum(intent_type_enum)
     type: intent_type_enum;
 
+    @IsBoolean()
+    submit_to_ai = true;
+
     @ValidateIf((o: any) => o.type === 'static')
     @IsString()
     content: string;

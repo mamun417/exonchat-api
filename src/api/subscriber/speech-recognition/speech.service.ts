@@ -33,11 +33,11 @@ export class SpeechRecognitionService {
         let intentConnector = {};
 
         if (createSpeechDto.intent_id) {
-            const intent = await this.intentService.findOneWithException(createSpeechDto.intent_id, req);
+            await this.intentService.findOneWithException(createSpeechDto.intent_id, req);
 
-            intentConnector = { intent: { connect: { id: intent.id } } };
+            intentConnector = { intent: { connect: { id: createSpeechDto.intent_id } } };
 
-            if (!createSpeechDto.forced_intent) {
+            if (!createSpeechDto.forced) {
                 //sys script will handle this.
             }
         }
@@ -45,8 +45,8 @@ export class SpeechRecognitionService {
         return this.prisma.speech_recognition.create({
             data: {
                 speech: createSpeechDto.speech,
-                forced_intent: createSpeechDto.forced_intent,
-                submit_to_ai: !createSpeechDto.forced_intent && !!createSpeechDto.intent_id, // submit to ai if not forced & has intent id
+                forced: createSpeechDto.forced,
+                submit_to_ai: !createSpeechDto.forced && !!createSpeechDto.intent_id, // submit to ai if not forced & has intent id
                 active: createSpeechDto.active,
                 subscriber: { connect: { id: subscriberId } },
                 ...intentConnector,
@@ -74,12 +74,12 @@ export class SpeechRecognitionService {
                     intent: { connect: { id: intent.id }, disconnect: { id: speech.intent_id } }, // test if null disconnects ok
                 };
 
-                if (!updateSpeechDto.forced_intent) {
+                if (!updateSpeechDto.forced) {
                     submitToAiFieldValue = true; // it will resubmit
                     resolvedFieldValue = false; // after resubmit get updated info
                 }
 
-                // no need to check !speech.forced_intent && updateSpeechDto.forced_intent condition here
+                // no need to check !speech.forced && updateSpeechDto.forced condition here
             }
         } else {
             if (speech.intent_id) {
@@ -90,7 +90,7 @@ export class SpeechRecognitionService {
         }
 
         // doesn't matter if intent id match or not
-        if (speech.intent_id && !speech.forced_intent && speech.has_in_ai && updateSpeechDto.forced_intent) {
+        if (speech.intent_id && !speech.forced && speech.has_in_ai && updateSpeechDto.forced) {
             removeFromAiFieldValue = true;
             resolvedFieldValue = false; // it will prevent from get ai result
         }
@@ -98,7 +98,7 @@ export class SpeechRecognitionService {
         return this.prisma.speech_recognition.update({
             where: { id: speech.id },
             data: {
-                forced_intent: updateSpeechDto.forced_intent,
+                forced: updateSpeechDto.forced,
                 active: updateSpeechDto.active,
                 resolved: resolvedFieldValue,
                 submit_to_ai: submitToAiFieldValue,
@@ -121,10 +121,22 @@ export class SpeechRecognitionService {
         });
     }
 
+    async delete(id: any, req: any) {
+        await this.findOneWithException(id, req);
+
+        return this.prisma.speech_recognition.update({
+            where: { id: id },
+            data: {
+                for_delete: true,
+            },
+        });
+    }
+
     async findAll(req: any) {
         return this.prisma.speech_recognition.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
+                for_delete: false,
             },
             orderBy: {
                 created_at: 'desc',
