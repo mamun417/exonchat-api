@@ -19,7 +19,7 @@ export class CreateIntentDto {
     type: intent_type_enum;
 
     @IsBoolean()
-    submit_to_ai = true;
+    connect_with_ai = true;
 
     @ValidateIf((o: any) => o.type === 'static')
     @IsString()

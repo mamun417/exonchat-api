@@ -71,7 +71,7 @@ export class SpeechRecognitionService {
 
             if (updateSpeechDto.intent_id !== speech.intent_id) {
                 intentConnectAndDisconnect = {
-                    intent: { connect: { id: intent.id }, disconnect: { id: speech.intent_id } }, // test if null disconnects ok
+                    intent_id: intent.id, // test if null disconnects ok
                 };
 
                 if (!updateSpeechDto.forced) {
@@ -84,7 +84,7 @@ export class SpeechRecognitionService {
         } else {
             if (speech.intent_id) {
                 intentConnectAndDisconnect = {
-                    intent: { disconnect: { id: speech.intent_id } },
+                    intent: { disconnect: true }, // did not check intent_id: null for same work
                 };
             }
         }
@@ -103,6 +103,9 @@ export class SpeechRecognitionService {
                 resolved: resolvedFieldValue,
                 submit_to_ai: submitToAiFieldValue,
                 remove_from_ai: removeFromAiFieldValue,
+                intent: {
+                    disconnect: true,
+                },
                 ...intentConnectAndDisconnect,
             },
         });

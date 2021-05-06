@@ -15,7 +15,7 @@ export class UpdateIntentDto {
     type: intent_type_enum;
 
     @IsBoolean()
-    submit_to_ai: boolean;
+    connect_with_ai: boolean;
 
     @ValidateIf((o: any) => o.type === 'static')
     @IsString()

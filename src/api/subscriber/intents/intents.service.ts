@@ -29,7 +29,7 @@ export class IntentsService {
                 tag: createIntentDto.tag,
                 description: createIntentDto.description,
                 active: createIntentDto.active,
-                submit_to_ai: createIntentDto.submit_to_ai,
+                submit_to_ai: createIntentDto.connect_with_ai,
                 intent_action: {
                     create: {
                         type: createIntentDto.type,
@@ -54,9 +54,10 @@ export class IntentsService {
     async update(id: any, req: any, updateIntentDto: UpdateIntentDto) {
         const intent = await this.findOneWithException(id, req);
 
-        let removeFromAi = intent.remove_from_ai;
+        let removeFromAi = false;
 
-        if (intent.submit_to_ai && !updateIntentDto.submit_to_ai) {
+        // if user not wants to resolve with ai then its for remove if its submitted
+        if (!updateIntentDto.connect_with_ai) {
             removeFromAi = true;
         }
 
@@ -65,7 +66,7 @@ export class IntentsService {
             data: {
                 description: updateIntentDto.description,
                 active: updateIntentDto.active,
-                submit_to_ai: updateIntentDto.submit_to_ai,
+                submit_to_ai: updateIntentDto.connect_with_ai,
                 remove_from_ai: removeFromAi,
                 intent_action: {
                     update: {

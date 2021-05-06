@@ -309,6 +309,9 @@ model speech_recognition {
   for_delete         Boolean     @default(false)
   created_at         DateTime    @default(now()) @db.Timestamp(6)
   updated_at         DateTime    @default(now()) @db.Timestamp(6)
+  script_name        String?
+  script_status      String?
+  script_updated_at  DateTime?   @db.Timestamp(6)
   subscriber_id      String?
   subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
   intent_id          String?
@@ -326,6 +329,9 @@ model intent {
   for_delete         Boolean              @default(false)
   created_at         DateTime             @default(now()) @db.Timestamp(6)
   updated_at         DateTime             @default(now()) @db.Timestamp(6)
+  script_name        String?
+  script_status      String?
+  script_updated_at  DateTime?            @db.Timestamp(6)
   subscriber_id      String?
   subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
   intent_action      intent_action?
