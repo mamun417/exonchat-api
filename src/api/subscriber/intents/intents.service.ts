@@ -29,6 +29,7 @@ export class IntentsService {
                 tag: createIntentDto.tag,
                 description: createIntentDto.description,
                 active: createIntentDto.active,
+                submit_to_ai: createIntentDto.connect_with_ai,
                 intent_action: {
                     create: {
                         type: createIntentDto.type,
@@ -51,13 +52,22 @@ export class IntentsService {
     }
 
     async update(id: any, req: any, updateIntentDto: UpdateIntentDto) {
-        await this.findOneWithException(id, req);
+        const intent = await this.findOneWithException(id, req);
+
+        let removeFromAi = false;
+
+        // if user not wants to resolve with ai then its for remove if its submitted
+        if (!updateIntentDto.connect_with_ai) {
+            removeFromAi = true;
+        }
 
         return this.prisma.intent.update({
             where: { id: id },
             data: {
                 description: updateIntentDto.description,
                 active: updateIntentDto.active,
+                submit_to_ai: updateIntentDto.connect_with_ai,
+                remove_from_ai: removeFromAi,
                 intent_action: {
                     update: {
                         type: updateIntentDto.type,
@@ -98,6 +108,7 @@ export class IntentsService {
         return this.prisma.intent.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
+                for_delete: false,
                 ...filterHelper.where,
             },
             include: {
@@ -113,14 +124,11 @@ export class IntentsService {
     async delete(id: any, req: any) {
         await this.findOneWithException(id, req);
 
-        await this.prisma.intent_action.deleteMany({
-            where: {
-                intent_id: id,
-            },
-        });
-
-        return this.prisma.intent.delete({
+        return this.prisma.intent.update({
             where: { id: id },
+            data: {
+                for_delete: true,
+            },
         });
     }
 

@@ -7,7 +7,7 @@ export class UpdateSpeechDto {
 
     @ValidateIf((o: any) => o.intent_id)
     @IsBoolean()
-    forced_intent = false;
+    forced = false;
 
     @IsBoolean()
     active: boolean;

@@ -43,7 +43,7 @@ export class AiService {
                 active: true,
                 // confidence: 'check up to',
                 subscriber_id: subscriberId,
-                OR: [{ forced_intent: true }, { resolved: true }],
+                OR: [{ forced: true }, { resolved: true }],
             },
             include: {
                 intent: {

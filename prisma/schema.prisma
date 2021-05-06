@@ -298,7 +298,7 @@ model attachment {
 model speech_recognition {
   id                 String      @id @default(cuid())
   speech             String
-  forced_intent      Boolean     @default(false)
+  forced             Boolean     @default(false)
   confidence         Float       @default(0.0000)
   resolved           Boolean     @default(false) // after submit get the result
   has_in_ai          Boolean     @default(false) // submitted to ai
@@ -306,8 +306,12 @@ model speech_recognition {
   remove_from_ai     Boolean     @default(false) // it will handle removing speech from ai. [after remove has_in_ai to false(sys)]
   active             Boolean     @default(false)
   ai_last_checked_at DateTime?   @db.Timestamp(6) // check confidence time to time
+  for_delete         Boolean     @default(false)
   created_at         DateTime    @default(now()) @db.Timestamp(6)
   updated_at         DateTime    @default(now()) @db.Timestamp(6)
+  script_name        String?
+  script_status      String?
+  script_updated_at  DateTime?   @db.Timestamp(6)
   subscriber_id      String?
   subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
   intent_id          String?
@@ -319,9 +323,15 @@ model intent {
   tag                String
   description        String
   active             Boolean              @default(false)
+  submit_to_ai       Boolean              @default(true)
+  remove_from_ai     Boolean              @default(false)
   ai_id              String?
+  for_delete         Boolean              @default(false)
   created_at         DateTime             @default(now()) @db.Timestamp(6)
   updated_at         DateTime             @default(now()) @db.Timestamp(6)
+  script_name        String?
+  script_status      String?
+  script_updated_at  DateTime?            @db.Timestamp(6)
   subscriber_id      String?
   subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
   intent_action      intent_action?
