@@ -90,6 +90,14 @@ export class ChatDepartmentService {
         });
     }
 
+    async delete(id: any, req: any) {
+        await this.findOneWithException(id, req);
+
+        return this.prisma.chat_department.delete({
+            where: { id: id },
+        });
+    }
+
     async updateActiveState(id: any, req: any, updateDepartmentActiveStateDto: UpdateDepartmentActiveStateDto) {
         await this.findOneWithException(id, req);
 

@@ -28,6 +28,12 @@ export class ChatDepartmentController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Delete(':id')
+    delete(@Param('id') id: string, @Request() req: any) {
+        return this.chatDepartmentService.delete(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post(':id/active-status')
     updateActiveState(
         @Param('id') id: string,
