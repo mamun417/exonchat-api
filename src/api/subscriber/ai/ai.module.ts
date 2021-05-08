@@ -6,10 +6,20 @@ import { SocketSessionsModule } from '../socket-session/socket-sessions.module';
 import { AiService } from './ai.service';
 import { ConversationsService } from '../conversations/conversations.service';
 import { SubscribersService } from 'src/api/subscribers/subscribers.service';
+import { ChatDepartmentService } from '../chat-department/department.service';
+import { UsersService } from '../users/users.service';
 
 @Module({
     imports: [SocketSessionsModule, HttpModule],
     controllers: [AiController],
-    providers: [PrismaService, DataHelper, AiService, ConversationsService, SubscribersService],
+    providers: [
+        PrismaService,
+        DataHelper,
+        AiService,
+        ConversationsService,
+        SubscribersService,
+        ChatDepartmentService,
+        UsersService,
+    ],
 })
 export class AiModule {}

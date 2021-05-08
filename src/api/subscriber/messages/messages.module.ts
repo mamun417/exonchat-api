@@ -5,10 +5,12 @@ import { DataHelper } from 'src/helper/data-helper';
 import { ConversationsService } from '../conversations/conversations.service';
 import { SocketSessionsModule } from '../socket-session/socket-sessions.module';
 import { MessagesService } from './messages.service';
+import { ChatDepartmentService } from '../chat-department/department.service';
+import { UsersService } from '../users/users.service';
 
 @Module({
     imports: [SocketSessionsModule],
     controllers: [MessagesController],
-    providers: [PrismaService, DataHelper, ConversationsService, MessagesService],
+    providers: [PrismaService, DataHelper, ConversationsService, MessagesService, ChatDepartmentService, UsersService],
 })
 export class MessagesModule {}

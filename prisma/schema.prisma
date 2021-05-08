@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["orderByRelation"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -246,6 +245,8 @@ model conversation {
   created_by            socket_session         @relation(name: "created_by", fields: [created_by_id], references: [id])
   closed_by_id          String?
   closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
+  chat_department_id    String?
+  chat_department       chat_department?       @relation(fields: [chat_department_id], references: [id])
   conversation_sessions conversation_session[]
   messages              message[]
 }
@@ -372,16 +373,17 @@ model chat_template {
 }
 
 model chat_department {
-  id            String          @id @default(cuid())
-  tag           String
-  description   String
-  active        Boolean         @default(true)
-  created_at    DateTime        @default(now()) @db.Timestamp(6)
-  updated_at    DateTime        @default(now()) @db.Timestamp(6)
-  subscriber_id String
-  subscriber    subscriber      @relation(fields: [subscriber_id], references: [id])
-  users         user[]
-  chat_template chat_template[]
+  id             String          @id @default(cuid())
+  tag            String
+  description    String
+  active         Boolean         @default(true)
+  created_at     DateTime        @default(now()) @db.Timestamp(6)
+  updated_at     DateTime        @default(now()) @db.Timestamp(6)
+  subscriber_id  String
+  subscriber     subscriber      @relation(fields: [subscriber_id], references: [id])
+  users          user[]
+  chat_templates chat_template[]
+  conversations  conversation[]
 }
 
 enum permission_use_for_enum {

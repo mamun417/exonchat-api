@@ -118,9 +118,6 @@ export class ChatDepartmentService {
                 subscriber_id: req.user.data.subscriber_id,
                 id: id,
             },
-            include: {
-                users: true,
-            },
         });
     }
 
