@@ -149,6 +149,9 @@ export class ChatTemplateService {
                 subscriber_id: req.user.data.subscriber_id,
                 OR: [{ user_id: null }, { user_id: req.user.data.id }],
             },
+            orderBy: {
+                created_at: 'desc',
+            },
             include: { intent: { include: { intent_action: true } } },
         });
     }

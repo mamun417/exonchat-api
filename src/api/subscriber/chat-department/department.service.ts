@@ -108,6 +108,9 @@ export class ChatDepartmentService {
             data: {
                 active: updateDepartmentActiveStateDto.active,
             },
+            include: {
+                users: true,
+            },
         });
     }
 
@@ -115,6 +118,9 @@ export class ChatDepartmentService {
         return this.prisma.chat_department.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
+            },
+            orderBy: {
+                created_at: 'desc',
             },
             include: { users: true },
         });
