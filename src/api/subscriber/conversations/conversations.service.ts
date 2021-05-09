@@ -7,6 +7,7 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 import { SocketSessionsService } from '../socket-session/socket-sessions.service';
+import { ChatDepartmentService } from '../chat-department/department.service';
 
 @Injectable()
 export class ConversationsService {
@@ -14,11 +15,14 @@ export class ConversationsService {
         private prisma: PrismaService,
         private dataHelper: DataHelper,
         private socketSessionService: SocketSessionsService,
+        private chatDepartmentService: ChatDepartmentService,
     ) {}
 
     async create(req: any, createConversationDto: CreateConversationDto) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
+
+        let chatDepartmentConnector = {};
 
         // if client
         if (!req.user.data.socket_session.user_id) {
@@ -29,6 +33,10 @@ export class ConversationsService {
             });
 
             if (convBySesId) throw new HttpException(`Already Created with this Session ID`, HttpStatus.CONFLICT);
+
+            await this.chatDepartmentService.findOneWithException(createConversationDto.chat_department, req);
+
+            chatDepartmentConnector = { chat_department_id: createConversationDto.chat_department };
         } else {
             if (createConversationDto.ses_ids.includes(socketSessionId))
                 throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
@@ -125,6 +133,7 @@ export class ConversationsService {
                 created_by: {
                     connect: { id: socketSessionId },
                 },
+                ...chatDepartmentConnector,
             },
         });
     }

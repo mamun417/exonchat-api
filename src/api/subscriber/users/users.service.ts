@@ -20,6 +20,7 @@ export class UsersService {
                 },
             },
             include: {
+                user_meta: true,
                 role: {
                     select: {
                         id: true,
@@ -217,6 +218,7 @@ export class UsersService {
                 subscriber_id: req.user.data.subscriber_id,
             },
             include: {
+                user_meta: true,
                 role: {
                     select: {
                         id: true,

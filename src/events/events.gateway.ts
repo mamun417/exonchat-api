@@ -222,6 +222,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     'http://localhost:3000/conversations',
                     {
                         chat_type: 'live_chat',
+                        chat_department: data.chat_department,
                     },
                     { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                 )
@@ -630,7 +631,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_is_typing_from_user')
-    async typingFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async typingFromUser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         if (
             this.roomsInAConv.hasOwnProperty(data.conv_id) &&
             this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
@@ -702,7 +703,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_msg_from_user')
-    async msgFromuser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async msgFromUser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         if (!(await this.convRoomsHasSessionRecheck(data, client))) return;
 
         let createdMsg: any = null;
