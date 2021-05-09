@@ -358,7 +358,8 @@ model chat_template {
   id                 String           @id @default(cuid())
   tag                String
   description        String
-  content            String?
+  content            String? // if no intent then content will kick in
+  is_action          Boolean          @default(false) // if true will try chat_template_action (wip)
   active             Boolean          @default(false)
   created_at         DateTime         @default(now()) @db.Timestamp(6)
   updated_at         DateTime         @default(now()) @db.Timestamp(6)
