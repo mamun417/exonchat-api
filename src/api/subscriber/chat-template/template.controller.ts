@@ -5,7 +5,7 @@ import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { UpdateTemplateActiveStateDto } from './dto/update-template-active-state.dto';
 
-@Controller('speech')
+@Controller('chat-templates')
 export class ChatTemplateController {
     constructor(private readonly chatTemplateService: ChatTemplateService) {}
 

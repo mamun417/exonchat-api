@@ -55,7 +55,7 @@ export class ChatTemplateService {
         if (createTemplateDto.department_id) {
             await this.chatDepartmentService.findOneWithException(createTemplateDto.department_id, req);
 
-            connector.chat_Department = { connect: { id: createTemplateDto.department_id } };
+            connector.chat_department = { connect: { id: createTemplateDto.department_id } };
         }
 
         if (createTemplateDto.intent_id) {
@@ -94,12 +94,12 @@ export class ChatTemplateService {
             if (template.department_id !== updateTemplateDto.department_id) {
                 await this.chatDepartmentService.findOneWithException(updateTemplateDto.department_id, req);
 
-                connector.chat_Department = { connect: { id: updateTemplateDto.department_id } };
-                disconnector.chat_Department = { disconnect: { id: template.department_id } };
+                connector.chat_department = { connect: { id: updateTemplateDto.department_id } };
+                disconnector.chat_department = { disconnect: { id: template.department_id } };
             }
         } else {
             if (template.department_id) {
-                disconnector.chat_Department = { disconnect: { id: template.department_id } };
+                disconnector.chat_department = { disconnect: { id: template.department_id } };
             }
         }
 
