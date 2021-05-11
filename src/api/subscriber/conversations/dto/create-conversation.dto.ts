@@ -1,4 +1,4 @@
-import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsEmail, IsEnum, IsOptional, isString, IsString, ValidateIf } from 'class-validator';
 
 enum chat_type_enum {
     live_chat = 'live_chat',
@@ -12,7 +12,15 @@ export class CreateConversationDto {
 
     @ValidateIf((o) => o.chat_type === 'live_chat')
     @IsString()
-    chat_department: string;
+    name: string;
+
+    @ValidateIf((o) => o.chat_type === 'live_chat')
+    @IsEmail()
+    email: string;
+
+    @ValidateIf((o) => o.chat_type === 'live_chat')
+    @IsString()
+    department: string;
 
     @ValidateIf((o) => o.chat_type !== 'live_chat')
     @IsArray()

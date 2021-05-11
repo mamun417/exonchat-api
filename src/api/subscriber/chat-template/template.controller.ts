@@ -36,4 +36,10 @@ export class ChatTemplateController {
     ) {
         return this.chatTemplateService.updateActiveState(id, req, updateTemplateActiveStateDto);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete(':id')
+    delete(@Param('id') id: string, @Request() req: any) {
+        return this.chatTemplateService.delete(id, req);
+    }
 }

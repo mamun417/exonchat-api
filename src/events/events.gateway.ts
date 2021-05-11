@@ -222,7 +222,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     'http://localhost:3000/conversations',
                     {
                         chat_type: 'live_chat',
-                        chat_department: data.chat_department,
+                        name: data.name,
+                        email: data.email,
+                        department: data.department,
                     },
                     { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                 )

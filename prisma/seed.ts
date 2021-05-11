@@ -64,7 +64,7 @@ async function main() {
 
     const subscriberData = await Promise.all(
         ['test', 'other'].map(async (namePart, key) => {
-            await prisma.subscriber.create({
+            const subscriber = await prisma.subscriber.create({
                 data: {
                     company_name: namePart,
                     display_name: namePart,
@@ -129,6 +129,18 @@ async function main() {
                     },
                 },
             });
+
+            await Promise.all(
+                ['any', 'support', 'technical'].map(async (tp, key) => {
+                    await prisma.chat_department.create({
+                        data: {
+                            tag: tp,
+                            description: tp,
+                            subscriber_id: subscriber.id,
+                        },
+                    });
+                }),
+            );
         }),
     );
 

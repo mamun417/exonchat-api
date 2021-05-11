@@ -34,9 +34,19 @@ export class ConversationsService {
 
             if (convBySesId) throw new HttpException(`Already Created with this Session ID`, HttpStatus.CONFLICT);
 
-            await this.chatDepartmentService.findOneWithException(createConversationDto.chat_department, req);
+            await this.prisma.socket_session.update({
+                where: {
+                    id: socketSessionId,
+                },
+                data: {
+                    init_name: createConversationDto.name,
+                    init_email: createConversationDto.email,
+                },
+            });
 
-            chatDepartmentConnector = { chat_department_id: createConversationDto.chat_department };
+            await this.chatDepartmentService.findOneWithException(createConversationDto.department, req);
+
+            chatDepartmentConnector = { chat_department: { connect: { id: createConversationDto.department } } };
         } else {
             if (createConversationDto.ses_ids.includes(socketSessionId))
                 throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
