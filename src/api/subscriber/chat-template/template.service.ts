@@ -143,6 +143,24 @@ export class ChatTemplateService {
         });
     }
 
+    async delete(id: any, req: any) {
+        const template = await this.findOneWithException(id, req);
+
+        const adminUser = await this.prisma.user.findFirst({
+            where: { id: req.user.data.id, role: { slug: 'admin' } },
+        });
+
+        if ((adminUser && !template.user_id) || req.user.data.id === template.user_id) {
+            return this.prisma.chat_template.delete({
+                where: {
+                    id: id,
+                },
+            });
+        }
+
+        throw new HttpException(`You are not the resource owner`, HttpStatus.FORBIDDEN);
+    }
+
     async findAll(req: any) {
         return this.prisma.chat_template.findMany({
             where: {

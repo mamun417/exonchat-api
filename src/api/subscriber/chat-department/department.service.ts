@@ -55,25 +55,16 @@ export class ChatDepartmentService {
     async update(id: any, req: any, updateDepartmentDto: UpdateDepartmentDto) {
         const department = await this.findOneWithUsersException(id, req);
 
-        const usersInDepartment = department.users.length ? _l.map(department.users, 'id') : [];
-
-        let userConnector: any = {};
-        let userDisconnector: any = {};
+        let usersRelationUpdater: any = {};
 
         if (updateDepartmentDto.user_ids && updateDepartmentDto.user_ids.length) {
-            userConnector = { users: { connect: [] } };
-            userDisconnector = { users: { disconnect: [] } };
+            usersRelationUpdater = { users: { set: [] } };
 
             for (const user_id of updateDepartmentDto.user_ids) {
                 await this.userService.findOneWithException(user_id, req);
 
-                if (!usersInDepartment.includes(user_id)) userConnector.users.connect.push({ id: user_id });
+                usersRelationUpdater.users.connect.push({ id: user_id });
             }
-
-            usersInDepartment.forEach((user_id) => {
-                if (!updateDepartmentDto.user_ids.includes(user_id))
-                    userDisconnector.user.disconnect.push({ id: user_id });
-            });
         }
 
         return this.prisma.chat_department.update({
@@ -83,8 +74,7 @@ export class ChatDepartmentService {
             data: {
                 description: updateDepartmentDto.description,
                 active: updateDepartmentDto.active,
-                ...userConnector,
-                ...userDisconnector,
+                ...usersRelationUpdater,
             },
             include: { users: true },
         });
