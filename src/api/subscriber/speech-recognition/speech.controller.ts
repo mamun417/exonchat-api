@@ -36,4 +36,10 @@ export class SpeechRecognitionController {
     ) {
         return this.speechRecognitionService.updateActiveState(id, req, updateSpeechActiveStateDto);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete(':id')
+    delete(@Param('id') id: string, @Request() req: any) {
+        return this.speechRecognitionService.delete(id, req);
+    }
 }

@@ -7,7 +7,7 @@ export class UpdateDepartmentDto {
 
     @IsOptional()
     @IsArray()
-    @ArrayNotEmpty()
+    // @ArrayNotEmpty()
     user_ids: Array<string>;
 
     @IsBoolean()

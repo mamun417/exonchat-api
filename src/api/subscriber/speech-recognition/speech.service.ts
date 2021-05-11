@@ -25,6 +25,7 @@ export class SpeechRecognitionService {
             where: {
                 speech: createSpeechDto.speech,
                 subscriber_id: subscriberId,
+                for_delete: false,
             },
         });
 
@@ -71,7 +72,11 @@ export class SpeechRecognitionService {
 
             if (updateSpeechDto.intent_id !== speech.intent_id) {
                 intentConnectAndDisconnect = {
-                    intent_id: intent.id, // test if null disconnects ok
+                    intent: {
+                        connect: {
+                            id: intent.id,
+                        },
+                    }, // test if null disconnects ok
                 };
 
                 if (!updateSpeechDto.forced) {

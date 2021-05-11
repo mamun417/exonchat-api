@@ -57,13 +57,15 @@ export class ChatDepartmentService {
 
         let usersRelationUpdater: any = {};
 
-        if (updateDepartmentDto.user_ids && updateDepartmentDto.user_ids.length) {
+        if (updateDepartmentDto.user_ids) {
             usersRelationUpdater = { users: { set: [] } };
 
-            for (const user_id of updateDepartmentDto.user_ids) {
-                await this.userService.findOneWithException(user_id, req);
+            if (updateDepartmentDto.user_ids.length) {
+                for (const user_id of updateDepartmentDto.user_ids) {
+                    await this.userService.findOneWithException(user_id, req);
 
-                usersRelationUpdater.users.connect.push({ id: user_id });
+                    usersRelationUpdater.users.set.push({ id: user_id });
+                }
             }
         }
 
