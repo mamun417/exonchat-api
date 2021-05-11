@@ -107,12 +107,12 @@ export class ChatDepartmentService {
     async findAll(req: any) {
         return this.prisma.chat_department.findMany({
             where: {
-                subscriber_id: req.user.data.subscriber_id,
+                subscriber_id: req.user.data.socket_session.subscriber_id,
             },
             orderBy: {
                 created_at: 'desc',
             },
-            include: { users: true },
+            include: { users: !!req.user.data.socket_session.user_id },
         });
     }
 
