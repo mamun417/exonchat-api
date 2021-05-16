@@ -170,7 +170,14 @@ export class ChatTemplateService {
             orderBy: {
                 created_at: 'desc',
             },
-            include: { intent: { include: { intent_action: true } } },
+            include: {
+                intent: {
+                    include: {
+                        intent_action: true,
+                    },
+                },
+                chat_department: true,
+            },
         });
     }
 
