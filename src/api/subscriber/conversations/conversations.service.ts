@@ -290,13 +290,22 @@ export class ConversationsService {
                 messages: { some: {} },
             },
             include: {
-                conversation_sessions: true,
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: true,
+                            },
+                        },
+                    },
+                },
                 messages: {
                     take: 1,
                     orderBy: {
                         updated_at: 'desc',
                     },
                 },
+                chat_department: true,
             },
             orderBy: {
                 // currently orderby does not work for many entry
