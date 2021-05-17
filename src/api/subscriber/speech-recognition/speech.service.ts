@@ -72,11 +72,7 @@ export class SpeechRecognitionService {
 
             if (updateSpeechDto.intent_id !== speech.intent_id) {
                 intentConnectAndDisconnect = {
-                    intent: {
-                        connect: {
-                            id: intent.id,
-                        },
-                    }, // test if null disconnects ok
+                    intent_id: intent.id,
                 };
 
                 if (!updateSpeechDto.forced) {
@@ -108,9 +104,6 @@ export class SpeechRecognitionService {
                 resolved: resolvedFieldValue,
                 submit_to_ai: submitToAiFieldValue,
                 remove_from_ai: removeFromAiFieldValue,
-                intent: {
-                    disconnect: true,
-                },
                 ...intentConnectAndDisconnect,
             },
             include: {
