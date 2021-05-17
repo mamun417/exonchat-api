@@ -98,7 +98,7 @@ export class ChatTemplateService {
             }
         } else {
             if (template.department_id) {
-                disconnector.chat_department = { disconnect: { id: template.chat_department_id } };
+                disconnector.chat_department_id = null;
             }
         }
 
@@ -110,7 +110,7 @@ export class ChatTemplateService {
             }
         } else {
             if (template.intent_id) {
-                disconnector.intent = { disconnect: { id: template.intent_id } };
+                disconnector.intent_id = null;
             }
         }
 
@@ -123,7 +123,7 @@ export class ChatTemplateService {
                 ...connector,
                 ...disconnector,
             },
-            include: { intent: { include: { intent_action: true } }, chat_department: true },
+            // include: { intent: { include: { intent_action: true } }, chat_department: true },
         });
     }
 
