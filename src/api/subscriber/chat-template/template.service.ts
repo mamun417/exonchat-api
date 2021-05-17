@@ -123,7 +123,7 @@ export class ChatTemplateService {
                 ...connector,
                 ...disconnector,
             },
-            // include: { intent: { include: { intent_action: true } }, chat_department: true },
+            include: { intent: { include: { intent_action: true } }, chat_department: true },
         });
     }
 
