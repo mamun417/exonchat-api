@@ -73,7 +73,7 @@ export class ChatTemplateService {
                 subscriber: { connect: { id: subscriberId } },
                 ...connector,
             },
-            include: { intent: { include: { intent_action: true } } },
+            include: { intent: { include: { intent_action: true } }, chat_department: true },
         });
     }
 
@@ -95,11 +95,11 @@ export class ChatTemplateService {
                 await this.chatDepartmentService.findOneWithException(updateTemplateDto.department_id, req);
 
                 connector.chat_department = { connect: { id: updateTemplateDto.department_id } };
-                disconnector.chat_department = { disconnect: { id: template.department_id } };
+                disconnector.chat_department = { disconnect: { id: template.chat_department_id } };
             }
         } else {
             if (template.department_id) {
-                disconnector.chat_department = { disconnect: { id: template.department_id } };
+                disconnector.chat_department = { disconnect: { id: template.chat_department_id } };
             }
         }
 
@@ -126,7 +126,7 @@ export class ChatTemplateService {
                 ...connector,
                 ...disconnector,
             },
-            include: { intent: { include: { intent_action: true } } },
+            include: { intent: { include: { intent_action: true } }, chat_department: true },
         });
     }
 
@@ -139,6 +139,14 @@ export class ChatTemplateService {
             },
             data: {
                 active: updateTemplateActiveStateDto.active,
+            },
+            include: {
+                intent: {
+                    include: {
+                        intent_action: true,
+                    },
+                },
+                chat_department: true,
             },
         });
     }
