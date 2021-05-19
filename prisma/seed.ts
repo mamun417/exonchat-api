@@ -155,6 +155,18 @@ async function main() {
             },
         });
     }
+
+    await prisma.setting.createMany({
+        data: [
+            {
+                slug: 'global_color',
+                display_name: 'Global Color',
+                category: 'ui',
+                default_value: 'green',
+                user_type: 'user',
+            },
+        ],
+    });
 }
 
 main()
