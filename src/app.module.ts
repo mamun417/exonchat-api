@@ -26,6 +26,7 @@ import { ChatDepartmentModule } from './api/subscriber/chat-department/departmen
 import { ChatTemplateModule } from './api/subscriber/chat-template/template.module';
 import { MulterModule } from '@nestjs/platform-express';
 
+import { SettingsModule } from './api/subscriber/settings/settings.module';
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -61,6 +62,8 @@ import { MulterModule } from '@nestjs/platform-express';
         IntentsModule,
         SpeechRecognitionModule,
         AiModule,
+
+        SettingsModule,
     ],
     controllers: [AppController],
     providers: [

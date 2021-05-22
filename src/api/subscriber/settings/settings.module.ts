@@ -9,4 +9,4 @@ import { SettingsService } from './settings.service';
     controllers: [SettingsController],
     providers: [PrismaService, DataHelper, SettingsService],
 })
-export class IntentsModule {}
+export class SettingsModule {}

@@ -148,16 +148,18 @@ model user_meta {
 }
 
 model setting {
-  id                  String                       @id @default(cuid())
+  id                  String                      @id @default(cuid())
   slug                String
   display_name        String
   description         String?
   default_value       String?
-  category            settings_category_type_enum? @default(any)
-  created_at          DateTime                     @default(now()) @db.Timestamp(6)
-  updated_at          DateTime                     @default(now()) @db.Timestamp(6)
+  category            settings_category_type_enum @default(any)
+  sub_category        String?
+  input_type          settings_input_type_enum    @default(text)
+  created_at          DateTime                    @default(now()) @db.Timestamp(6)
+  updated_at          DateTime                    @default(now()) @db.Timestamp(6)
   user_type           setting_user_type_enum // it will determine where n which page to show
-  subscriber          subscriber?                  @relation(fields: [subscriber_id], references: [id])
+  subscriber          subscriber?                 @relation(fields: [subscriber_id], references: [id])
   subscriber_id       String? // subscriber ? then its only for this subscriner else for all
   user_settings_value user_setting_value[]
 
@@ -443,4 +445,10 @@ enum setting_user_type_enum {
 enum settings_category_type_enum {
   any
   ui
+  app
+}
+
+enum settings_input_type_enum {
+  text
+  password
 }
