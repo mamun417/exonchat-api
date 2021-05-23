@@ -17,7 +17,7 @@ export class SubscribersService {
         });
 
         if (!adminRole) {
-            throw new HttpException('role resource not foound', HttpStatus.NOT_FOUND);
+            throw new HttpException('Something went wrong. Please contact support', HttpStatus.NOT_FOUND);
         }
 
         const subscriber = await this.prisma.subscriber.findUnique({
@@ -25,7 +25,7 @@ export class SubscribersService {
         });
 
         if (subscriber) {
-            throw new HttpException('Company with that name taken', HttpStatus.CONFLICT);
+            throw new HttpException('Company with that name already taken', HttpStatus.CONFLICT);
         }
 
         let aiAppCreateRes: any = {};
@@ -44,18 +44,19 @@ export class SubscribersService {
                 .toPromise();
         } catch (e) {
             console.log(e.response.data);
-            throw new HttpException('App create failed', HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new HttpException('AI App create failed. Please Contact support', HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         const freeSubscription = await this.prisma.subscription.findUnique({
             where: { slug: 'free' },
         });
 
-        // use transasction
+        // use transaction
         const createdSubscriber = await this.prisma.subscriber.create({
             data: {
                 company_name: createSubscriberDto.company_name,
                 display_name: createSubscriberDto.company_display_name,
+                active: true,
                 ai: {
                     create: {
                         app_name: createSubscriberDto.company_name,
@@ -74,7 +75,7 @@ export class SubscribersService {
         await this.prisma.user.create({
             data: {
                 email: createSubscriberDto.email,
-                password: createSubscriberDto.email,
+                password: createSubscriberDto.password,
                 user_meta: {
                     create: {
                         full_name: createSubscriberDto.full_name,

@@ -7,9 +7,10 @@ import { SocketSessionsModule } from '../socket-session/socket-sessions.module';
 import { MessagesService } from './messages.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
-    imports: [SocketSessionsModule],
+    imports: [SocketSessionsModule, MailModule],
     controllers: [MessagesController],
     providers: [PrismaService, DataHelper, ConversationsService, MessagesService, ChatDepartmentService, UsersService],
 })
