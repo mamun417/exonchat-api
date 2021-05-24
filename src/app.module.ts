@@ -27,6 +27,7 @@ import { ChatTemplateModule } from './api/subscriber/chat-template/template.modu
 import { MulterModule } from '@nestjs/platform-express';
 
 import { SettingsModule } from './api/subscriber/settings/settings.module';
+import { WHMCSModule } from './api/subscriber/apps/third-party/whmcs/whmcs.module';
 @Module({
     imports: [
         ConfigModule.forRoot({
@@ -64,6 +65,8 @@ import { SettingsModule } from './api/subscriber/settings/settings.module';
         AiModule,
 
         SettingsModule,
+
+        WHMCSModule,
     ],
     controllers: [AppController],
     providers: [
