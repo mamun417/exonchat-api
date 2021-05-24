@@ -36,7 +36,8 @@ export class AuthService {
             throw new HttpException('Already Logged In', HttpStatus.FORBIDDEN);
         }
 
-        const bearerToken = this.createToken(user, 60 * 5);
+        // const bearerToken = this.createToken(user, 60 * 5);
+        const bearerToken = this.createToken(user, 60 * 5 * 60);
 
         const refreshToken = this.signRefreshToken({
             bearerToken: bearerToken,
@@ -93,7 +94,8 @@ export class AuthService {
                             {
                                 data: decodedRefreshToken.user,
                             },
-                            { expiresIn: 60 * 5 },
+                            // { expiresIn: 60 * 5 },
+                            { expiresIn: 60 * 5 * 60 },
                         );
 
                         const refreshToken = await this.signRefreshToken({

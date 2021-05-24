@@ -2,13 +2,13 @@ import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } f
 import { WHMCSService } from './whmcs.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
-@Controller('ai')
+@Controller('whmcs/api')
 export class WHMCSController {
-    constructor(private readonly aiService: WHMCSService) {}
+    constructor(private readonly WHMCSService: WHMCSService) {}
 
     @UseGuards(JwtAuthGuard)
-    @Post('reply')
+    @Post()
     findAll(@Request() req: any) {
-        return this.aiService.findAll(req);
+        return this.WHMCSService.findAll(req);
     }
 }
