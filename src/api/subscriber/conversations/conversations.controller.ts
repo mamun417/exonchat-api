@@ -46,6 +46,12 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Get('client-conversation/:id')
+    clientConversation(@Param('id') id: string, @Request() req: any, @Query() query) {
+        return this.conversationsService.clientConversation(id, req, query);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Get('user-to-user/me')
     findAllUserToUserConvWithMe(@Request() req: any) {
         return this.conversationsService.findAllUserToUserConvWithMe(req);
