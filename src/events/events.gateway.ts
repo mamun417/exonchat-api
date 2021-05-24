@@ -869,11 +869,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async sysHasConvAndSocketSessionRecheck(data: any, client: any) {
         if (this.convRoomsHasSession(data, client)) return true;
 
-        if (
-            (await this.recheckSysHasConv(data, client)) &&
-            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
-        )
-            return true;
+        if (await this.recheckSysHasConv(data, client)) return true;
 
         this.sendError(client, 'ec_root', 'this conversation not found in the system');
 
@@ -882,8 +878,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     convRoomsHasSession(data: any, client: any, emitError = false) {
         if (
-            this.checkConvId(data, client) &&
-            this.sysHasConv(data, client) &&
+            this.checkConvId(data, client, emitError) &&
+            this.sysHasConv(data, client, emitError) &&
             this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
         )
             return true;
@@ -933,6 +929,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                     this.roomsInAConv[convId].users_only = convRes.data.users_only;
                 }
+
+                console.log('Rooms In Convs => ', this.roomsInAConv);
 
                 return true;
             }
