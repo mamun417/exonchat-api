@@ -42,6 +42,7 @@ export class UsersService {
                         api_key: true,
                     },
                 },
+                chat_departments: true,
             },
         });
     }

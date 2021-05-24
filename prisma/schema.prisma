@@ -295,7 +295,7 @@ model attachment {
   original_name     String
   uploaded          Boolean         @default(false)
   size              Int             @default(0) @db.Integer
-  user_has_controll Boolean         @default(true) // if false user deleted from uploads list but msg can resolve
+  user_has_control  Boolean         @default(true) // if false user deleted from uploads list but msg can resolve
   created_at        DateTime        @default(now()) @db.Timestamp(6)
   updated_at        DateTime        @default(now()) @db.Timestamp(6)
   messages          message[]
@@ -322,10 +322,13 @@ model speech_recognition {
   script_name        String?
   script_status      String?
   script_updated_at  DateTime?   @db.Timestamp(6)
+  tsid               String      @default("") // temp_subscriber_Id. its only for unique check. cz relation can be null
   subscriber_id      String?
   subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
   intent_id          String?
   intent             intent?     @relation(fields: [intent_id], references: [id])
+
+  @@unique(fields: [speech, tsid, for_delete], name: "speech_subscriber_delete")
 }
 
 model intent {
