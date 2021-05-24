@@ -45,6 +45,8 @@ export class DataHelper {
         }
 
         _l.without(validFields, 'p', 'pp').forEach((field: any) => {
+            console.log(field);
+
             // now only supports filter by actual col name
             // default is now only AND for all.
             // only boolean support
@@ -52,6 +54,8 @@ export class DataHelper {
                 if (Object.keys(query).includes(field.name)) {
                     if (field.type === 'boolean') {
                         finalObj.where[field.name] = query[field.name].toLowerCase() === 'true' ? true : false;
+                    } else if (field.type === 'contains' && query[field.name]) {
+                        finalObj.where[field.name] = { contains: query[field.name], mode: 'insensitive' };
                     }
                 }
             }
