@@ -155,6 +155,67 @@ async function main() {
             },
         });
     }
+
+    await prisma.setting.createMany({
+        data: [
+            {
+                slug: 'global_color',
+                display_name: 'Global Color',
+                category: 'ui',
+                default_value: 'green',
+                user_type: 'user',
+            },
+
+            {
+                slug: 'apps_whmcs_identifier_key',
+                display_name: 'Identifier Key',
+                category: 'app',
+                sub_category: 'whmcs',
+                default_value: 'green',
+                user_type: 'subscriber',
+            },
+            {
+                slug: 'apps_whmcs_secret_key',
+                display_name: 'Secret Key',
+                category: 'app',
+                sub_category: 'whmcs',
+                default_value: 'green',
+                user_type: 'subscriber',
+            },
+            {
+                slug: 'apps_whmcs_enable',
+                display_name: 'Connection Enable/Disable',
+                category: 'app',
+                sub_category: 'whmcs',
+                default_value: 'green',
+                user_type: 'subscriber',
+            },
+            {
+                slug: 'apps_whmcs_ticket_notification',
+                display_name: 'Ticket notification',
+                category: 'app',
+                sub_category: 'whmcs',
+                default_value: 'green',
+                user_type: 'subscriber',
+            },
+            {
+                slug: 'apps_whmcs_ticket_manage',
+                display_name: 'Ticket manager',
+                category: 'app',
+                sub_category: 'whmcs',
+                default_value: 'green',
+                user_type: 'subscriber',
+            },
+            {
+                slug: 'apps_whmcs_ticket_submit_from_chat',
+                display_name: 'Ticket submit from chat',
+                category: 'app',
+                sub_category: 'whmcs',
+                default_value: 'green',
+                user_type: 'subscriber',
+            },
+        ],
+    });
 }
 
 main()

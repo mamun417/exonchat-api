@@ -8,9 +8,10 @@ import { ConversationsService } from '../conversations/conversations.service';
 import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
-    imports: [SocketSessionsModule, HttpModule],
+    imports: [SocketSessionsModule, HttpModule, MailModule],
     controllers: [AiController],
     providers: [
         PrismaService,

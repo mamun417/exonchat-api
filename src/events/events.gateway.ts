@@ -205,7 +205,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         //     reason: 'err.msg',
         // });
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
@@ -269,7 +269,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         //     reason: 'err.msg',
         // });
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
@@ -277,6 +277,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_join_conversation')
     async joinConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
+
         let conv_ses_data = null;
 
         try {
@@ -289,6 +291,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 .toPromise();
 
             conv_ses_data = convSesRes.data;
+
+            // console.log(convSesRes);
 
             // if join then turn off ai reply
             if (
@@ -339,7 +343,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
@@ -347,6 +351,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_leave_conversation')
     async leaveConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
+
         let conv_ses_data = null;
 
         try {
@@ -375,7 +381,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const roomName = data.ses_user.socket_session.id;
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
@@ -411,6 +417,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_close_conversation')
     async closeConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
+
         let conv_data = null;
         let conv_id = null;
 
@@ -706,7 +714,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_msg_from_user')
     async msgFromUser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        if (!(await this.convRoomsHasSessionRecheck(data, client))) return;
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
 
         let createdMsg: any = null;
 
@@ -748,12 +756,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     });
                 });
             } else {
-                this.sendError(client, 'ec_msg_from_user', 'somehow client is not present in this conversation');
-
-                return;
+                // now user can send msg to client if a client is not present
+                // this.sendError(client, 'ec_msg_from_user', 'somehow client is not present in this conversation');
+                // return;
             }
 
-            this.sendToAllUsersWithoutMe(data, 'ec_msg_from_user', {
+            this.sendToAllUsersWithoutMe(data, client, 'ec_msg_from_user', {
                 ...createdMsg,
                 temp_id: data.temp_id,
             });
@@ -812,12 +820,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return convObj && (!convObj.hasOwnProperty('ai_is_replying') || convObj.ai_is_replying);
     }
 
-    usersRoomsWithoutMe(data: any) {
+    usersRoomsWithoutMe(data: any, client: any) {
         return Object.keys(this.userClientsInARoom).filter(
             (roomId: any) =>
                 this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id &&
                 !this.userClientsInARoom[roomId].socket_client_ids.includes(
-                    data.ses_user.socket_session.id, // ignore from same user
+                    client.id, // ignore from same user
                 ),
         );
     }
@@ -834,8 +842,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         );
     }
 
-    sendToAllUsersWithoutMe(data: any, emitName: any, dataObj: any) {
-        this.usersRoomsWithoutMe(data).forEach((roomId: any) => {
+    sendToAllUsersWithoutMe(data: any, client: any, emitName: any, dataObj: any) {
+        this.usersRoomsWithoutMe(data, client).forEach((roomId: any) => {
             this.server.in(roomId).emit(emitName, dataObj);
         });
     }
@@ -858,7 +866,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     // its only for support if system restart happens
     // OR all connected conv relation are cleaned when user|client closed from this conv
-    async convRoomsHasSessionRecheck(data: any, client: any) {
+    async sysHasConvAndSocketSessionRecheck(data: any, client: any) {
         if (this.convRoomsHasSession(data, client)) return true;
 
         if (
@@ -872,7 +880,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return false;
     }
 
-    convRoomsHasSession(data: any, client: any) {
+    convRoomsHasSession(data: any, client: any, emitError = false) {
         if (
             this.checkConvId(data, client) &&
             this.sysHasConv(data, client) &&
@@ -880,29 +888,29 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         )
             return true;
 
-        this.sendError(client, 'ec_root', 'this conversation not found in the system');
+        if (emitError) this.sendError(client, 'ec_root', 'you are not connected with this conversation anymore');
 
         return false;
     }
 
     // check if conv_id is passed through data
-    checkConvId(data: any, client: any) {
-        if (!data.hasOwnProperty('conv_id')) return data.conv_id;
+    checkConvId(data: any, client: any, emitError = false) {
+        if (data.hasOwnProperty('conv_id') && data.conv_id) return data.conv_id;
 
-        this.sendError(client, 'ec_root', 'this conversation not found in the system');
+        if (emitError) this.sendError(client, 'ec_root', 'conversation id not present in the request');
 
         return null;
     }
 
-    sysHasConv(data: any, client: any) {
+    sysHasConv(data: any, client: any, emitError = false) {
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) return data.conv_id;
 
-        this.sendError(client, 'ec_root', 'conversation not found in the system');
+        if (emitError) this.sendError(client, 'ec_root', 'conversation not found in the system');
 
         return false;
     }
 
-    // dont call it directly. call convRoomsHasSessionRecheck
+    // dont call it directly. call sysHasConvAndSocketSessionRecheck
     async recheckSysHasConv(data: any, client: any) {
         const convId = data.conv_id;
 
@@ -961,7 +969,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (decodedToken) {
                 socket_session = decodedToken.data.socket_session;
-                console.log(socket_session);
+                // console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');
             }
@@ -999,9 +1007,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         client.join(roomName);
 
-        console.log(this.userClientsInARoom);
-        console.log(this.normalClientsInARoom);
-        console.log(this.roomsInAConv);
+        console.log('User Clients => ', this.userClientsInARoom);
+        console.log('Normal Clients => ', this.normalClientsInARoom);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
     }
 
     handleDisconnect(client: Socket) {
@@ -1017,7 +1025,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (decodedToken) {
                 socket_session = decodedToken.data.socket_session;
-                console.log(socket_session);
+                // console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');
             }
@@ -1067,9 +1075,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        console.log(this.userClientsInARoom);
-        console.log(this.normalClientsInARoom);
-        console.log(this.roomsInAConv);
+        console.log('User Clients => ', this.userClientsInARoom);
+        console.log('Normal Clients => ', this.normalClientsInARoom);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
     }
 
     sendError(client: any, step: string, msg = 'you are doing something wrong') {

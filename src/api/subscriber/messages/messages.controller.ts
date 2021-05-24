@@ -90,9 +90,9 @@ export class MessagesController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Delete('attachments/:id/user-controll')
-    async revokeAttachmentControll(@Param('id') imageId: any, @Request() req: any) {
-        return this.messagesService.revokeAttachmentControll(imageId, req);
+    @Delete('attachments/:id/user-control')
+    async revokeAttachmentControl(@Param('id') imageId: any, @Request() req: any) {
+        return this.messagesService.revokeAttachmentControl(imageId, req);
     }
 
     @UseGuards(JwtAuthGuard)

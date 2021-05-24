@@ -31,7 +31,8 @@ model subscriber {
   chat_departments           chat_department[]
   chat_templates             chat_template[]
   user_invitations           user_invitation[]
-  ui_settings                user_ui_setting_value[]
+  user_settings              user_setting_value[]
+  settings                   setting[]
   attachments                attachment[]
 }
 
@@ -115,23 +116,23 @@ model user_invitation {
 }
 
 model user {
-  id                String                  @id @default(cuid())
-  email             String                  @db.VarChar
-  password          String                  @db.VarChar
-  active            Boolean                 @default(false)
-  online_status     Boolean                 @default(true)
-  created_at        DateTime                @default(now()) @db.Timestamp(6)
-  updated_at        DateTime                @default(now()) @db.Timestamp(6)
+  id                String               @id @default(cuid())
+  email             String               @db.VarChar
+  password          String               @db.VarChar
+  active            Boolean              @default(false)
+  online_status     Boolean              @default(true)
+  created_at        DateTime             @default(now()) @db.Timestamp(6)
+  updated_at        DateTime             @default(now()) @db.Timestamp(6)
   user_meta         user_meta?
-  subscriber        subscriber              @relation(fields: [subscriber_id], references: [id])
+  subscriber        subscriber           @relation(fields: [subscriber_id], references: [id])
   subscriber_id     String
-  role              role                    @relation(fields: [role_id], references: [id])
+  role              role                 @relation(fields: [role_id], references: [id])
   role_id           String
   extra_permissions extra_permission[]
   socket_sessions   socket_session[]
   chat_departments  chat_department[]
   chat_templates    chat_template[]
-  ui_settings       user_ui_setting_value[]
+  settings          user_setting_value[]
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
 }
@@ -146,28 +147,36 @@ model user_meta {
   user_id      String?
 }
 
-model ui_setting {
-  id                     String                    @id @default(cuid())
-  slug                   String
-  display_name           String
-  description            String?
-  default_value          String?
-  created_at             DateTime                  @default(now()) @db.Timestamp(6)
-  updated_at             DateTime                  @default(now()) @db.Timestamp(6)
-  user_type              ui_setting_user_type_enum // it will determine where n with page to show
-  user_ui_setting_values user_ui_setting_value[]
+model setting {
+  id                  String                      @id @default(cuid())
+  slug                String
+  display_name        String
+  description         String?
+  default_value       String?
+  category            settings_category_type_enum @default(any)
+  sub_category        String?
+  input_type          settings_input_type_enum    @default(text)
+  created_at          DateTime                    @default(now()) @db.Timestamp(6)
+  updated_at          DateTime                    @default(now()) @db.Timestamp(6)
+  user_type           setting_user_type_enum // it will determine where n which page to show
+  subscriber          subscriber?                 @relation(fields: [subscriber_id], references: [id])
+  subscriber_id       String? // subscriber ? then its only for this subscriner else for all
+  user_settings_value user_setting_value[]
+
+  @@unique(fields: [slug, category, user_type], name: "slug_identifier")
 }
 
-model user_ui_setting_value {
+model user_setting_value {
   id            String      @id @default(cuid())
+  value         String
   created_at    DateTime    @default(now()) @db.Timestamp(6)
   updated_at    DateTime    @default(now()) @db.Timestamp(6)
   user          user?       @relation(fields: [user_id], references: [id])
   user_id       String? // not user ? then for subscriber
-  subscriber    subscriber  @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String
-  ui_setting    ui_setting? @relation(fields: [ui_setting_id], references: [id])
-  ui_setting_id String?
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String? // not subscriber ? thne for administrator
+  setting       setting?    @relation(fields: [setting_id], references: [id])
+  setting_id    String?
 }
 
 model role {
@@ -286,7 +295,7 @@ model attachment {
   original_name     String
   uploaded          Boolean         @default(false)
   size              Int             @default(0) @db.Integer
-  user_has_controll Boolean         @default(true) // if false user deleted from uploads list but msg can resolve
+  user_has_control  Boolean         @default(true) // if false user deleted from uploads list but msg can resolve
   created_at        DateTime        @default(now()) @db.Timestamp(6)
   updated_at        DateTime        @default(now()) @db.Timestamp(6)
   messages          message[]
@@ -313,10 +322,13 @@ model speech_recognition {
   script_name        String?
   script_status      String?
   script_updated_at  DateTime?   @db.Timestamp(6)
+  tsid               String      @default("") // temp_subscriber_Id. its only for unique check. cz relation can be null
   subscriber_id      String?
   subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
   intent_id          String?
   intent             intent?     @relation(fields: [intent_id], references: [id])
+
+  @@unique(fields: [speech, tsid, for_delete], name: "speech_subscriber_delete")
 }
 
 model intent {
@@ -426,9 +438,20 @@ enum intent_action_type {
   external
 }
 
-enum ui_setting_user_type_enum {
+enum setting_user_type_enum {
   all
   user
   subscriber
   administrator
+}
+
+enum settings_category_type_enum {
+  any
+  ui
+  app
+}
+
+enum settings_input_type_enum {
+  text
+  password
 }

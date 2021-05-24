@@ -49,6 +49,18 @@ export class MessagesService {
 
         // save msg to speech also by checking auto_save_new_msg_to_speech
 
+        await this.prisma.speech_recognition.upsert({
+            where: {
+                speech_subscriber_delete: {
+                    speech: createMessageDto.msg,
+                    tsid: subscriberId,
+                    for_delete: false,
+                },
+            },
+            create: { speech: createMessageDto.msg, tsid: subscriberId },
+            update: {},
+        });
+
         return this.prisma.message.create({
             data: {
                 msg: createMessageDto.msg,
@@ -72,7 +84,7 @@ export class MessagesService {
                 subscriber_id: subscriberId,
                 socket_session_id: socketSessionId,
                 uploaded: true,
-                user_has_controll: true,
+                user_has_control: true,
             },
             orderBy: { created_at: 'desc' },
         });
@@ -91,7 +103,7 @@ export class MessagesService {
         });
     }
 
-    async revokeAttachmentControll(id: any, req: any) {
+    async revokeAttachmentControl(id: any, req: any) {
         await this.findOneAttachmentByOwnSesIdWithException(id, req);
 
         const removableAttachment = await this.prisma.attachment.findFirst({
@@ -114,7 +126,7 @@ export class MessagesService {
                 id: id,
             },
             data: {
-                user_has_controll: false,
+                user_has_control: false,
             },
         });
     }

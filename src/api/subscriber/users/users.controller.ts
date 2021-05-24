@@ -22,6 +22,12 @@ export class UsersController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Post('invitations')
+    findAllInvitations(@Request() req: any) {
+        return this.usersService.findAllInvitations(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post('invitations/invite')
     invite(@Request() req: any, @Body() inviteUserDto: InviteUserDto) {
         return this.usersService.invite(req, inviteUserDto);
@@ -36,6 +42,19 @@ export class UsersController {
     @Post('invitations/:id/cancel')
     cancel(@Param('id') id: string, @Request() req: any) {
         return this.usersService.cancel(id, req);
+    }
+
+    @Get('invitations/:id')
+    async findOneInvitation(@Param('id') id: string) {
+        const inv: any = await this.usersService.findOneInvitation(id);
+
+        if (inv) {
+            delete inv.code;
+            delete inv.subscriber_id;
+            delete inv.active;
+        }
+
+        return inv;
     }
 
     @UseGuards(JwtAuthGuard)

@@ -6,10 +6,11 @@ import { InviteUserDto } from './dto/invite-user.dto';
 import { InvitationUpdateDto } from './dto/invitation-update.dto';
 import { JoinUserDto } from './dto/join-user.dto';
 import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class UsersService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
+    constructor(private prisma: PrismaService, private dataHelper: DataHelper, private mailService: MailService) {}
 
     async validateForLogin(login_info: any, pass: string): Promise<user> {
         return this.prisma.user.findFirst({
@@ -33,12 +34,15 @@ export class UsersService {
                         },
                     },
                 },
-                // subscriber: {
-                //     select: {
-                //         id: true,
-                //         company_name: true,
-                //     },
-                // },
+                subscriber: {
+                    select: {
+                        id: true,
+                        company_name: true,
+                        display_name: true,
+                        api_key: true,
+                    },
+                },
+                chat_departments: true,
             },
         });
     }
@@ -85,7 +89,7 @@ export class UsersService {
                     },
                 });
 
-                msg = 'Invitation was expired. resended.';
+                msg = 'Invitation was expired. resend done.';
             }
         }
 
@@ -97,9 +101,17 @@ export class UsersService {
                 type: inviteUserDto.type,
                 active: inviteUserDto.active,
             },
+            include: {
+                subscriber: true,
+            },
         });
 
         // send mail with invitationCreated.id
+        try {
+            await this.mailService.sendUserInvitation('younusdev@gmail.com', invitationCreated);
+        } catch (e: any) {
+            console.log(e);
+        }
 
         return { msg: msg, status: 'success' };
     }
@@ -143,6 +155,8 @@ export class UsersService {
             throw new HttpException('Invitation not found', HttpStatus.NOT_FOUND);
         }
 
+        console.log(invitation, joinUserDto.code);
+
         if (invitation.code !== joinUserDto.code) {
             throw new HttpException('Please check the mail for valid code', HttpStatus.UNPROCESSABLE_ENTITY);
         }
@@ -155,7 +169,7 @@ export class UsersService {
             throw new HttpException('Something went wrong at assigning role', HttpStatus.NOT_IMPLEMENTED);
         }
 
-        const user = this.prisma.user.create({
+        const user: any = await this.prisma.user.create({
             data: {
                 email: invitation.email,
                 password: joinUserDto.password,
@@ -184,7 +198,7 @@ export class UsersService {
             },
         });
 
-        return user;
+        return { status: 'success', msg: 'Your account activated' };
     }
 
     async cancel(id: any, req: any) {
@@ -237,6 +251,14 @@ export class UsersService {
                 //         company_name: true,
                 //     },
                 // },
+            },
+        });
+    }
+
+    async findAllInvitations(req: any) {
+        return this.prisma.user_invitation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
             },
         });
     }

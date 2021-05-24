@@ -44,6 +44,7 @@ export class AiService {
                 // confidence: 'check up to',
                 subscriber_id: subscriberId,
                 OR: [{ forced: true }, { resolved: true }],
+                for_delete: false,
             },
             include: {
                 intent: {
@@ -104,13 +105,17 @@ export class AiService {
         }
 
         if (content) {
-            return this.prisma.message.create({
+            const msg: any = await this.prisma.message.create({
                 data: {
                     msg: content,
                     subscriber: { connect: { id: subscriberId } },
                     conversation: { connect: { id: conversation.id } },
                 },
             });
+
+            msg.ai_resolved = true;
+
+            return msg;
         } else {
             // get if null res
             const ai_msg: any = await this.prisma.message.create({

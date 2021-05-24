@@ -21,11 +21,13 @@ export class SpeechRecognitionService {
     async create(req: any, createSpeechDto: CreateSpeechDto) {
         const subscriberId = req.user.data.subscriber_id;
 
-        const getSpeech = await this.prisma.speech_recognition.findFirst({
+        const getSpeech = await this.prisma.speech_recognition.findUnique({
             where: {
-                speech: createSpeechDto.speech,
-                subscriber_id: subscriberId,
-                for_delete: false,
+                speech_subscriber_delete: {
+                    speech: createSpeechDto.speech,
+                    tsid: subscriberId,
+                    for_delete: false,
+                },
             },
         });
 
@@ -49,6 +51,7 @@ export class SpeechRecognitionService {
                 forced: createSpeechDto.forced,
                 submit_to_ai: !createSpeechDto.forced && !!createSpeechDto.intent_id, // submit to ai if not forced & has intent id
                 active: createSpeechDto.active,
+                tsid: subscriberId,
                 subscriber: { connect: { id: subscriberId } },
                 ...intentConnector,
             },
