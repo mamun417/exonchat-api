@@ -333,6 +333,34 @@ export class ConversationsService {
         // });
     }
 
+    async clientConversation(id: any, req: any, query: any) {
+        return this.prisma.conversation.findFirst({
+            where: {
+                id: id,
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                messages: { some: {} },
+            },
+            include: {
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: true,
+                            },
+                        },
+                    },
+                },
+                messages: {
+                    take: 1,
+                    orderBy: {
+                        updated_at: 'desc',
+                    },
+                },
+                chat_department: true,
+            },
+        });
+    }
     async findAllUserToUserConvWithMe(req: any) {
         return this.prisma.conversation.findMany({
             where: {
