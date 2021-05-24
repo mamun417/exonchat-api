@@ -1,4 +1,4 @@
-import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ChatTemplateService } from './template.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
@@ -11,8 +11,8 @@ export class ChatTemplateController {
 
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Request() req: any) {
-        return this.chatTemplateService.findAll(req);
+    findAll(@Request() req: any, @Query() query: any) {
+        return this.chatTemplateService.findAll(req, query);
     }
 
     @UseGuards(JwtAuthGuard)

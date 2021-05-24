@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Query } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
 import { chat_template } from '@prisma/client';
@@ -166,11 +166,14 @@ export class ChatTemplateService {
         throw new HttpException(`You are not the resource owner`, HttpStatus.FORBIDDEN);
     }
 
-    async findAll(req: any) {
+    async findAll(req: any, query: any) {
+        const filterHelper = this.dataHelper.paginationAndFilter([{ name: 'tag', type: 'contains' }], query);
+
         return this.prisma.chat_template.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 OR: [{ user_id: null }, { user_id: req.user.data.id }],
+                ...filterHelper.where,
             },
             orderBy: {
                 created_at: 'desc',
