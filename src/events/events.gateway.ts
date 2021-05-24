@@ -205,7 +205,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         //     reason: 'err.msg',
         // });
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
@@ -269,7 +269,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         //     reason: 'err.msg',
         // });
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
@@ -292,7 +292,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             conv_ses_data = convSesRes.data;
 
-            console.log(convSesRes);
+            // console.log(convSesRes);
 
             // if join then turn off ai reply
             if (
@@ -343,7 +343,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
@@ -381,7 +381,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const roomName = data.ses_user.socket_session.id;
 
-        console.log(this.roomsInAConv);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
@@ -969,7 +969,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (decodedToken) {
                 socket_session = decodedToken.data.socket_session;
-                console.log(socket_session);
+                // console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');
             }
@@ -1007,9 +1007,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         client.join(roomName);
 
-        console.log(this.userClientsInARoom);
-        console.log(this.normalClientsInARoom);
-        console.log(this.roomsInAConv);
+        console.log('User Clients => ', this.userClientsInARoom);
+        console.log('Normal Clients => ', this.normalClientsInARoom);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
     }
 
     handleDisconnect(client: Socket) {
@@ -1025,7 +1025,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (decodedToken) {
                 socket_session = decodedToken.data.socket_session;
-                console.log(socket_session);
+                // console.log(socket_session);
             } else {
                 this.sendError(client, 'at_connect', 'token invalid');
             }
@@ -1075,9 +1075,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        console.log(this.userClientsInARoom);
-        console.log(this.normalClientsInARoom);
-        console.log(this.roomsInAConv);
+        console.log('User Clients => ', this.userClientsInARoom);
+        console.log('Normal Clients => ', this.normalClientsInARoom);
+        console.log('Rooms In Convs => ', this.roomsInAConv);
     }
 
     sendError(client: any, step: string, msg = 'you are doing something wrong') {
