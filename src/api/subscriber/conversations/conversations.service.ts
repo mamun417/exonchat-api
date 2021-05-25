@@ -84,7 +84,9 @@ export class ConversationsService {
                 });
 
                 if (conv) {
-                    throw new HttpException(`Conv with that user already exists`, HttpStatus.CONFLICT);
+                    // without error returning the same conv so that no extra api cost
+                    // throw new HttpException(`Conv with that user already exists`, HttpStatus.CONFLICT);
+                    return conv;
                 }
 
                 return this.prisma.conversation.create({

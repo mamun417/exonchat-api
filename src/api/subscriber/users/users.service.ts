@@ -269,7 +269,12 @@ export class UsersService {
                 active: true,
                 subscriber_id: req.user.data.subscriber_id,
             },
-            include: {
+            select: {
+                id: true,
+                email: true,
+                active: true,
+                online_status: true,
+                user_meta: true,
                 socket_sessions: {
                     select: {
                         id: true,
@@ -277,8 +282,8 @@ export class UsersService {
                     orderBy: {
                         created_at: 'desc',
                     },
-                    take: 5,
                 },
+                role: true,
             },
         });
     }

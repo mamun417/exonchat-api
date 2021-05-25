@@ -993,7 +993,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 userRooms.forEach((roomId: any) => {
                     this.server.in(roomId).emit('ec_user_logged_in', {
-                        user_ses_id: socket_session.id,
+                        ses_id: socket_session.id,
                     }); // send to all other users
                 });
             }
@@ -1078,11 +1078,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         console.log('Rooms In Convs => ', this.roomsInAConv);
     }
 
-    sendError(client: any, step: string, msg = 'you are doing something wrong') {
+    sendError(client: any, step: string, msg = 'you are doing something wrong', extra = {}) {
         client.emit('ec_error', {
             type: 'warning',
             step: step,
             reason: msg,
+            ...extra,
         });
     }
 }
