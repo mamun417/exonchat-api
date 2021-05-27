@@ -108,7 +108,7 @@ export class UsersService {
 
         // send mail with invitationCreated.id
         try {
-            await this.mailService.sendUserInvitation('younusdev@gmail.com', invitationCreated);
+            await this.mailService.sendUserInvitation(inviteUserDto.email, invitationCreated);
         } catch (e: any) {
             console.log(e);
         }
@@ -119,7 +119,7 @@ export class UsersService {
     async updateInvitation(id: any, req: any, invitationUpdateDto: InvitationUpdateDto) {
         const invitation: any = await this.findOneInvitationBySubscriberWithException(id, req);
 
-        if (invitation.status === 'success') {
+        if (invitation.status === 'pending') {
             return this.prisma.user_invitation.update({
                 where: {
                     id: id,
@@ -131,7 +131,7 @@ export class UsersService {
             });
         }
 
-        throw new HttpException('Invitation was success. So cant delete', HttpStatus.UNPROCESSABLE_ENTITY);
+        throw new HttpException('Convert user allow only for pending invitation.', HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     async deleteInvitation(id: any, req: any) {
@@ -222,6 +222,9 @@ export class UsersService {
         return this.prisma.user_invitation.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
+            },
+            orderBy: {
+                created_at: 'desc',
             },
         });
     }

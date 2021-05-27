@@ -82,6 +82,12 @@ export class UsersController {
         return this.usersService.findActiveUsers(req);
     }
 
+    @UseGuards(JwtAuthGuard)
+    @Delete('invitations/:id')
+    delete(@Param('id') id: string, @Request() req: any) {
+        return this.usersService.deleteInvitation(id, req);
+    }
+
     // @Get(':id')
     // findOne(@Param('id') id: string) {
     //     return this.chatAgentsService.findOne(id);
