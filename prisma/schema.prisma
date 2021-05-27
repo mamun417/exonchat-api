@@ -454,4 +454,5 @@ enum settings_category_type_enum {
 enum settings_input_type_enum {
   text
   password
+  checkbox
 }
