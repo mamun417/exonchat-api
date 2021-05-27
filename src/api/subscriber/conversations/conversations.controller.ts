@@ -15,6 +15,12 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Get(':id')
+    findOne(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.findOne(id, { subscriber_id: req.user.data.socket_session.subscriber_id });
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post(':id')
     async join(@Param('id') id: string, @Request() req: any) {
         return await this.conversationsService.join(id, req);
@@ -55,12 +61,6 @@ export class ConversationsController {
     @Get('user-to-user/me')
     findAllUserToUserConvWithMe(@Request() req: any) {
         return this.conversationsService.findAllUserToUserConvWithMe(req);
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Get(':id')
-    findOne(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.findOne(id, { subscriber_id: req.user.data.socket_session.subscriber_id });
     }
 
     @UseGuards(JwtAuthGuard)

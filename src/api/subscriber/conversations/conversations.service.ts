@@ -89,10 +89,13 @@ export class ConversationsService {
                     return conv;
                 }
 
+                // call api if ai can reply
+
                 return this.prisma.conversation.create({
                     data: {
                         users_only: true,
                         type: 'user_to_user_chat',
+                        ai_is_replying: true, // naming this is good so that i dont have to convert states
                         conversation_sessions: {
                             create: [
                                 {
@@ -165,6 +168,15 @@ export class ConversationsService {
         });
 
         if (convSes) throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
+
+        await this.prisma.conversation.update({
+            where: {
+                id: conversation.id,
+            },
+            data: {
+                ai_is_replying: false,
+            },
+        });
 
         return this.prisma.conversation_session.create({
             data: {
@@ -487,11 +499,25 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                messages: { some: {} },
+                messages: {
+                    some: {},
+                },
+                conversation_sessions: {
+                    every: {
+                        socket_session: {
+                            user_id: null,
+                        },
+                    },
+                },
                 closed_at: null,
             },
             include: {
+                conversation_sessions: true,
+                chat_department: true,
                 messages: {
+                    where: { socket_session_id: { not: null } },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
                     take: 1,
                 },
             },

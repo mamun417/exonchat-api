@@ -48,13 +48,13 @@ export class SettingsService {
         for (const setting of settings) {
             const updateOrCreate: any = {};
 
-            if (setting.user_settings_value.length) {
+            if (setting.from_db.user_settings_value.length) {
                 updateOrCreate.update = {
-                    where: { id: setting.user_settings_value[0].id },
+                    where: { id: setting.from_db.user_settings_value[0].id },
                     data: { value: setting.value },
                 };
             } else {
-                updateOrCreate.create = [{ value: setting.value }];
+                updateOrCreate.create = { value: setting.value, subscriber_id: req.user.data.subscriber_id };
             }
 
             if (setting.from_db.user_type === 'user') {
@@ -63,10 +63,10 @@ export class SettingsService {
                 //     Object.keys(updateOrCreate)[0] === 'update' ? 'update' : 0
                 // ].user_id = req.user.data.id;
 
-                if (setting.user_settings_value.length) {
+                if (setting.from_db.user_settings_value.length) {
                     updateOrCreate.update.data.user_id = req.user.data.id;
                 } else {
-                    updateOrCreate.create[0].user_id = req.user.data.id;
+                    updateOrCreate.create.user_id = req.user.data.id;
                 }
             }
 
@@ -126,12 +126,7 @@ export class SettingsService {
 
             const temp: any = await this.findOneWithException(setting.name, req);
 
-            if (
-                temp.category !== 'app' ||
-                temp.user_type !== 'subscriber' ||
-                !temp.subscriber_id ||
-                temp.subscriber_id !== req.user.data.subscriber_id
-            )
+            if (temp.category !== 'app' || temp.user_type !== 'subscriber' || temp.subscriber_id)
                 throw new HttpException(
                     `You dont have permission to change some of the settings`,
                     HttpStatus.FORBIDDEN,
@@ -144,6 +139,17 @@ export class SettingsService {
         }
 
         for (const setting of settings) {
+            const updateOrCreate: any = {};
+
+            if (setting.from_db.user_settings_value.length) {
+                updateOrCreate.update = {
+                    where: { id: setting.from_db.user_settings_value[0].id },
+                    data: { value: setting.value },
+                };
+            } else {
+                updateOrCreate.create = { value: setting.value, subscriber_id: req.user.data.subscriber_id };
+            }
+
             if (setting.from_db.user_type)
                 await this.prisma.setting.update({
                     where: {
@@ -154,7 +160,9 @@ export class SettingsService {
                         },
                     },
                     data: {
-                        default_value: setting.value,
+                        user_settings_value: {
+                            ...updateOrCreate,
+                        },
                     },
                 });
         }
@@ -163,11 +171,19 @@ export class SettingsService {
     }
 
     async getAppSettings(req: any) {
+        // if no user_settings_value then use the default_value from root
         return this.prisma.setting.findMany({
             where: {
                 category: 'app',
                 user_type: 'subscriber',
-                subscriber_id: req.user.data.subscriber_id,
+                subscriber_id: null,
+            },
+            include: {
+                user_settings_value: {
+                    where: {
+                        subscriber_id: req.user.data.subscriber_id,
+                    },
+                },
             },
         });
     }

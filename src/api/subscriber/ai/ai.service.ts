@@ -128,6 +128,15 @@ export class AiService {
 
             ai_msg.ai_resolved = false;
 
+            await this.prisma.conversation.update({
+                where: {
+                    id: conversation.id,
+                },
+                data: {
+                    ai_is_replying: false,
+                },
+            });
+
             return ai_msg;
         }
     }
