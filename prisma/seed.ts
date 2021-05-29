@@ -128,15 +128,35 @@ async function main() {
                         },
                     },
                 },
+                include: {
+                    users: true,
+                },
             });
 
             await Promise.all(
                 ['any', 'support', 'technical'].map(async (tp, key) => {
+                    const userConnector =
+                        tp === 'support'
+                            ? {
+                                  users: {
+                                      connect: {
+                                          id: _l.find(subscriber.users, [
+                                              'email',
+                                              subscriber.company_name === 'test'
+                                                  ? 'test1@test.test'
+                                                  : 'other1@other.other',
+                                          ]).id,
+                                      },
+                                  },
+                              }
+                            : {};
+
                     await prisma.chat_department.create({
                         data: {
                             tag: tp,
                             description: tp,
-                            subscriber_id: subscriber.id,
+                            subscriber: { connect: { id: subscriber.id } },
+                            ...userConnector,
                         },
                     });
                 }),

@@ -512,7 +512,7 @@ export class ConversationsService {
                 closed_at: null,
             },
             include: {
-                conversation_sessions: true,
+                conversation_sessions: { include: { socket_session: { include: { user: true } } } },
                 chat_department: true,
                 messages: {
                     where: { socket_session_id: { not: null } },
@@ -616,23 +616,40 @@ export class ConversationsService {
         );
     }
 
-    async conversationMessages(id: string, req: any) {
+    async conversationMessages(id: string, req: any, query: any) {
         const conversation = await this.findOneWithException(id, {
             subscriber_id: req.user.data.socket_session.subscriber_id,
         });
 
-        return this.prisma.message.findMany({
-            where: {
-                conversation_id: conversation.id,
-            },
-            orderBy: { created_at: 'desc' },
+        const filterHelper = this.dataHelper.paginationAndFilter(['p', 'pp'], query);
+
+        // return this.prisma.message.findMany({
+        //     where: {
+        //         conversation_id: conversation.id,
+        //     },
+        //     orderBy: { created_at: 'desc' },
+        //     include: {
+        //         attachments: true,
+        //         socket_session: {
+        //             include: {
+        //                 user: true,
+        //             },
+        //         },
+        //     },
+        // });
+
+        return this.prisma.conversation.findUnique({
+            where: { id: conversation.id },
             include: {
-                attachments: true,
-                socket_session: {
-                    include: {
-                        user: true,
-                    },
+                messages: {
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
+                    ...filterHelper.pagination,
                 },
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: true } } },
+                },
+                chat_department: true,
             },
         });
     }

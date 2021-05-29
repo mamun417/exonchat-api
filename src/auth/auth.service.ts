@@ -20,7 +20,7 @@ export class AuthService {
             },
         });
 
-        //add socket session also so that if called by sokcet token api this can handle without problem
+        //add socket session also so that if called by socket token api this can handle without problem
         user.socket_session = socket_session;
 
         if (user && user.password === pass) {

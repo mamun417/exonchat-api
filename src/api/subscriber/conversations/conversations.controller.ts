@@ -107,8 +107,8 @@ export class ConversationsController {
 
     @UseGuards(JwtAuthGuard)
     @Get(':id/messages')
-    conversationMessages(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.conversationMessages(id, req);
+    conversationMessages(@Param('id') id: string, @Request() req: any, @Query() query) {
+        return this.conversationsService.conversationMessages(id, req, query);
     }
 
     // @Put(':id')

@@ -398,6 +398,8 @@ model chat_department {
   users          user[]
   chat_templates chat_template[]
   conversations  conversation[]
+
+  @@unique(fields: [tag, subscriber_id], name: "tag_identifier")
 }
 
 enum permission_use_for_enum {
