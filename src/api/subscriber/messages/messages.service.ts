@@ -75,6 +75,7 @@ export class MessagesService {
                     include: {
                         conversation_sessions: { include: { socket_session: { include: { user: true } } } },
                         chat_department: true,
+                        closed_by: { include: { user: true } },
                     },
                 },
             },

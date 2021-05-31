@@ -121,6 +121,12 @@ export class ConversationsService {
                         created_by: { connect: { id: socketSessionId } },
                         subscriber: { connect: { id: subscriberId } },
                     },
+                    include: {
+                        conversation_sessions: {
+                            include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                        },
+                        chat_department: true,
+                    },
                 });
             } else {
                 throw new HttpException(`Not implemented Yet`, HttpStatus.NOT_IMPLEMENTED);
@@ -149,6 +155,12 @@ export class ConversationsService {
                     connect: { id: socketSessionId },
                 },
                 ...chatDepartmentConnector,
+            },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
             },
         });
     }
@@ -194,7 +206,7 @@ export class ConversationsService {
             include: {
                 socket_session: {
                     include: {
-                        user: true,
+                        user: { include: { user_meta: true } },
                     },
                 },
             },
@@ -234,7 +246,7 @@ export class ConversationsService {
             include: {
                 socket_session: {
                     include: {
-                        user: true,
+                        user: { include: { user_meta: true } },
                     },
                 },
             },
@@ -278,7 +290,7 @@ export class ConversationsService {
             include: {
                 closed_by: {
                     include: {
-                        user: true,
+                        user: { include: { user_meta: true } },
                     },
                 },
             },
@@ -320,6 +332,7 @@ export class ConversationsService {
                     },
                 },
                 chat_department: true,
+                closed_by: { include: { user: true } },
             },
             orderBy: {
                 // currently orderby does not work for many entry
@@ -360,7 +373,7 @@ export class ConversationsService {
                     include: {
                         socket_session: {
                             include: {
-                                user: true,
+                                user: { include: { user_meta: true } },
                             },
                         },
                     },
@@ -372,6 +385,7 @@ export class ConversationsService {
                     },
                 },
                 chat_department: true,
+                closed_by: { include: { user: true } },
             },
         });
     }
@@ -401,17 +415,29 @@ export class ConversationsService {
                 closed_at: null,
                 messages: { some: {} },
                 conversation_sessions: {
-                    every: {
+                    some: {
                         socket_session: {
                             user_id: {
-                                not: null,
+                                not: req.user.data.id,
                             },
                         },
                     },
                 },
             },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+                messages: {
+                    where: { socket_session_id: { not: null } },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
+                    take: 1,
+                },
+                closed_by: { include: { user: true } },
+            },
             orderBy: { created_at: 'desc' },
-            take: 10,
         });
     }
 
@@ -423,15 +449,27 @@ export class ConversationsService {
                 closed_at: null,
                 messages: { some: {} },
                 conversation_sessions: {
-                    every: {
+                    some: {
                         socket_session: {
                             user_id: req.user.data.id,
                         },
                     },
                 },
             },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+                messages: {
+                    where: { socket_session_id: { not: null } },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
+                    take: 1,
+                },
+                closed_by: { include: { user: true } },
+            },
             orderBy: { created_at: 'desc' },
-            take: 10,
         });
     }
 
@@ -512,7 +550,9 @@ export class ConversationsService {
                 closed_at: null,
             },
             include: {
-                conversation_sessions: { include: { socket_session: { include: { user: true } } } },
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
                 chat_department: true,
                 messages: {
                     where: { socket_session_id: { not: null } },
@@ -520,6 +560,7 @@ export class ConversationsService {
                     orderBy: { created_at: 'desc' },
                     take: 1,
                 },
+                closed_by: { include: { user: true } },
             },
             orderBy: { created_at: 'desc' },
         });
@@ -623,21 +664,6 @@ export class ConversationsService {
 
         const filterHelper = this.dataHelper.paginationAndFilter(['p', 'pp'], query);
 
-        // return this.prisma.message.findMany({
-        //     where: {
-        //         conversation_id: conversation.id,
-        //     },
-        //     orderBy: { created_at: 'desc' },
-        //     include: {
-        //         attachments: true,
-        //         socket_session: {
-        //             include: {
-        //                 user: true,
-        //             },
-        //         },
-        //     },
-        // });
-
         return this.prisma.conversation.findUnique({
             where: { id: conversation.id },
             include: {
@@ -647,9 +673,10 @@ export class ConversationsService {
                     ...filterHelper.pagination,
                 },
                 conversation_sessions: {
-                    include: { socket_session: { include: { user: true } } },
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
                 },
                 chat_department: true,
+                closed_by: { include: { user: true } },
             },
         });
     }
