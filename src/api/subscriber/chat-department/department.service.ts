@@ -18,10 +18,12 @@ export class ChatDepartmentService {
     async create(req: any, createDepartmentDto: CreateDepartmentDto) {
         const subscriberId = req.user.data.subscriber_id;
 
-        const department = await this.prisma.chat_department.findFirst({
+        const department = await this.prisma.chat_department.findUnique({
             where: {
-                subscriber_id: subscriberId,
-                tag: createDepartmentDto.tag,
+                tag_identifier: {
+                    subscriber_id: subscriberId,
+                    tag: createDepartmentDto.tag,
+                },
             },
         });
 

@@ -243,7 +243,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         const roomName = data.ses_user.socket_session.id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
-            this.roomsInAConv[conv_id] = { room_ids: [roomName] };
+            this.roomsInAConv[conv_id] = { room_ids: [roomName], ai_is_replying: conv_data.ai_is_replying };
         } else {
             this.server.to(client.id).emit('ec_error', {
                 type: 'error',
@@ -321,8 +321,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // call join conversation api and get msg. there will handle join limit also
         // if done
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
-            if (!this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)) {
-                this.roomsInAConv[data.conv_id].room_ids.push(data.ses_user.socket_session.id);
+            if (!this.roomsInAConv[data.conv_id].room_ids.includes(roomName)) {
+                this.roomsInAConv[data.conv_id].room_ids.push(roomName);
             }
 
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
@@ -603,6 +603,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     this.roomsInAConv[convId].ai_is_replying = !!aiReplyMsg.ai_resolved;
                 }
             } catch (e) {
+                this.roomsInAConv[convId].ai_is_replying = false;
+
                 console.log(e.response.data, 'ai_error');
                 // if need send to emited user
             }
@@ -928,6 +930,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     };
 
                     this.roomsInAConv[convId].users_only = convRes.data.users_only;
+                    this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
                 }
 
                 console.log('Rooms In Convs => ', this.roomsInAConv);
@@ -993,7 +996,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 userRooms.forEach((roomId: any) => {
                     this.server.in(roomId).emit('ec_user_logged_in', {
-                        user_ses_id: socket_session.id,
+                        ses_id: socket_session.id,
                     }); // send to all other users
                 });
             }
@@ -1078,11 +1081,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         console.log('Rooms In Convs => ', this.roomsInAConv);
     }
 
-    sendError(client: any, step: string, msg = 'you are doing something wrong') {
+    sendError(client: any, step: string, msg = 'you are doing something wrong', extra = {}) {
         client.emit('ec_error', {
             type: 'warning',
             step: step,
             reason: msg,
+            ...extra,
         });
     }
 }

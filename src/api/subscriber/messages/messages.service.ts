@@ -71,6 +71,13 @@ export class MessagesService {
             },
             include: {
                 attachments: true,
+                conversation: {
+                    include: {
+                        conversation_sessions: { include: { socket_session: { include: { user: true } } } },
+                        chat_department: true,
+                        closed_by: { include: { user: true } },
+                    },
+                },
             },
         });
     }

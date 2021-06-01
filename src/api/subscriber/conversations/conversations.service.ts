@@ -84,13 +84,18 @@ export class ConversationsService {
                 });
 
                 if (conv) {
-                    throw new HttpException(`Conv with that user already exists`, HttpStatus.CONFLICT);
+                    // without error returning the same conv so that no extra api cost
+                    // throw new HttpException(`Conv with that user already exists`, HttpStatus.CONFLICT);
+                    return conv;
                 }
+
+                // call api if ai can reply
 
                 return this.prisma.conversation.create({
                     data: {
                         users_only: true,
                         type: 'user_to_user_chat',
+                        ai_is_replying: true, // naming this is good so that i dont have to convert states
                         conversation_sessions: {
                             create: [
                                 {
@@ -115,6 +120,12 @@ export class ConversationsService {
                         },
                         created_by: { connect: { id: socketSessionId } },
                         subscriber: { connect: { id: subscriberId } },
+                    },
+                    include: {
+                        conversation_sessions: {
+                            include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                        },
+                        chat_department: true,
                     },
                 });
             } else {
@@ -145,6 +156,12 @@ export class ConversationsService {
                 },
                 ...chatDepartmentConnector,
             },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+            },
         });
     }
 
@@ -164,6 +181,15 @@ export class ConversationsService {
 
         if (convSes) throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
 
+        await this.prisma.conversation.update({
+            where: {
+                id: conversation.id,
+            },
+            data: {
+                ai_is_replying: false,
+            },
+        });
+
         return this.prisma.conversation_session.create({
             data: {
                 joined_at: new Date(),
@@ -180,7 +206,7 @@ export class ConversationsService {
             include: {
                 socket_session: {
                     include: {
-                        user: true,
+                        user: { include: { user_meta: true } },
                     },
                 },
             },
@@ -220,7 +246,7 @@ export class ConversationsService {
             include: {
                 socket_session: {
                     include: {
-                        user: true,
+                        user: { include: { user_meta: true } },
                     },
                 },
             },
@@ -264,7 +290,7 @@ export class ConversationsService {
             include: {
                 closed_by: {
                     include: {
-                        user: true,
+                        user: { include: { user_meta: true } },
                     },
                 },
             },
@@ -294,7 +320,7 @@ export class ConversationsService {
                     include: {
                         socket_session: {
                             include: {
-                                user: true,
+                                user: { include: { user_meta: true } },
                             },
                         },
                     },
@@ -306,6 +332,7 @@ export class ConversationsService {
                     },
                 },
                 chat_department: true,
+                closed_by: { include: { user: true } },
             },
             orderBy: {
                 // currently orderby does not work for many entry
@@ -346,7 +373,7 @@ export class ConversationsService {
                     include: {
                         socket_session: {
                             include: {
-                                user: true,
+                                user: { include: { user_meta: true } },
                             },
                         },
                     },
@@ -358,6 +385,7 @@ export class ConversationsService {
                     },
                 },
                 chat_department: true,
+                closed_by: { include: { user: true } },
             },
         });
     }
@@ -387,17 +415,29 @@ export class ConversationsService {
                 closed_at: null,
                 messages: { some: {} },
                 conversation_sessions: {
-                    every: {
+                    some: {
                         socket_session: {
                             user_id: {
-                                not: null,
+                                not: req.user.data.id,
                             },
                         },
                     },
                 },
             },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+                messages: {
+                    where: { socket_session_id: { not: null } },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
+                    take: 1,
+                },
+                closed_by: { include: { user: true } },
+            },
             orderBy: { created_at: 'desc' },
-            take: 10,
         });
     }
 
@@ -409,15 +449,27 @@ export class ConversationsService {
                 closed_at: null,
                 messages: { some: {} },
                 conversation_sessions: {
-                    every: {
+                    some: {
                         socket_session: {
                             user_id: req.user.data.id,
                         },
                     },
                 },
             },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+                messages: {
+                    where: { socket_session_id: { not: null } },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
+                    take: 1,
+                },
+                closed_by: { include: { user: true } },
+            },
             orderBy: { created_at: 'desc' },
-            take: 10,
         });
     }
 
@@ -485,13 +537,30 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                messages: { some: {} },
+                messages: {
+                    some: {},
+                },
+                conversation_sessions: {
+                    every: {
+                        socket_session: {
+                            user_id: null,
+                        },
+                    },
+                },
                 closed_at: null,
             },
             include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
                 messages: {
+                    where: { socket_session_id: { not: null } },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
                     take: 1,
                 },
+                closed_by: { include: { user: true } },
             },
             orderBy: { created_at: 'desc' },
         });
@@ -588,23 +657,26 @@ export class ConversationsService {
         );
     }
 
-    async conversationMessages(id: string, req: any) {
+    async conversationMessages(id: string, req: any, query: any) {
         const conversation = await this.findOneWithException(id, {
             subscriber_id: req.user.data.socket_session.subscriber_id,
         });
 
-        return this.prisma.message.findMany({
-            where: {
-                conversation_id: conversation.id,
-            },
-            orderBy: { created_at: 'desc' },
+        const filterHelper = this.dataHelper.paginationAndFilter(['p', 'pp'], query);
+
+        return this.prisma.conversation.findUnique({
+            where: { id: conversation.id },
             include: {
-                attachments: true,
-                socket_session: {
-                    include: {
-                        user: true,
-                    },
+                messages: {
+                    include: { attachments: true },
+                    orderBy: { created_at: 'desc' },
+                    ...filterHelper.pagination,
                 },
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+                closed_by: { include: { user: true } },
             },
         });
     }

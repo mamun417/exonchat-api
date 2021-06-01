@@ -247,6 +247,7 @@ model conversation {
   id                    String                 @id @default(cuid())
   users_only            Boolean?
   type                  conversation_type_enum @default(user_to_user_chat)
+  ai_is_replying        Boolean                @default(false)
   closed_at             DateTime?              @db.Timestamp(6)
   created_at            DateTime               @default(now()) @db.Timestamp(6)
   updated_at            DateTime               @default(now()) @db.Timestamp(6)
@@ -399,6 +400,8 @@ model chat_department {
   users          user[]
   chat_templates chat_template[]
   conversations  conversation[]
+
+  @@unique(fields: [tag, subscriber_id], name: "tag_identifier")
 }
 
 enum permission_use_for_enum {
