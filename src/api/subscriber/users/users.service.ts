@@ -319,7 +319,37 @@ export class UsersService {
     }
 
     async findOne(id: string, req: any): Promise<user> {
-        return this.prisma.user.findFirst({ where: { id: id, subscriber_id: req.user.data.subscriber_id } });
+        return this.prisma.user.findFirst({
+            where: { id: id, subscriber_id: req.user.data.subscriber_id },
+            include: {
+                user_meta: {
+                    include: {
+                        attachment: true,
+                    },
+                },
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                subscriber: {
+                    select: {
+                        id: true,
+                        company_name: true,
+                        display_name: true,
+                        api_key: true,
+                    },
+                },
+                chat_departments: true,
+            },
+        });
     }
 
     async findOneWithException(id: string, req: any): Promise<user> {
