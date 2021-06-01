@@ -138,15 +138,16 @@ model user {
 }
 
 model user_meta {
-  id           String   @id @default(cuid())
-  full_name    String   @db.VarChar
+  id           String      @id @default(cuid())
+  full_name    String      @db.VarChar
   display_name String
-  phone String? @db.VarChar
-  address String? @db.VarChar
-  created_at   DateTime @default(now()) @db.Timestamp(6)
-  updated_at   DateTime @default(now()) @db.Timestamp(6)
-  user         user?    @relation(fields: [user_id], references: [id])
+  phone        String?     @db.VarChar
+  address      String?     @db.VarChar
+  created_at   DateTime    @default(now()) @db.Timestamp(6)
+  updated_at   DateTime    @default(now()) @db.Timestamp(6)
+  user         user?       @relation(fields: [user_id], references: [id])
   user_id      String?
+  attachment   attachment?
 }
 
 model setting {
@@ -305,6 +306,8 @@ model attachment {
   subscriber        subscriber      @relation(fields: [subscriber_id], references: [id])
   socket_session_id String?
   socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
+  user_meta_id      String?
+  user_meta         user_meta?      @relation(fields: [user_meta_id], references: [id])
 }
 
 model speech_recognition {

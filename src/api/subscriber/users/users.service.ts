@@ -21,7 +21,11 @@ export class UsersService {
                 },
             },
             include: {
-                user_meta: true,
+                user_meta: {
+                    include: {
+                        attachment: true,
+                    },
+                },
                 role: {
                     select: {
                         id: true,
