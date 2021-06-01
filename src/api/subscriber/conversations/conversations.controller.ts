@@ -8,36 +8,6 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 export class ConversationsController {
     constructor(private readonly conversationsService: ConversationsService) {}
 
-    @UseGuards(JwtAuthGuard)
-    @Post()
-    create(@Body() createConversationDto: CreateConversationDto, @Request() req: any) {
-        return this.conversationsService.create(req, createConversationDto);
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Get(':id')
-    findOne(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.findOne(id, { subscriber_id: req.user.data.socket_session.subscriber_id });
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Post(':id')
-    async join(@Param('id') id: string, @Request() req: any) {
-        return await this.conversationsService.join(id, req);
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Post(':id/leave')
-    leave(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.leave(id, req);
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Post(':id/close')
-    close(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.close(id, req);
-    }
-
     // use permission guard
     @UseGuards(JwtAuthGuard)
     @Get()
@@ -46,16 +16,22 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
-    @Get('clients-conversation')
+    @Post()
+    create(@Body() createConversationDto: CreateConversationDto, @Request() req: any) {
+        return this.conversationsService.create(req, createConversationDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('clients-conversation')
     clientsConversations(@Request() req: any, @Query() query) {
         return this.conversationsService.clientsConversations(req, query);
     }
 
-    @UseGuards(JwtAuthGuard)
-    @Get('client-conversation/:id')
-    clientConversation(@Param('id') id: string, @Request() req: any, @Query() query) {
-        return this.conversationsService.clientConversation(id, req, query);
-    }
+    // @UseGuards(JwtAuthGuard)
+    // @Get('client-conversation/:id')
+    // clientConversation(@Param('id') id: string, @Request() req: any, @Query() query) {
+    //     return this.conversationsService.clientConversation(id, req, query);
+    // }
 
     @UseGuards(JwtAuthGuard)
     @Get('user-to-user/me')
@@ -111,13 +87,27 @@ export class ConversationsController {
         return this.conversationsService.conversationMessages(id, req, query);
     }
 
-    // @Put(':id')
-    // update(@Param('id') id: string, @Body() updateConversationDto: UpdateConversationDto) {
-    //     return this.conversationsService.update(+id, updateConversationDto);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/leave')
+    leave(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.leave(id, req);
+    }
 
-    // @Delete(':id')
-    // remove(@Param('id') id: string) {
-    //     return this.conversationsService.remove(+id);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/close')
+    close(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.close(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id')
+    findOne(@Param('id') id: string, @Request() req: any) {
+        return this.conversationsService.findOne(id, { subscriber_id: req.user.data.socket_session.subscriber_id });
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':id')
+    async join(@Param('id') id: string, @Request() req: any) {
+        return await this.conversationsService.join(id, req);
+    }
 }

@@ -320,7 +320,7 @@ export class ConversationsService {
                     include: {
                         socket_session: {
                             include: {
-                                user: true,
+                                user: { include: { user_meta: true } },
                             },
                         },
                     },
