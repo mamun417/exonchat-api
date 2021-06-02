@@ -143,6 +143,9 @@ model user_meta {
   display_name String
   phone        String?     @db.VarChar
   address      String?     @db.VarChar
+  facebook     String?     @db.VarChar
+  twitter      String?     @db.VarChar
+  linkedin     String?     @db.VarChar
   created_at   DateTime    @default(now()) @db.Timestamp(6)
   updated_at   DateTime    @default(now()) @db.Timestamp(6)
   user         user?       @relation(fields: [user_id], references: [id])
