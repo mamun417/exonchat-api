@@ -134,7 +134,7 @@ async function main() {
             });
 
             await Promise.all(
-                ['any', 'support', 'technical'].map(async (tp, key) => {
+                ['other', 'support', 'technical'].map(async (tp, key) => {
                     const userConnector =
                         tp === 'support'
                             ? {
