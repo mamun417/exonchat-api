@@ -16,4 +16,16 @@ export class UpdateProfileDto {
     @IsOptional()
     @IsString()
     address: string;
+
+    @IsOptional()
+    @IsString()
+    facebook: string;
+
+    @IsOptional()
+    @IsString()
+    twitter: string;
+
+    @IsOptional()
+    @IsString()
+    linkedin: string;
 }
