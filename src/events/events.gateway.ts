@@ -508,30 +508,41 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_is_typing_from_client')
     async typingFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        const convId = _.findKey(this.roomsInAConv, (convObj: any) => {
-            return convObj.room_ids.includes(data.ses_user.socket_session.id);
-        }); // get conv_id from ses id
+        let convId = this.convIdFromSession(data);
 
-        // get all users with the sub_id
-        const userRooms = Object.keys(this.userClientsInARoom).filter(
-            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
-        );
+        if (!convId) {
+            const convObj = await this.clientConvFromSession(data, client);
+
+            if (!convObj) return;
+
+            convId = convObj.id;
+
+            if (!this.roomsInAConv.hasOwnProperty(convId)) {
+                this.roomsInAConv[convId] = {
+                    room_ids: _.map(convObj.conversation_sessions, 'socket_session_id'),
+                };
+            }
+        }
 
         // send to all connected users
-        userRooms.forEach((roomId: any) => {
+        this.usersRooms(data).forEach((roomId: any) => {
             this.server.in(roomId).emit('ec_is_typing_from_client', {
-                conversation_id: convId,
+                conv_id: convId,
                 msg: data.msg,
                 temp_id: data.temp_id,
+                session_id: data.ses_user.socket_session.id,
+                status: data.status,
             }); // send to all users
         });
 
         // use if needed
         this.server.in(data.ses_user.socket_session.id).emit('ec_is_typing_to_client', {
-            conversation_id: convId,
+            conv_id: convId,
             msg: data.msg,
             temp_id: data.temp_id,
             return_type: 'own',
+            session_id: data.ses_user.socket_session.id,
+            status: data.status,
         }); // return back to client so that we can update to all tab
 
         return;
@@ -644,70 +655,52 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_is_typing_from_user')
     async typingFromUser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        if (
-            this.roomsInAConv.hasOwnProperty(data.conv_id) &&
-            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
-        ) {
-            const convObj = this.roomsInAConv[data.conv_id];
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
 
-            if (convObj.hasOwnProperty('users_only') && convObj.users_only) {
-                //
-            } else {
-                const userRooms = Object.keys(this.userClientsInARoom).filter(
-                    (roomId: any) =>
-                        this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id &&
-                        !this.userClientsInARoom[roomId].socket_client_ids.includes(
-                            client.id, // ignore from same user
-                        ),
-                );
+        if (this.convIsUserOnly(data)) {
+            this.sendToAConvUsersWithoutMe(data, 'ec_is_typing_from_user', {
+                conv_id: data.conv_id,
+                msg: data.msg,
+                temp_id: data.temp_id,
+                session_id: data.ses_user.socket_session.id,
+                status: data.status,
+            });
+        } else {
+            // it will contain single elm for now
+            const clientRooms = this.convClientRoom(data);
 
-                // it will contain single elm for now
-                const clientRooms = convObj.room_ids.filter(
-                    (roomId: any) => this.normalClientsInARoom[roomId]?.sub_id === data.ses_user.subscriber_id,
-                );
-
-                if (clientRooms.length === 1) {
-                    clientRooms.forEach((roomId: any) => {
-                        this.server.in(roomId).emit('ec_is_typing_from_user', {
-                            conversation_id: data.conv_id,
-                            msg: data.msg,
-                            temp_id: data.temp_id,
-                        });
-                    });
-                } else {
-                    this.server.to(client.id).emit('ec_error', {
-                        type: 'warning',
-                        step: 'ec_is_typing_from_user',
-                        reason: 'Somehow client is not present in this conv',
-                    });
-
-                    return;
-                }
-
-                userRooms.forEach((roomId: any) => {
+            if (clientRooms.length) {
+                clientRooms.forEach((roomId: any) => {
                     this.server.in(roomId).emit('ec_is_typing_from_user', {
-                        conversation_id: data.conv_id,
+                        conv_id: data.conv_id,
                         msg: data.msg,
                         temp_id: data.temp_id,
-                    }); // send to all other users
+                        session_id: data.ses_user.socket_session.id,
+                        status: data.status,
+                    });
                 });
+            } else {
+                // now user can send msg to client if a client is not present
+                // this.sendError(client, 'ec_msg_from_user', 'somehow client is not present in this conversation');
+                // return;
             }
-        } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'warning',
-                step: 'ec_is_typing_from_user',
-                reason: 'You are doing something wrong',
-            });
 
-            return;
+            this.sendToAllUsersWithoutMe(data, client, 'ec_is_typing_from_user', {
+                conv_id: data.conv_id,
+                msg: data.msg,
+                temp_id: data.temp_id,
+                session_id: data.ses_user.socket_session.id,
+                status: data.status,
+            });
         }
 
         // use if needed
         this.server.in(data.ses_user.socket_session.id).emit('ec_is_typing_to_user', {
-            conversation_id: data.conv_id,
+            conv_id: data.conv_id,
             msg: data.msg,
             temp_id: data.temp_id,
-            return_type: 'own',
+            session_id: data.ses_user.socket_session.id,
+            status: data.status,
         }); // return back to client so that we can update to all tab
 
         return;
