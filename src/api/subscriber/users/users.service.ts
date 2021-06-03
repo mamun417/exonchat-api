@@ -65,6 +65,34 @@ export class UsersService {
             data: {
                 active: updateDto.active,
             },
+            include: {
+                user_meta: {
+                    include: {
+                        attachment: true,
+                    },
+                },
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                subscriber: {
+                    select: {
+                        id: true,
+                        company_name: true,
+                        display_name: true,
+                        api_key: true,
+                    },
+                },
+                chat_departments: true,
+            },
         });
     }
 
