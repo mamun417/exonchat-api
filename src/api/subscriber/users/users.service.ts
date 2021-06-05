@@ -154,7 +154,11 @@ export class UsersService {
             },
         });
 
-        this.ws.server.in(updated.socket_sessions[0].id).emit('ec_from_api_events', { action: 'logout' });
+        this.ws.server.in(updated.socket_sessions[0].id).emit('ec_from_api_events', {
+            action: 'logout',
+            msg: 'Your role has changed by admin. You will be logged out now for the changes to take effect',
+            reason: 'user type has changed',
+        });
 
         return updated;
     }
