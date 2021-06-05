@@ -7,6 +7,7 @@ import { InvitationUpdateDto } from './dto/invitation-update.dto';
 import { JoinUserDto } from './dto/join-user.dto';
 import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
 import { MailService } from 'src/mail/mail.service';
+import { ConvertUserTypeDto } from './dto/convert-user-type.dto';
 
 @Injectable()
 export class UsersService {
@@ -64,6 +65,57 @@ export class UsersService {
             },
             data: {
                 active: updateDto.active,
+            },
+            include: {
+                user_meta: {
+                    include: {
+                        attachment: true,
+                    },
+                },
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                subscriber: {
+                    select: {
+                        id: true,
+                        company_name: true,
+                        display_name: true,
+                        api_key: true,
+                    },
+                },
+                chat_departments: true,
+            },
+        });
+    }
+
+    async convertUserType(id: any, req: any, convertUserTypeDto: ConvertUserTypeDto) {
+        const user: any = await this.findOneWithException(id, req);
+
+        if (user.role.slug === convertUserTypeDto.convert_to) {
+            throw new HttpException('You are already converted', HttpStatus.CONFLICT);
+        }
+
+        const role = await this.prisma.role.findFirst({
+            where: { slug: convertUserTypeDto.convert_to, subscriber_id: null },
+        });
+
+        if (!role) {
+            throw new HttpException('Something went wrong at assigning role', HttpStatus.NOT_IMPLEMENTED);
+        }
+
+        return this.prisma.user.update({
+            where: { id: id },
+            data: {
+                role: { connect: { id: role.id } },
             },
             include: {
                 user_meta: {

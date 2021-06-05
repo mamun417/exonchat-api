@@ -1,5 +1,6 @@
 import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { ConvertUserTypeDto } from './dto/convert-user-type.dto';
 import { InvitationUpdateDto } from './dto/invitation-update.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { JoinUserDto } from './dto/join-user.dto';
@@ -19,6 +20,12 @@ export class UsersController {
     @Post(':id/active-status')
     updateActiveState(@Param('id') id: string, @Request() req: any, @Body() updateUserDto: UpdateUserActiveStateDto) {
         return this.usersService.updateUserActiveState(id, req, updateUserDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/convert-type')
+    convertUserType(@Param('id') id: string, @Request() req: any, @Body() convertUserTypeDto: ConvertUserTypeDto) {
+        return this.usersService.convertUserType(id, req, convertUserTypeDto);
     }
 
     @UseGuards(JwtAuthGuard)
