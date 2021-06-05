@@ -9,9 +9,10 @@ import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
-    imports: [SocketSessionsModule, HttpModule, MailModule],
+    imports: [SocketSessionsModule, HttpModule, MailModule, EventsModule],
     controllers: [AiController],
     providers: [
         PrismaService,

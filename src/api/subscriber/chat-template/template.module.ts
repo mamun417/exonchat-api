@@ -7,9 +7,10 @@ import { IntentsService } from '../intents/intents.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
-    imports: [HttpModule, MailModule],
+    imports: [EventsModule, HttpModule, MailModule],
     controllers: [ChatTemplateController],
     providers: [PrismaService, DataHelper, ChatTemplateService, IntentsService, ChatDepartmentService, UsersService],
 })

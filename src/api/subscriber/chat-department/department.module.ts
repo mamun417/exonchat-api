@@ -5,9 +5,10 @@ import { ChatDepartmentController } from './department.controller';
 import { ChatDepartmentService } from './department.service';
 import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
-    imports: [MailModule],
+    imports: [MailModule, EventsModule],
     controllers: [ChatDepartmentController],
     providers: [PrismaService, DataHelper, ChatDepartmentService, UsersService],
 })

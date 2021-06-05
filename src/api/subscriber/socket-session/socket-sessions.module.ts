@@ -10,9 +10,10 @@ import { DataHelper } from 'src/helper/data-helper';
 import { PrismaService } from 'src/prisma.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { MailModule } from 'src/mail/mail.module';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
-    imports: [AuthModule, HttpModule, MailModule],
+    imports: [EventsModule, AuthModule, HttpModule, MailModule],
     controllers: [SocketSessionsController],
     providers: [PrismaService, DataHelper, SocketSessionsService, SubscribersService, UsersService], // DataHelper is needed for SubscriberService
     exports: [SocketSessionsService],

@@ -8,49 +8,55 @@ import { JoinUserDto } from './dto/join-user.dto';
 import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
 import { MailService } from 'src/mail/mail.service';
 import { ConvertUserTypeDto } from './dto/convert-user-type.dto';
+import { EventsGateway } from 'src/events/events.gateway';
 
 @Injectable()
 export class UsersService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper, private mailService: MailService) {}
+    constructor(
+        private prisma: PrismaService,
+        private dataHelper: DataHelper,
+        private mailService: MailService,
+        private ws: EventsGateway,
+    ) {}
 
-    async validateForLogin(login_info: any, pass: string): Promise<user> {
-        return this.prisma.user.findFirst({
-            where: {
-                email: login_info.email,
-                subscriber: {
-                    company_name: login_info.company_name,
-                },
-            },
-            include: {
-                user_meta: {
-                    include: {
-                        attachment: true,
-                    },
-                },
-                role: {
-                    select: {
-                        id: true,
-                        slug: true,
-                        permissions: {
-                            select: {
-                                id: true,
-                                slug: true,
-                            },
-                        },
-                    },
-                },
-                subscriber: {
-                    select: {
-                        id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
-                    },
-                },
-                chat_departments: true,
-            },
-        });
-    }
+    // async validateForLogin(login_info: any, pass: string): Promise<user> {
+    //     return this.prisma.user.findFirst({
+    //         where: {
+    //             email: login_info.email,
+    //             subscriber: {
+    //                 company_name: login_info.company_name,
+    //             },
+    //         },
+    //         include: {
+    //             user_meta: {
+    //                 include: {
+    //                     attachment: true,
+    //                 },
+    //             },
+    //             role: {
+    //                 select: {
+    //                     id: true,
+    //                     slug: true,
+    //                     permissions: {
+    //                         select: {
+    //                             id: true,
+    //                             slug: true,
+    //                         },
+    //                     },
+    //                 },
+    //             },
+    //             subscriber: {
+    //                 select: {
+    //                     id: true,
+    //                     company_name: true,
+    //                     display_name: true,
+    //                     api_key: true,
+    //                 },
+    //             },
+    //             chat_departments: true,
+    //         },
+    //     });
+    // }
 
     // create(createChatAgentDto: CreateChatAgentDto) {
     //     return 'This action adds a new chatAgent';
@@ -112,7 +118,7 @@ export class UsersService {
             throw new HttpException('Something went wrong at assigning role', HttpStatus.NOT_IMPLEMENTED);
         }
 
-        return this.prisma.user.update({
+        const updated = await this.prisma.user.update({
             where: { id: id },
             data: {
                 role: { connect: { id: role.id } },
@@ -144,8 +150,13 @@ export class UsersService {
                     },
                 },
                 chat_departments: true,
+                socket_sessions: true,
             },
         });
+
+        this.ws.server.in(updated.socket_sessions[0].id).emit('ec_from_api_events', { action: 'logout' });
+
+        return updated;
     }
 
     async invite(req: any, inviteUserDto: InviteUserDto) {
