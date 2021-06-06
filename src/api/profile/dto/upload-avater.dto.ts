@@ -1,6 +1,6 @@
 import { IsNotEmpty } from 'class-validator';
 
-export class UploadAvatereDto {
+export class UploadAvatarDto {
     @IsNotEmpty()
-    avater: string;
+    avatar: string;
 }

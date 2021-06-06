@@ -376,7 +376,9 @@ export class UsersService {
                 email: true,
                 active: true,
                 online_status: true,
-                user_meta: true,
+                user_meta: {
+                    include: { attachment: true },
+                },
                 socket_sessions: {
                     select: {
                         id: true,

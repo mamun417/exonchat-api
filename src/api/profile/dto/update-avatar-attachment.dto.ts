@@ -1,6 +1,6 @@
 import { IsNotEmpty } from 'class-validator';
 
-export class UpdateAvaterAttachmentDto {
+export class UpdateAvatarAttachmentDto {
     @IsNotEmpty()
     attachment_id: string;
 }

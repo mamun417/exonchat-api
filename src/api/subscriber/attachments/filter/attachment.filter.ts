@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export const imageFileFilter = (req, file: any, callback: any) => {
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-        return callback(new HttpException('Only image type is allowd', HttpStatus.NOT_ACCEPTABLE), false);
+        return callback(new HttpException('Only image type is allowed', HttpStatus.NOT_ACCEPTABLE), false);
     }
 
     if (file.size * 1024 > 5) {
@@ -30,6 +30,8 @@ export const editFileName = async (req: any, file: any, callback: any) => {
         data: {
             original_name: file.originalname,
             size: file.size,
+            ext: fileExtName,
+            folder_path: socketSessionId, // dont use first or last slash. can be made from date month year
             socket_session: { connect: { id: socketSessionId } },
             subscriber: { connect: { id: subscriberId } },
         },

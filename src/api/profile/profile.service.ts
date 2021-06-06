@@ -2,11 +2,16 @@ import { DataHelper } from './../../helper/data-helper';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { UpdateAvaterAttachmentDto } from './dto/update-avater-attachment.dto';
+import { UpdateAvatarAttachmentDto } from './dto/update-avatar-attachment.dto';
+import { AttachmentsService } from '../subscriber/attachments/attachments.service';
 
 @Injectable()
 export class ProfileService {
-    constructor(private prisma: PrismaService, private dataHelper: DataHelper) {}
+    constructor(
+        private prisma: PrismaService,
+        private dataHelper: DataHelper,
+        private attachmentService: AttachmentsService,
+    ) {}
 
     async update(req: any, updateProfileDto: UpdateProfileDto) {
         return this.prisma.user.update({
@@ -32,51 +37,71 @@ export class ProfileService {
                         attachment: true,
                     },
                 },
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                subscriber: {
+                    select: {
+                        id: true,
+                        company_name: true,
+                        display_name: true,
+                        api_key: true,
+                    },
+                },
+                chat_departments: true,
             },
         });
     }
 
-    async updateAvater(req: any, updateAvaterAttachment: UpdateAvaterAttachmentDto) {
-        return this.prisma.user_meta.update({
-            where: { id: req.user.data.user_meta.id },
+    async updateAvatar(req: any, updateAvatarAttachmentDto: UpdateAvatarAttachmentDto) {
+        await this.attachmentService.findOneAttachmentWithException(updateAvatarAttachmentDto.attachment_id, req);
+        console.log(updateAvatarAttachmentDto.attachment_id);
+
+        return this.prisma.user.update({
+            where: { id: req.user.data.id },
             data: {
-                attachment: { connect: { id: updateAvaterAttachment.attachment_id } },
+                user_meta: {
+                    update: {
+                        attachment: { connect: { id: updateAvatarAttachmentDto.attachment_id } },
+                    },
+                },
             },
             include: {
-                attachment: true,
-            },
-        });
-    }
-
-    async attachmentUpdateStatus(id: any, req: any) {
-        await this.findOneAttachmentWithException(id, req);
-
-        return this.prisma.attachment.update({
-            where: {
-                id: id,
-            },
-            data: {
-                uploaded: true,
-            },
-        });
-    }
-
-    async findOneAttachmentWithException(id: string, req: any) {
-        return await this.dataHelper.getSingleDataWithException(
-            async () => await this.findOneAttachment(id, req),
-            'attachment',
-        );
-    }
-
-    async findOneAttachment(id: any, req: any) {
-        if (!id) return null; // sometime id can be null
-
-        const subscriberId = req.user.data.socket_session.subscriber_id;
-
-        return this.prisma.attachment.findFirst({
-            where: {
-                id: id,
-                subscriber_id: subscriberId,
+                user_meta: {
+                    include: {
+                        attachment: true,
+                    },
+                },
+                role: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        permissions: {
+                            select: {
+                                id: true,
+                                slug: true,
+                            },
+                        },
+                    },
+                },
+                subscriber: {
+                    select: {
+                        id: true,
+                        company_name: true,
+                        display_name: true,
+                        api_key: true,
+                    },
+                },
+                chat_departments: true,
             },
         });
     }
