@@ -29,6 +29,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { SettingsModule } from './api/subscriber/settings/settings.module';
 import { WHMCSModule } from './api/subscriber/apps/third-party/whmcs/whmcs.module';
 import { ProfileModule } from './api/profile/profile.module';
+import { AttachmentsModule } from './api/subscriber/attachments/attachments.module';
 
 @Module({
     imports: [
@@ -71,6 +72,8 @@ import { ProfileModule } from './api/profile/profile.module';
         WHMCSModule,
 
         ProfileModule,
+
+        AttachmentsModule,
     ],
     controllers: [AppController],
     providers: [

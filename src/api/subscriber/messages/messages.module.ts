@@ -9,10 +9,19 @@ import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
 import { EventsModule } from 'src/events/events.module';
+import { AttachmentsService } from '../attachments/attachments.service';
 
 @Module({
     imports: [SocketSessionsModule, MailModule, EventsModule],
     controllers: [MessagesController],
-    providers: [PrismaService, DataHelper, ConversationsService, MessagesService, ChatDepartmentService, UsersService],
+    providers: [
+        PrismaService,
+        DataHelper,
+        ConversationsService,
+        MessagesService,
+        ChatDepartmentService,
+        UsersService,
+        AttachmentsService,
+    ],
 })
 export class MessagesModule {}
