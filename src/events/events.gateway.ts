@@ -559,12 +559,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             if (!convObj) return;
 
             convId = convObj.id;
-
-            if (!this.roomsInAConv.hasOwnProperty(convId)) {
-                this.roomsInAConv[convId] = {
-                    room_ids: _.map(convObj.conversation_sessions, 'socket_session_id'),
-                };
-            }
         }
 
         let createdMsg: any = null;
@@ -610,8 +604,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 aiReplyMsg = aiReplyRes.data;
 
+                console.log(aiReplyMsg);
+
                 if (aiReplyMsg) {
-                    this.roomsInAConv[convId].ai_is_replying = !!aiReplyMsg.ai_resolved;
+                    this.roomsInAConv[convId].ai_is_replying = aiReplyMsg.ai_resolved;
                 }
             } catch (e) {
                 this.roomsInAConv[convId].ai_is_replying = false;
@@ -772,6 +768,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
+    // for now it can only be called by user cz client data has no conv_id
     ownConvObj(data: any) {
         return this.roomsInAConv[data.conv_id];
     }
@@ -798,8 +795,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 if (!this.roomsInAConv.hasOwnProperty(convRes.data.id)) {
                     this.roomsInAConv[convRes.data.id] = {
                         room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
+                        ai_is_replying: convRes.data.ai_is_replying,
                     };
                 }
+
+                console.log('Rooms In Convs => ', this.roomsInAConv);
 
                 return convRes.data;
             }
@@ -811,7 +811,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     convAICanReplying(data: any) {
-        const convObj = this.ownConvObj(data);
+        const convId = this.convIdFromSession(data);
+        const convObj = this.roomsInAConv[convId];
+
+        console.log(convObj, convObj && (!convObj.hasOwnProperty('ai_is_replying') || convObj.ai_is_replying));
+
         return convObj && (!convObj.hasOwnProperty('ai_is_replying') || convObj.ai_is_replying);
     }
 

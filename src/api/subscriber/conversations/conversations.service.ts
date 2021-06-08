@@ -26,6 +26,9 @@ export class ConversationsService {
 
         // if client
         if (!req.user.data.socket_session.user_id) {
+            if (createConversationDto.chat_type !== 'live_chat')
+                throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
+
             const convBySesId = await this.prisma.conversation.findFirst({
                 where: {
                     created_by_id: socketSessionId,
@@ -133,10 +136,17 @@ export class ConversationsService {
             }
         }
 
+        let ai_can_reply = false;
+
+        if (createConversationDto.chat_type === 'live_chat' && 'check ai reply at conv init') {
+            ai_can_reply = true;
+        }
+
         return this.prisma.conversation.create({
             data: {
                 users_only: createConversationDto.chat_type !== 'live_chat',
                 type: createConversationDto.chat_type,
+                ai_is_replying: ai_can_reply,
                 conversation_sessions: {
                     create: {
                         joined_at: new Date(),

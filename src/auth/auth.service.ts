@@ -41,6 +41,7 @@ export class AuthService {
                     },
                 },
                 chat_departments: true,
+                socket_sessions: true,
             },
         });
 

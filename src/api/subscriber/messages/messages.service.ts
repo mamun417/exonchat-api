@@ -47,18 +47,25 @@ export class MessagesService {
         }
 
         // save msg to speech also by checking auto_save_new_msg_to_speech
-
-        await this.prisma.speech_recognition.upsert({
-            where: {
-                speech_subscriber_delete: {
+        // i think only clients msg should store.
+        // intents static content can be searched by live_chats agents msg
+        if (!req.user.data.socket_session.user) {
+            await this.prisma.speech_recognition.upsert({
+                where: {
+                    speech_subscriber_delete: {
+                        speech: createMessageDto.msg,
+                        tsid: subscriberId,
+                        for_delete: false,
+                    },
+                },
+                create: {
                     speech: createMessageDto.msg,
                     tsid: subscriberId,
-                    for_delete: false,
+                    subscriber: { connect: { id: subscriberId } },
                 },
-            },
-            create: { speech: createMessageDto.msg, tsid: subscriberId },
-            update: {},
-        });
+                update: {},
+            });
+        }
 
         return this.prisma.message.create({
             data: {
@@ -72,9 +79,11 @@ export class MessagesService {
                 attachments: true,
                 conversation: {
                     include: {
-                        conversation_sessions: { include: { socket_session: { include: { user: true } } } },
+                        conversation_sessions: {
+                            include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                        },
                         chat_department: true,
-                        closed_by: { include: { user: true } },
+                        closed_by: { include: { user: { include: { user_meta: true } } } },
                     },
                 },
             },
