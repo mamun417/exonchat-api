@@ -58,11 +58,23 @@ export class AiService {
         }
 
         if (!getIntent && 'check for can auto get from ai & auto confidence level') {
-            const subscriberAi = await this.subscriberService.findAiInfoBySubscriberIdWithExecption(
-                subscriberId,
-                'Somehow subscriber ai not connected. Please contact support',
-                HttpStatus.INTERNAL_SERVER_ERROR,
-            );
+            const subscriberAi = await this.subscriberService.findAiInfoBySubscriberId(subscriberId);
+
+            if (!subscriberAi) {
+                await this.prisma.conversation.update({
+                    where: {
+                        id: conversation.id,
+                    },
+                    data: {
+                        ai_is_replying: false,
+                    },
+                });
+
+                throw new HttpException(
+                    'Somehow subscriber ai not connected. Please contact support',
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                );
+            }
 
             const confidenceLevel = 0.7;
             // ai response
@@ -72,6 +84,8 @@ export class AiService {
                         headers: { Authorization: `Bearer ${subscriberAi.access_token}` },
                     })
                     .toPromise();
+
+                console.log(aiRes.data);
 
                 if (
                     aiRes.data &&
@@ -111,6 +125,17 @@ export class AiService {
                     subscriber: { connect: { id: subscriberId } },
                     conversation: { connect: { id: conversation.id } },
                 },
+                include: {
+                    conversation: {
+                        include: {
+                            conversation_sessions: {
+                                include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                            },
+                            chat_department: true,
+                            closed_by: { include: { user: { include: { user_meta: true } } } },
+                        },
+                    },
+                },
             });
 
             msg.ai_resolved = true;
@@ -123,6 +148,17 @@ export class AiService {
                     msg: 'Sorry cant understand. Transferring chat to a available agent',
                     subscriber: { connect: { id: subscriberId } },
                     conversation: { connect: { id: conversation.id } },
+                },
+                include: {
+                    conversation: {
+                        include: {
+                            conversation_sessions: {
+                                include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                            },
+                            chat_department: true,
+                            closed_by: { include: { user: { include: { user_meta: true } } } },
+                        },
+                    },
                 },
             });
 

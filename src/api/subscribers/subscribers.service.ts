@@ -39,7 +39,7 @@ export class SubscribersService {
                         lang: 'en',
                         private: true,
                     },
-                    { headers: { Authorization: `Bearer RQS72FDRDHMIHM36JEM3WIAL5M4BK4SO` } },
+                    { headers: { Authorization: `Bearer M4N62UXFS75RPPA27NMR2ZZVXLF7LJDF` } },
                 )
                 .toPromise();
         } catch (e) {

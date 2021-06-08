@@ -127,6 +127,13 @@ async function main() {
                             subscription: { connect: { id: subscriptions[0].id } },
                         },
                     },
+                    ai: {
+                        create: {
+                            access_token: 'M4N62UXFS75RPPA27NMR2ZZVXLF7LJDF',
+                            app_name: 'exonchat',
+                            app_id: '3931523956965521',
+                        },
+                    },
                 },
                 include: {
                     users: true,

@@ -102,6 +102,7 @@ export class ProfileService {
                     },
                 },
                 chat_departments: true,
+                socket_sessions: true,
             },
         });
     }

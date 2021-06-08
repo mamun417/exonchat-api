@@ -333,26 +333,23 @@ export class UsersService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
             },
-            include: {
-                user_meta: true,
-                role: {
+            select: {
+                id: true,
+                email: true,
+                active: true,
+                online_status: true,
+                user_meta: {
+                    include: { attachment: true },
+                },
+                socket_sessions: {
                     select: {
                         id: true,
-                        slug: true,
-                        permissions: {
-                            select: {
-                                id: true,
-                                slug: true,
-                            },
-                        },
+                    },
+                    orderBy: {
+                        created_at: 'desc',
                     },
                 },
-                // subscriber: {
-                //     select: {
-                //         id: true,
-                //         company_name: true,
-                //     },
-                // },
+                role: true,
             },
         });
     }
