@@ -30,6 +30,7 @@ import { SettingsModule } from './api/subscriber/settings/settings.module';
 import { WHMCSModule } from './api/subscriber/apps/third-party/whmcs/whmcs.module';
 import { ProfileModule } from './api/profile/profile.module';
 import { AttachmentsModule } from './api/subscriber/attachments/attachments.module';
+import { PasswordModule } from './api/password/password.module';
 
 @Module({
     imports: [
@@ -74,6 +75,8 @@ import { AttachmentsModule } from './api/subscriber/attachments/attachments.modu
         ProfileModule,
 
         AttachmentsModule,
+
+        PasswordModule,
     ],
     controllers: [AppController],
     providers: [

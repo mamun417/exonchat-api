@@ -6,12 +6,17 @@ import { Injectable } from '@nestjs/common';
 export class MailService {
     constructor(private mailerService: MailerService) {}
 
+    from = '"Support Team" <support@example.com>';
+    tokenExpired = '60';
+    // tokenExpired = Math.floor('' / 60000);
+    regards = 'Exonchat';
+
     async sendUserInvitation(emailTo: string, invitation: any) {
         const url = `${process.env.CLIENT_URL}/auth/user-activate/${invitation.id}`;
 
         await this.mailerService.sendMail({
             to: emailTo,
-            // from: '"Support Team" <support@example.com>', // override default from
+            from: this.from,
             subject: 'Welcome to Nice App! Confirm your Email',
             html:
                 ' <div style="padding: 50px;max-width: 600px">\n' +
@@ -41,7 +46,43 @@ export class MailService {
                 '        <p>Thank you.</p>\n' +
                 '        Regards,<br>\n' +
                 '        ' +
-                '        Exonchat\n' +
+                this.regards +
+                '\n' +
+                '    </div>',
+        });
+    }
+
+    async forgotPassword(emailTo: string, token: any) {
+        const url = `${process.env.CLIENT_URL}/password/reset/${token}`;
+
+        await this.mailerService.sendMail({
+            to: emailTo,
+            from: this.from,
+            subject: 'Password Reset Notification',
+            html:
+                '<div style="padding: 50px;max-width: 600px">\n' +
+                '        <b>Hello!</b>\n' +
+                '        <p>You are receiving this email because we received a password reset request for your account.</p>\n' +
+                '        <div style="text-align: center;margin-bottom: 30px;margin-top: 30px">\n' +
+                '            <a style="padding: 12px;\n' +
+                '                background: #000000;\n' +
+                '                color: #fff;\n' +
+                '                text-decoration: none;\n' +
+                '                border-radius: 3px;\n' +
+                '                border-color: #000000"\n' +
+                '                href="' +
+                url +
+                '">\n' +
+                '                Reset Password\n' +
+                '            </a>\n' +
+                '        </div>\n' +
+                '        <p>This password reset link will expire in ' +
+                this.tokenExpired +
+                ' minutes.</p>\n' +
+                '        <p>If you did not request a password reset, no further action is required.</p>\n' +
+                '        Regards,<br>\n' +
+                '        ' +
+                this.regards +
                 '\n' +
                 '    </div>',
         });
