@@ -84,17 +84,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_page_visit_info_from_client')
     async pageVisitInfoFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        const userRooms = Object.keys(this.userClientsInARoom).filter(
-            (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.subscriber_id,
-        );
-
-        // console.log(userRooms);
-
-        userRooms.forEach((roomId: any) => {
-            this.server.in(this.userClientsInARoom[roomId]).emit('ec_page_visit_info_from_client', {
+        // send to all connected users
+        this.usersRooms(data).forEach((roomId: any) => {
+            this.server.in(roomId).emit('ec_page_visit_info_from_client', {
                 url: data.url,
                 sent_at: data.sent_at,
-            }); // send to all users
+                ses_id: data.ses_user.socket_session.id,
+                ses_info: data.ses_user.socket_session,
+            });
         });
 
         return;

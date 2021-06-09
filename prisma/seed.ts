@@ -176,7 +176,8 @@ async function main() {
     for (const user of users) {
         await prisma.socket_session.create({
             data: {
-                ip: 'user',
+                init_ip: 'ip',
+                init_user_agent: 'browser',
                 user: { connect: { id: user.id } },
                 subscriber: { connect: { id: user.subscriber_id } },
             },
