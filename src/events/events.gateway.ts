@@ -89,6 +89,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.server.in(roomId).emit('ec_page_visit_info_from_client', {
                 url: data.url,
                 sent_at: data.sent_at,
+                visiting: data.visiting,
                 ses_id: data.ses_user.socket_session.id,
                 ses_info: data.ses_user.socket_session,
             });
