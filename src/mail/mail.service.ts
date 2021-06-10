@@ -7,8 +7,6 @@ export class MailService {
     constructor(private mailerService: MailerService) {}
 
     from = '"Support Team" <support@example.com>';
-    tokenExpired = '60';
-    // tokenExpired = Math.floor('' / 60000);
     regards = 'Exonchat';
 
     async sendUserInvitation(emailTo: string, invitation: any) {
@@ -53,12 +51,13 @@ export class MailService {
     }
 
     async forgotPassword(emailTo: string, token: any) {
-        const url = `${process.env.CLIENT_URL}/password/reset/${token}`;
+        const url = `${process.env.CLIENT_URL}/auth/password/reset/${token}`;
+        const expireTimeInMin = eval(process.env.RESET_PASS_TOKEN_EXPIRE_TIME) / 60000; // 60 min
 
         await this.mailerService.sendMail({
             to: emailTo,
             from: this.from,
-            subject: 'Password Reset Notification',
+            subject: 'Reset Password Notification',
             html:
                 '<div style="padding: 50px;max-width: 600px">\n' +
                 '        <b>Hello!</b>\n' +
@@ -77,7 +76,7 @@ export class MailService {
                 '            </a>\n' +
                 '        </div>\n' +
                 '        <p>This password reset link will expire in ' +
-                this.tokenExpired +
+                expireTimeInMin +
                 ' minutes.</p>\n' +
                 '        <p>If you did not request a password reset, no further action is required.</p>\n' +
                 '        Regards,<br>\n' +
