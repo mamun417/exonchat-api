@@ -1,4 +1,4 @@
-import { Body, Controller, Request, Delete, Get, Ip, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Request, Delete, Get, Ip, Param, Post, Put, UseGuards, Req } from '@nestjs/common';
 import { SocketSessionsService } from './socket-sessions.service';
 import { CreateSocketSessionDto } from './dto/create-socket-session.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -7,8 +7,8 @@ export class SocketSessionsController {
     constructor(private readonly socketSessionsService: SocketSessionsService) {}
 
     @Post()
-    async create(@Body() createSocketSessionDto: CreateSocketSessionDto, @Ip() ip: any) {
-        return this.socketSessionsService.createSocketSession(createSocketSessionDto, ip);
+    async create(@Body() createSocketSessionDto: CreateSocketSessionDto, @Req() req: any) {
+        return this.socketSessionsService.createSocketSession(createSocketSessionDto, req);
     }
 
     @UseGuards(JwtAuthGuard)

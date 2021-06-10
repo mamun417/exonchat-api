@@ -229,11 +229,13 @@ model extra_permission {
 
 model socket_session {
   id                    String                 @id @default(cuid())
-  info                  String?                @db.VarChar
-  ip                    String                 @db.VarChar
   identifier            String?                @db.VarChar // it will determine by which key we can get the user logged info from api
   init_name             String?                @db.VarChar
   init_email            String?                @db.VarChar
+  init_ip               String                 @db.VarChar
+  init_user_agent       String                 @db.VarChar // request header user-agent
+  user_info             Json?
+  other_info            Json?
   //   user_type           socket_session_user_type_enum @default(client)
   created_at            DateTime               @default(now()) @db.Timestamp(6)
   updated_at            DateTime               @default(now()) @db.Timestamp(6)
