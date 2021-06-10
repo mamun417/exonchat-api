@@ -19,7 +19,7 @@ export class SocketSessionsService {
         private userService: UsersService,
     ) {}
 
-    async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, ip: any) {
+    async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, req: any) {
         const subscriber = await this.subscriberService.findOneByApiKeyWithException(createSocketSessionDto.api_key);
 
         let userConnector: any = {};
@@ -61,7 +61,8 @@ export class SocketSessionsService {
 
         const createRes: any = await this.prisma.socket_session.create({
             data: {
-                ip: ip,
+                init_ip: req.ip,
+                init_user_agent: req.headers['user-agent'],
                 subscriber: {
                     connect: {
                         id: subscriber.id,

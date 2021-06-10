@@ -283,7 +283,8 @@ export class UsersService {
                 },
                 socket_sessions: {
                     create: {
-                        ip: 'user',
+                        init_ip: 'user_ip',
+                        init_user_agent: 'user_browser',
                         subscriber: { connect: { id: invitation.subscriber_id } },
                     },
                 },
