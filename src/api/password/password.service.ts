@@ -5,6 +5,8 @@ import { MailService } from '../../mail/mail.service';
 import { Helper } from '../../helper/helper';
 import * as moment from 'moment';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { CheckPasswordDto } from './dto/check-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class PasswordService {
@@ -59,6 +61,36 @@ export class PasswordService {
                 password: resetPasswordDto.password,
                 forgot_password_token: null,
                 forgot_password_token_expired: null,
+            },
+        });
+    }
+
+    async check(req: any, checkPasswordDto: CheckPasswordDto) {
+        const findUser = await this.prisma.user.findFirst({
+            where: { id: req.user.data.id },
+        });
+
+        if (findUser.password !== checkPasswordDto.password)
+            throw new HttpException('Password does not match', HttpStatus.NOT_FOUND);
+
+        return { msg: 'Password matched', status: 'success' };
+    }
+
+    async change(req: any, changePasswordDto: ChangePasswordDto) {
+        const findUser = await this.prisma.user.findFirst({
+            where: { id: req.user.data.id },
+        });
+
+        if (findUser.password !== changePasswordDto.old_password)
+            throw new HttpException('Old password does not match', HttpStatus.NOT_FOUND);
+
+        if (findUser.password === changePasswordDto.password)
+            throw new HttpException('You can not use your old password', HttpStatus.NOT_FOUND);
+
+        return await this.prisma.user.update({
+            where: { id: findUser.id },
+            data: {
+                password: changePasswordDto.password,
             },
         });
     }

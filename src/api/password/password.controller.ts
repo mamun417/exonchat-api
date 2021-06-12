@@ -3,6 +3,9 @@ import { PasswordService } from './password.service';
 import { EmailPasswordDto } from './dto/email-password.dto';
 import { LocalAuthGuard } from '../../auth/guards/local-auth.guard';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { CheckPasswordDto } from './dto/check-password.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('password')
 export class PasswordController {
@@ -16,6 +19,18 @@ export class PasswordController {
     @Post('reset')
     reset(@Request() req: any, @Body() resetPasswordDto: ResetPasswordDto) {
         return this.passwordService.reset(req, resetPasswordDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('check')
+    check(@Request() req: any, @Body() checkPasswordDto: CheckPasswordDto) {
+        return this.passwordService.check(req, checkPasswordDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('change')
+    change(@Request() req: any, @Body() changePasswordDto: ChangePasswordDto) {
+        return this.passwordService.change(req, changePasswordDto);
     }
 
     // @UseGuards(JwtAuthGuard)
