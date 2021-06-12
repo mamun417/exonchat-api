@@ -122,6 +122,7 @@ export class AiService {
             const msg: any = await this.prisma.message.create({
                 data: {
                     msg: content,
+                    sender_type: 'ai',
                     subscriber: { connect: { id: subscriberId } },
                     conversation: { connect: { id: conversation.id } },
                 },
@@ -146,6 +147,7 @@ export class AiService {
             const ai_msg: any = await this.prisma.message.create({
                 data: {
                     msg: 'Sorry cant understand. Transferring chat to a available agent',
+                    sender_type: 'ai',
                     subscriber: { connect: { id: subscriberId } },
                     conversation: { connect: { id: conversation.id } },
                 },

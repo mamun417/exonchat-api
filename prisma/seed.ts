@@ -178,6 +178,7 @@ async function main() {
             data: {
                 init_ip: 'ip',
                 init_user_agent: 'browser',
+                use_for: 'user',
                 user: { connect: { id: user.id } },
                 subscriber: { connect: { id: user.subscriber_id } },
             },
