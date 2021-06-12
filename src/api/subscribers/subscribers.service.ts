@@ -91,6 +91,7 @@ export class SubscribersService {
                     create: {
                         init_ip: 'user_ip',
                         init_user_agent: 'user_browser',
+                        use_for: 'user',
                         subscriber: { connect: { id: createdSubscriber.id } },
                     },
                 },

@@ -228,24 +228,24 @@ model extra_permission {
 }
 
 model socket_session {
-  id                    String                 @id @default(cuid())
-  identifier            String?                @db.VarChar // it will determine by which key we can get the user logged info from api
-  init_name             String?                @db.VarChar
-  init_email            String?                @db.VarChar
-  init_ip               String                 @db.VarChar
-  init_user_agent       String                 @db.VarChar // request header user-agent
+  id                    String                      @id @default(cuid())
+  identifier            String?                     @db.VarChar // it will determine by which key we can get the user logged info from api
+  init_name             String?                     @db.VarChar
+  init_email            String?                     @db.VarChar
+  init_ip               String                      @db.VarChar
+  init_user_agent       String                      @db.VarChar // request header user-agent
   user_info             Json?
   other_info            Json?
-  //   user_type           socket_session_user_type_enum @default(client)
-  created_at            DateTime               @default(now()) @db.Timestamp(6)
-  updated_at            DateTime               @default(now()) @db.Timestamp(6)
+  use_for               socket_session_use_for_enum
+  created_at            DateTime                    @default(now()) @db.Timestamp(6)
+  updated_at            DateTime                    @default(now()) @db.Timestamp(6)
   subscriber_id         String
-  subscriber            subscriber             @relation(fields: [subscriber_id], references: [id])
+  subscriber            subscriber                  @relation(fields: [subscriber_id], references: [id])
   user_id               String?
-  user                  user?                  @relation(fields: [user_id], references: [id])
+  user                  user?                       @relation(fields: [user_id], references: [id])
   conversation_sessions conversation_session[]
-  created_conversations conversation[]         @relation(name: "created_by")
-  closed_conversations  conversation[]         @relation(name: "closed_by")
+  created_conversations conversation[]              @relation(name: "created_by")
+  closed_conversations  conversation[]              @relation(name: "closed_by")
   messages              message[]
   attachments           attachment[]
 }
@@ -289,6 +289,7 @@ model conversation_session {
 model message {
   id                String          @id @default(cuid())
   msg               String?
+  sender_type       String?
   created_at        DateTime        @default(now()) @db.Timestamp(6)
   updated_at        DateTime        @default(now()) @db.Timestamp(6)
   attachments       attachment[]
@@ -437,7 +438,7 @@ enum user_invitation_type_enum {
   agent
 }
 
-enum socket_session_user_type_enum {
+enum socket_session_use_for_enum {
   client
   user
 }

@@ -63,6 +63,7 @@ export class SocketSessionsService {
             data: {
                 init_ip: req.ip,
                 init_user_agent: req.headers['user-agent'],
+                use_for: createSocketSessionDto.user_id ? 'user' : 'client',
                 subscriber: {
                     connect: {
                         id: subscriber.id,
