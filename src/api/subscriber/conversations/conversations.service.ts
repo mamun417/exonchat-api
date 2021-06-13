@@ -340,6 +340,7 @@ export class ConversationsService {
                     orderBy: {
                         updated_at: 'desc',
                     },
+                    include: { attachments: true },
                 },
                 chat_department: true,
                 closed_by: { include: { user: true } },
