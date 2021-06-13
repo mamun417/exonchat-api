@@ -25,6 +25,7 @@ model subscriber {
   conversations              conversation[]
   messages                   message[]
   conversation_sessions      conversation_session[]
+  conversation_rating        conversation_rating?
   intents                    intent[]
   intent_actions             intent_action[]
   speech_recognitions        speech_recognition[]
@@ -268,8 +269,21 @@ model conversation {
   closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
   chat_department_id    String?
   chat_department       chat_department?       @relation(fields: [chat_department_id], references: [id])
+  conversation_rating   conversation_rating?
   conversation_sessions conversation_session[]
   messages              message[]
+}
+
+model conversation_rating {
+  id              String       @id @default(cuid())
+  rating          Int?
+  reting_string   String?
+  comment         String?
+  created_at      DateTime     @default(now()) @db.Timestamp(6)
+  conversation    conversation @relation(fields: [conversation_id], references: [id])
+  conversation_id String
+  subscriber_id   String
+  subscriber      subscriber   @relation(fields: [subscriber_id], references: [id])
 }
 
 model conversation_session {

@@ -11,7 +11,7 @@ async function bootstrap() {
     app.use(cookieParser(jwtConstants.secret));
     app.useGlobalPipes(new ValidationPipe());
     app.enableCors({
-        origin: ['http://localhost:8080'],
+        origin: [process.env.CLIENT_URL],
         credentials: true,
         preflightContinue: false,
     });
