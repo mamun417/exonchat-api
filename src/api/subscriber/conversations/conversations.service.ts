@@ -413,7 +413,27 @@ export class ConversationsService {
                 },
             },
             include: {
-                conversation_sessions: true,
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: { include: { user_meta: true } },
+                            },
+                        },
+                    },
+                },
+                messages: {
+                    take: 1,
+                    orderBy: {
+                        updated_at: 'desc',
+                    },
+                    include: { attachments: true },
+                },
+                chat_department: true,
+                closed_by: { include: { user: true } },
+            },
+            orderBy: {
+                updated_at: 'desc',
             },
         });
     }
