@@ -58,7 +58,7 @@ export class AttachmentsController {
             const updateAttachment = await this.attachmentService.attachmentUpdateStatus(attachmentId, req);
 
             response.push({
-                src: `${process.env.CLIENT_URL}/attachments/${attachmentId}`,
+                src: `${process.env.SERVER_URL}/attachments/${attachmentId}`,
                 attachment_info: updateAttachment,
                 original_name: attachment.originalname,
             });
