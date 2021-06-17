@@ -20,8 +20,8 @@ export const editFileName = async (req: any, file: any, callback: any) => {
     const subscriberId = req.user.data.socket_session.subscriber_id;
     const socketSessionId = req.user.data.socket_session.id;
 
-    console.log(file);
-    console.log(file.size);
+    // console.log(file);
+    // console.log(file.size);
 
     const name = file.originalname.split('.')[0];
     const fileExtName = extname(file.originalname);

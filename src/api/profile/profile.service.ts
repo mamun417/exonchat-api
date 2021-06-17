@@ -64,7 +64,7 @@ export class ProfileService {
 
     async updateAvatar(req: any, updateAvatarAttachmentDto: UpdateAvatarAttachmentDto) {
         await this.attachmentService.findOneAttachmentWithException(updateAvatarAttachmentDto.attachment_id, req);
-        console.log(updateAvatarAttachmentDto.attachment_id);
+        // console.log(updateAvatarAttachmentDto.attachment_id);
 
         return this.prisma.user.update({
             where: { id: req.user.data.id },

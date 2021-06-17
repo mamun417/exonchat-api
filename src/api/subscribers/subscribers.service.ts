@@ -43,7 +43,7 @@ export class SubscribersService {
                 )
                 .toPromise();
         } catch (e) {
-            console.log(e.response.data);
+            // console.log(e.response.data);
             throw new HttpException('AI App create failed. Please Contact support', HttpStatus.INTERNAL_SERVER_ERROR);
         }
 

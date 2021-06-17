@@ -254,7 +254,7 @@ export class UsersService {
             throw new HttpException('Invitation not found', HttpStatus.NOT_FOUND);
         }
 
-        console.log(invitation, joinUserDto.code);
+        // console.log(invitation, joinUserDto.code);
 
         if (invitation.code !== joinUserDto.code) {
             throw new HttpException('Please check the mail for valid code', HttpStatus.UNPROCESSABLE_ENTITY);

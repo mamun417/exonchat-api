@@ -103,7 +103,7 @@ export class IntentsService {
             query,
         );
 
-        console.log(filterHelper);
+        // console.log(filterHelper);
 
         return this.prisma.intent.findMany({
             where: {
