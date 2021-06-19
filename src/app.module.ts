@@ -31,6 +31,7 @@ import { WHMCSModule } from './api/subscriber/apps/third-party/whmcs/whmcs.modul
 import { ProfileModule } from './api/profile/profile.module';
 import { AttachmentsModule } from './api/subscriber/attachments/attachments.module';
 import { PasswordModule } from './api/password/password.module';
+import { RatingModule } from './api/rating/ratings.module';
 
 @Module({
     imports: [
@@ -77,6 +78,8 @@ import { PasswordModule } from './api/password/password.module';
         AttachmentsModule,
 
         PasswordModule,
+
+        RatingModule,
     ],
     controllers: [AppController],
     providers: [
