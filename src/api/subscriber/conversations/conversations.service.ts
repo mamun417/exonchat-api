@@ -707,7 +707,7 @@ export class ConversationsService {
                     include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
                 },
                 chat_department: true,
-                closed_by: { include: { user: true } },
+                closed_by: { include: { user: { include: { user_meta: true } } } },
                 conversation_rating: true,
             },
         });
