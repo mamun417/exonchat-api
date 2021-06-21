@@ -708,6 +708,7 @@ export class ConversationsService {
                 },
                 chat_department: true,
                 closed_by: { include: { user: true } },
+                conversation_rating: true,
             },
         });
     }
