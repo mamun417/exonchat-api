@@ -9,8 +9,14 @@ import { EventsGateway } from 'src/events/events.gateway';
 export class WHMCSService {
     constructor(private prisma: PrismaService, private httpService: HttpService, private ws: EventsGateway) {}
 
-    async findAllTickets(req: any) {
-        return this.getResponse(req.user.data.subscriber_id, { action: 'GetTickets' });
+    async findAllTickets(req: any, query: any) {
+        const queryObj: any = { action: 'GetTickets' };
+
+        if (query.email) {
+            queryObj.email = query.email;
+        }
+
+        return this.getResponse(req.user.data.subscriber_id, queryObj);
     }
 
     // async validateUser(req: any, validateUserDto: ValidateUserDto) {

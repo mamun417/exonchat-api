@@ -1,5 +1,5 @@
 import { ValidateUserDto } from './dto/ValidateUser.dto';
-import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { WHMCSService } from './whmcs.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PrismaService } from 'src/prisma.service';
@@ -10,8 +10,8 @@ export class WHMCSController {
 
     @UseGuards(JwtAuthGuard)
     @Get('tickets')
-    findAll(@Request() req: any) {
-        return this.WHMCSService.findAllTickets(req);
+    findAll(@Request() req: any, @Query() query: any) {
+        return this.WHMCSService.findAllTickets(req, query);
     }
 
     // @UseGuards(JwtAuthGuard)
