@@ -319,12 +319,44 @@ export class ConversationsService {
     }
 
     async clientsConversations(req: any, query: any) {
-        return this.prisma.conversation.findMany({
-            where: {
-                subscriber_id: req.user.data.subscriber_id,
-                users_only: false,
-                messages: { some: {} },
-            },
+        const filterHelper = this.dataHelper.paginationAndFilter(
+            [
+                'p',
+                'pp',
+                { name: 'active', type: 'boolean' },
+                {
+                    name: 'init_name',
+                    type: 'static_relation',
+                    relation: {
+                        conversation_sessions: {
+                            some: {
+                                socket_session: {
+                                    init_name: {
+                                        contains: query.init_name,
+                                        mode: 'insensitive',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+            query,
+        );
+
+        const whereQuery = {
+            subscriber_id: req.user.data.subscriber_id,
+            users_only: false,
+            messages: { some: {} },
+            ...filterHelper.where,
+        };
+
+        const count = await this.prisma.conversation.count({
+            where: whereQuery,
+        });
+
+        const result = await this.prisma.conversation.findMany({
+            where: whereQuery,
             include: {
                 conversation_sessions: {
                     include: {
@@ -350,6 +382,7 @@ export class ConversationsService {
                 // like here i needed messages orderby time
                 updated_at: 'desc',
             },
+            ...filterHelper.pagination,
         });
 
         // i have to take from message for sorting order
@@ -369,6 +402,17 @@ export class ConversationsService {
         //         updated_at: 'desc',
         //     },
         // });
+
+        return {
+            conversations: {
+                data: result,
+                pagination: {
+                    current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
+                    total_page: Math.ceil(count / (query.hasOwnProperty('pp') ? parseInt(query.pp) : 10)),
+                    total: count,
+                },
+            },
+        };
     }
 
     async clientConversation(id: any, req: any, query: any) {

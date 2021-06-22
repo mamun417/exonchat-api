@@ -52,8 +52,14 @@ export class DataHelper {
             // only boolean support
             if (_l.isPlainObject(field)) {
                 if (Object.keys(query).includes(field.name)) {
-                    if (field.type === 'boolean') {
-                        finalObj.where[field.name] = query[field.name].toLowerCase() === 'true' ? true : false;
+                    // query[field.name] can create problem
+                    if (field.type === 'static_relation' && query[field.name]) {
+                        finalObj.where = {
+                            ...finalObj.where,
+                            ...field.relation,
+                        };
+                    } else if (field.type === 'boolean') {
+                        finalObj.where[field.name] = query[field.name].toLowerCase() === 'true';
                     } else if (field.type === 'contains' && query[field.name]) {
                         finalObj.where[field.name] = { contains: query[field.name], mode: 'insensitive' };
                     }
