@@ -1,4 +1,3 @@
-import { ValidateUserDto } from './dto/ValidateUser.dto';
 import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
@@ -64,6 +63,32 @@ export class WHMCSService {
             });
 
         return {};
+    }
+
+    async openTicket(req: any, convId: any) {
+        if (!convId) throw new HttpException(`Invalid conversation`, HttpStatus.BAD_REQUEST);
+
+        const conv = await this.prisma.conversation.findFirst({
+            where: {
+                id: convId,
+                closed_at: null,
+                users_only: false,
+                subscriber_id: req.user.data.socket_session.subscriber_id,
+            },
+            include: {
+                conversation_sessions: { include: { socket_session: true } },
+                messages: {
+                    orderBy: { created_at: 'asc' },
+                    take: 100,
+                },
+            },
+        });
+
+        if (!conv)
+            throw new HttpException(
+                `Ticket open for this conversation not possible. This conversation is closed or not not found`,
+                HttpStatus.CONFLICT,
+            );
     }
 
     async getResponse(subId: any, dynamicFields: any) {

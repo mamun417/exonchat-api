@@ -336,6 +336,11 @@ export class ConversationsService {
                     },
                 },
                 messages: {
+                    where: {
+                        socket_session: {
+                            user_id: null,
+                        },
+                    },
                     take: 1,
                     orderBy: {
                         updated_at: 'desc',
