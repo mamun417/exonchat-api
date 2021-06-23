@@ -319,25 +319,38 @@ export class ConversationsService {
     }
 
     async clientsConversations(req: any, query: any) {
+        const relationContainsObj = {
+            contains: query.s,
+            mode: 'insensitive',
+        };
+
         const filterHelper = this.dataHelper.paginationAndFilter(
             [
                 'p',
                 'pp',
-                { name: 'active', type: 'boolean' },
                 {
-                    name: 'init_name',
+                    name: 's',
                     type: 'static_relation',
                     relation: {
-                        conversation_sessions: {
-                            some: {
-                                socket_session: {
-                                    init_name: {
-                                        contains: query.init_name,
-                                        mode: 'insensitive',
+                        OR: [
+                            {
+                                conversation_sessions: {
+                                    some: {
+                                        socket_session: {
+                                            OR: [
+                                                { init_name: relationContainsObj },
+                                                { init_email: relationContainsObj },
+                                            ],
+                                        },
                                     },
                                 },
                             },
-                        },
+                            {
+                                chat_department: {
+                                    tag: relationContainsObj,
+                                },
+                            },
+                        ],
                     },
                 },
             ],
