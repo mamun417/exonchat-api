@@ -454,7 +454,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
             );
 
-            let roomsInAConvCopy = this.roomsInAConv[data.conv_id].room_ids;
+            let roomsInAConvCopy = _.cloneDeep(this.roomsInAConv[data.conv_id].room_ids);
 
             delete this.roomsInAConv[data.conv_id];
 

@@ -280,7 +280,6 @@ export class ConversationsService {
                 id: id,
             },
             data: {
-                closed_at: new Date(),
                 closed_by: {
                     connect: {
                         id: socketSessionId,
@@ -296,11 +295,21 @@ export class ConversationsService {
                         },
                     },
                 },
+                closed_at: new Date(Date.now() + 1000),
             },
             include: {
                 closed_by: {
                     include: {
                         user: { include: { user_meta: true } },
+                    },
+                },
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: { include: { user_meta: true } },
+                            },
+                        },
                     },
                 },
             },
