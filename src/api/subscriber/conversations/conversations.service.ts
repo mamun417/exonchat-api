@@ -411,6 +411,17 @@ export class ConversationsService {
             },
             ...filterHelper.pagination,
         });
+
+        return {
+            conversations: {
+                data: result,
+                pagination: {
+                    current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
+                    total_page: Math.ceil(count / (query.hasOwnProperty('pp') ? parseInt(query.pp) : 10)),
+                    total: count,
+                },
+            },
+        };
     }
 
     async clientConversation(id: any, req: any, query: any) {
