@@ -203,6 +203,8 @@ model role {
   subscriber_id String?
   users         user[]
   permissions   permission[]
+
+  @@unique(fields: [slug, use_for], name: "role_identifier")
 }
 
 model permission {
@@ -216,6 +218,8 @@ model permission {
   updated_at        DateTime                @default(now()) @db.Timestamp(6)
   roles             role[]
   extra_permissions extra_permission[]
+
+  @@unique(fields: [slug, use_for], name: "permission_identifier")
 }
 
 model extra_permission {
@@ -484,6 +488,8 @@ enum settings_category_type_enum {
   any
   ui
   app
+  ai
+  conversation
 }
 
 enum settings_input_type_enum {
