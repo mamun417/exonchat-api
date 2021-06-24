@@ -44,7 +44,7 @@ export class SocketSessionsService {
                 };
 
                 return {
-                    bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 365),
+                    bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 7),
                     data: dataForToken,
                     type: 'socket',
                 };

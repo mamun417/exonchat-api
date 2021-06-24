@@ -30,7 +30,7 @@
         "db:drop": "npx prisma db push --preview-feature --force-reset --accept-data-loss",
         "db:seed": "npx prisma db seed --preview-feature",
         "db:drop:seed": "npm run db:drop; npm run db:seed",
-        "studio": "npx prisma studio"
+        "studio": "npx prisma studio -b none"
     },
     "dependencies": {
         "@nestjs-modules/mailer": "^1.6.0",

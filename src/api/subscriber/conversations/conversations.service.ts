@@ -390,6 +390,11 @@ export class ConversationsService {
                     },
                 },
                 messages: {
+                    where: {
+                        socket_session: {
+                            user_id: null,
+                        },
+                    },
                     take: 1,
                     orderBy: {
                         updated_at: 'desc',
@@ -406,35 +411,6 @@ export class ConversationsService {
             },
             ...filterHelper.pagination,
         });
-
-        // i have to take from message for sorting order
-        // but here includes does not work
-        // return this.prisma.message.groupBy({
-        //     by: ['conversation_id'],
-        //     where: {
-        //         subscriber_id: req.user.data.subscriber_id,
-        //         conversation: {
-        //             users_only: false,
-        //         },
-        //     },
-        //     includes: {
-        //         conver
-        //     },
-        //     orderBy: {
-        //         updated_at: 'desc',
-        //     },
-        // });
-
-        return {
-            conversations: {
-                data: result,
-                pagination: {
-                    current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
-                    total_page: Math.ceil(count / (query.hasOwnProperty('pp') ? parseInt(query.pp) : 10)),
-                    total: count,
-                },
-            },
-        };
     }
 
     async clientConversation(id: any, req: any, query: any) {
@@ -466,6 +442,34 @@ export class ConversationsService {
             },
         });
     }
+
+    async clientPreviousConversations(req: any, query: any) {
+        return this.prisma.conversation.findMany({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                // closed_by_id: null, // uncomment if needed
+                messages: { some: {} },
+                conversation_sessions: {
+                    some: {
+                        socket_session: {
+                            OR: [{ init_email: query.email }], // other field or field email check
+                            user_id: null,
+                        },
+                    },
+                },
+            },
+            include: {
+                messages: {
+                    take: 1,
+                    orderBy: {
+                        updated_at: 'asc',
+                    },
+                },
+            },
+        });
+    }
+
     async findAllUserToUserConvWithMe(req: any) {
         return this.prisma.conversation.findMany({
             where: {

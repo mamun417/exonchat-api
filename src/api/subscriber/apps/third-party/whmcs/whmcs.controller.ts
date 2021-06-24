@@ -1,27 +1,38 @@
-import { ValidateUserDto } from './dto/ValidateUser.dto';
-import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { WHMCSService } from './whmcs.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { PrismaService } from 'src/prisma.service';
 
-@Controller('whmcs/api')
+@Controller('apps/whmcs')
 export class WHMCSController {
-    constructor(private readonly WHMCSService: WHMCSService) {}
+    constructor(private prisma: PrismaService, private readonly WHMCSService: WHMCSService) {}
 
     @UseGuards(JwtAuthGuard)
-    @Post()
-    findAll(@Request() req: any) {
-        return this.WHMCSService.findAll(req);
+    @Get('tickets')
+    findAll(@Request() req: any, @Query() query: any) {
+        return this.WHMCSService.findAllTickets(req, query);
     }
 
     // @UseGuards(JwtAuthGuard)
-    @Post('users/validate')
-    validateUser(@Request() req: any, @Body() validateUserDto: ValidateUserDto) {
-        return this.WHMCSService.validateUser(req, validateUserDto);
+    // @Post('users/validate')
+    // validateUser(@Request() req: any, @Body() validateUserDto: ValidateUserDto) {
+    //     return this.WHMCSService.validateUser(req, validateUserDto);
+    // }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('tickets/:ticket_id')
+    findOneTicket(@Param('ticket_id') ticketId: string, @Request() req: any) {
+        return this.WHMCSService.findOneTicket(req, ticketId);
     }
 
-    // @UseGuards(JwtAuthGuard)
-    @Get('user/ticketes/:client_id')
-    findTickets(@Param('client_id') client_id: string, @Request() req: any) {
-        return this.WHMCSService.findTickets(req, client_id);
+    @Get('tickets/:ticket_id/notify/:sub_id')
+    ticketNotification(@Param('ticket_id') ticketId: string, @Param('sub_id') subId: string, @Request() req: any) {
+        return this.WHMCSService.ticketNotification(req, ticketId, subId);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('tickets/open/conv_id')
+    openTicket(@Request() req: any, @Param('conv_id') convId: string) {
+        return this.WHMCSService.openTicket(req, convId);
     }
 }

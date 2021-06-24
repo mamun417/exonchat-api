@@ -37,7 +37,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // but only data.ses_user.subscriber_id. its only for user end. if you dont get the data that means
     // your ses is not for user
 
-    private userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
+    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
     private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
     private roomsInAConv: any = {}; // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool}}
 
