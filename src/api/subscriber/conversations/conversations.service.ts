@@ -776,7 +776,7 @@ export class ConversationsService {
 
         const filterHelper = this.dataHelper.paginationAndFilter(['p', 'pp'], query);
 
-        return this.prisma.conversation.findUnique({
+        const result = await this.prisma.conversation.findUnique({
             where: { id: conversation.id },
             include: {
                 messages: {
@@ -792,6 +792,15 @@ export class ConversationsService {
                 conversation_rating: true,
             },
         });
+
+        return {
+            conversations: {
+                data: result,
+                pagination: {
+                    current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
+                },
+            },
+        };
     }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {
