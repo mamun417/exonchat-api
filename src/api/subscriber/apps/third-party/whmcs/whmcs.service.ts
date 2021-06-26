@@ -2,7 +2,10 @@ import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/comm
 import { PrismaService } from 'src/prisma.service';
 
 import * as _l from 'lodash';
+import * as moment from 'moment';
+
 import { EventsGateway } from 'src/events/events.gateway';
+import { WhmcsOpenTicketDto } from './dto/whmcs-open-ticket.dto';
 
 @Injectable()
 export class WHMCSService {
@@ -65,7 +68,7 @@ export class WHMCSService {
         return {};
     }
 
-    async openTicket(req: any, convId: any) {
+    async openTicket(req: any, convId: any, openTicketDto: WhmcsOpenTicketDto) {
         if (!convId) throw new HttpException(`Invalid conversation`, HttpStatus.BAD_REQUEST);
 
         const conv = await this.prisma.conversation.findFirst({
@@ -76,8 +79,10 @@ export class WHMCSService {
                 subscriber_id: req.user.data.socket_session.subscriber_id,
             },
             include: {
-                conversation_sessions: { include: { socket_session: true } },
+                conversation_sessions: { include: { socket_session: { include: { user: true } } } },
+                chat_department: true,
                 messages: {
+                    include: { attachments: true },
                     orderBy: { created_at: 'asc' },
                     take: 100,
                 },
@@ -89,6 +94,88 @@ export class WHMCSService {
                 `Ticket open for this conversation not possible. This conversation is closed or not not found`,
                 HttpStatus.CONFLICT,
             );
+
+        const getDepartmentsParams = {
+            action: 'GetSupportDepartments',
+        };
+
+        const whmcsDepartmentsRes = await this.getResponse(
+            req.user.data.socket_session.subscriber_id,
+            getDepartmentsParams,
+        );
+
+        const whmcsDepartments = {};
+
+        if (whmcsDepartmentsRes.departments?.department && whmcsDepartmentsRes.departments.department.length) {
+            whmcsDepartmentsRes.departments.department.forEach((d: any) => {
+                whmcsDepartments[d.name] = d.id;
+            });
+        } else {
+            throw new HttpException(`Support departments are not set in whmcs. Please notify`, HttpStatus.NOT_FOUND);
+        }
+
+        let mappedDep = Object.values(whmcsDepartments)[0];
+
+        if (Object.keys(whmcsDepartments).includes(conv.chat_department.tag)) {
+            mappedDep = whmcsDepartments[conv.chat_department.tag];
+        }
+
+        let message = this.convInfoMaker(conv);
+
+        conv.messages.forEach((msg: any) => {
+            let tempMsg = `${moment(msg.created_at).format('YYYY MM DD hh mm ss A')} : `;
+
+            if (msg.socket_session_id) {
+                const convSes = _l.find(conv.conversation_sessions, ['socket_session_id', msg.socket_session_id]);
+                const ses = convSes.socket_session;
+                const isAgent = !!ses.user;
+
+                tempMsg += `${isAgent ? ses.user.email : ses.init_email} ( ${isAgent ? 'agent' : 'user'} ) `;
+            } else {
+                tempMsg += `(${msg.sender_type}) `;
+            }
+
+            tempMsg += `${msg.msg} `;
+
+            if (msg.attachments && msg.attachments.length) {
+                tempMsg += 'Attachments : [ ';
+
+                msg.attachments.forEach((attch: any) => {
+                    tempMsg += `${attch.original_name} `;
+                });
+
+                tempMsg += ']';
+            }
+
+            message += `${tempMsg}\n`;
+        });
+
+        const client = _l.find(conv.conversation_sessions, (cv: any) => !cv.socket_session.user);
+
+        const openTicketParams = {
+            action: 'OpenTicket',
+            deptid: mappedDep,
+            subject: openTicketDto.subject,
+            message: message,
+            markdown: true,
+            name: client.socket_session.init_name,
+            email: client.socket_session.init_email,
+        };
+
+        return await this.getResponse(req.user.data.socket_session.subscriber_id, openTicketParams);
+
+        // return {};
+    }
+
+    convInfoMaker(conv) {
+        let msg = '';
+        const agentsCount = conv.conversation_sessions.length - 1;
+
+        msg += `Conversation id: ${conv.id}. `;
+        msg += `Created at ${moment(conv.created_at).format('YYYY MM DD hh mm ss A')}. `;
+        msg += `Joined ${agentsCount} agent${agentsCount > 1 ? 's' : ''}\n`;
+
+        return msg;
     }
 
     async getResponse(subId: any, dynamicFields: any) {

@@ -1,7 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["selectRelationCount"]
-
 }
 
 datasource db {
@@ -165,6 +163,7 @@ model setting {
   display_name        String
   description         String?
   default_value       String?
+  value_options       Json? // its for select type input
   category            settings_category_type_enum @default(any)
   sub_category        String?
   input_type          settings_input_type_enum    @default(text)
@@ -494,6 +493,9 @@ enum settings_category_type_enum {
 
 enum settings_input_type_enum {
   text
+  textarea
+  integer
+  select
   password
   checkbox
 }

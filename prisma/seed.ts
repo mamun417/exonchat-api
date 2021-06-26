@@ -276,12 +276,55 @@ async function main() {
 
         {
             slug: 'ai_auto_reply_at_client_msg',
-            display_name: 'Ticket submit from chat',
+            display_name: 'Ai auto reply at client message',
             category: 'ai',
             sub_category: 'reply',
             default_value: 'false',
             user_type: 'subscriber',
             input_type: 'checkbox',
+        },
+        {
+            slug: 'ai_not_resolve_reply_message',
+            display_name: 'Ai reply message when ai can not resolve',
+            category: 'ai',
+            sub_category: 'reply',
+            default_value: 'Sorry can not understand. Transferring chat to a available agent',
+            user_type: 'subscriber',
+            input_type: 'textarea',
+        },
+
+        {
+            slug: 'conversation_at_initiate_notify_policy',
+            display_name: 'New chat notify policy',
+            category: 'conversation',
+            sub_category: 'notification_policy',
+            default_value: 'manual',
+            value_options: {
+                options: [
+                    { slug: 'manual', name: 'Manual' },
+                    { slug: 'round_robin', name: 'Round Robin' },
+                ],
+            },
+            user_type: 'subscriber',
+            input_type: 'select',
+        },
+        {
+            slug: 'conversation_at_initiate_join_policy',
+            display_name: 'New chat notify policy',
+            category: 'conversation',
+            sub_category: 'join_policy',
+            default_value: 'false',
+            user_type: 'subscriber',
+            input_type: 'checkbox',
+        },
+        {
+            slug: 'conversation_notify_at_round_robin_max',
+            display_name: 'Each agents chat limit for notify',
+            category: 'conversation',
+            sub_category: 'notification',
+            default_value: '3',
+            user_type: 'subscriber',
+            input_type: 'integer',
         },
     ];
 
@@ -289,6 +332,20 @@ async function main() {
         const category: any = setting.category;
         const user_type: any = setting.user_type;
         const input_type: any = setting.input_type || 'text';
+
+        const createObj: any = {
+            slug: setting.slug,
+            display_name: setting.display_name,
+            category: category,
+            sub_category: setting.sub_category,
+            default_value: setting.default_value,
+            user_type: user_type,
+            input_type: input_type,
+        };
+
+        if (setting.value_options) {
+            createObj.value_options = setting.value_options;
+        }
 
         await prisma.setting.upsert({
             where: {
@@ -298,15 +355,7 @@ async function main() {
                     user_type: user_type,
                 },
             },
-            create: {
-                slug: setting.slug,
-                display_name: setting.display_name,
-                category: category,
-                sub_category: setting.sub_category,
-                default_value: setting.default_value,
-                user_type: user_type,
-                input_type: input_type,
-            },
+            create: createObj,
             update: {},
         });
     }

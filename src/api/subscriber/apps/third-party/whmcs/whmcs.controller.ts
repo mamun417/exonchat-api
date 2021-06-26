@@ -2,6 +2,7 @@ import { Controller, Request, Get, Post, Body, Put, Param, Delete, UseGuards, Qu
 import { WHMCSService } from './whmcs.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PrismaService } from 'src/prisma.service';
+import { WhmcsOpenTicketDto } from './dto/whmcs-open-ticket.dto';
 
 @Controller('apps/whmcs')
 export class WHMCSController {
@@ -20,6 +21,12 @@ export class WHMCSController {
     // }
 
     @UseGuards(JwtAuthGuard)
+    @Post('tickets/open/:conv_id')
+    openTicket(@Request() req: any, @Param('conv_id') convId: string, @Body() openTicketDto: WhmcsOpenTicketDto) {
+        return this.WHMCSService.openTicket(req, convId, openTicketDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Get('tickets/:ticket_id')
     findOneTicket(@Param('ticket_id') ticketId: string, @Request() req: any) {
         return this.WHMCSService.findOneTicket(req, ticketId);
@@ -28,11 +35,5 @@ export class WHMCSController {
     @Get('tickets/:ticket_id/notify/:sub_id')
     ticketNotification(@Param('ticket_id') ticketId: string, @Param('sub_id') subId: string, @Request() req: any) {
         return this.WHMCSService.ticketNotification(req, ticketId, subId);
-    }
-
-    @UseGuards(JwtAuthGuard)
-    @Post('tickets/open/conv_id')
-    openTicket(@Request() req: any, @Param('conv_id') convId: string) {
-        return this.WHMCSService.openTicket(req, convId);
     }
 }
