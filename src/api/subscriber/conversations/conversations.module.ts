@@ -10,10 +10,11 @@ import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
 import { EventsModule } from 'src/events/events.module';
+import { SettingsService } from '../settings/settings.service';
 
 @Module({
     imports: [SocketSessionsModule, EventsModule, MailModule],
     controllers: [ConversationsController],
-    providers: [PrismaService, DataHelper, ConversationsService, ChatDepartmentService, UsersService],
+    providers: [PrismaService, DataHelper, ConversationsService, ChatDepartmentService, UsersService, SettingsService],
 })
 export class ConversationsModule {}

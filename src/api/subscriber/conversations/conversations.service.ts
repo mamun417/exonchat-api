@@ -8,12 +8,14 @@ import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 import { SocketSessionsService } from '../socket-session/socket-sessions.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class ConversationsService {
     constructor(
         private prisma: PrismaService,
         private dataHelper: DataHelper,
+        private settingsService: SettingsService,
         private socketSessionService: SocketSessionsService,
         private chatDepartmentService: ChatDepartmentService,
     ) {}
@@ -137,12 +139,39 @@ export class ConversationsService {
         }
 
         let ai_can_reply = false;
+        let routingPolicy = 'manual';
 
-        if (createConversationDto.chat_type === 'live_chat' && 'check ai reply at conv init') {
-            ai_can_reply = true;
+        if (createConversationDto.chat_type === 'live_chat') {
+            const aiReplySetting = await this.settingsService.findOne('ai_auto_reply_at_client_msg', req);
+
+            if (aiReplySetting) {
+                if (aiReplySetting && aiReplySetting.user_settings_value && aiReplySetting.user_settings_value.length) {
+                    ai_can_reply = aiReplySetting.user_settings_value[0].value === 'true';
+                } else {
+                    ai_can_reply = aiReplySetting.default_value === 'true';
+                }
+            }
+
+            // get by category & other info. send also routing info
+            const routingPolicySetting = await this.settingsService.findOne(
+                'conversation_at_initiate_notify_policy',
+                req,
+            );
+
+            if (routingPolicySetting) {
+                if (
+                    routingPolicySetting &&
+                    routingPolicySetting.user_settings_value &&
+                    routingPolicySetting.user_settings_value.length
+                ) {
+                    routingPolicy = routingPolicySetting.user_settings_value[0].value;
+                } else {
+                    routingPolicy = routingPolicySetting.default_value;
+                }
+            }
         }
 
-        return this.prisma.conversation.create({
+        const conversation: any = await this.prisma.conversation.create({
             data: {
                 users_only: createConversationDto.chat_type !== 'live_chat',
                 type: createConversationDto.chat_type,
@@ -173,6 +202,10 @@ export class ConversationsService {
                 chat_department: true,
             },
         });
+
+        conversation.routing_policy = routingPolicy;
+
+        return conversation;
     }
 
     async join(id: string, req: any) {
@@ -679,7 +712,7 @@ export class ConversationsService {
     }
 
     async findOneWithSessions(id: string, req: any) {
-        return this.prisma.conversation.findFirst({
+        const conversation: any = await this.prisma.conversation.findFirst({
             where: {
                 id: id,
                 subscriber_id: req.user.data.socket_session.subscriber_id,
@@ -699,8 +732,39 @@ export class ConversationsService {
                         },
                     },
                 },
+                chat_department: true,
             },
         });
+
+        let routingPolicy = 'manual';
+        // if we face issue conversation.conversation_sessions.length === 1 then rethink the use
+        if (
+            conversation &&
+            conversation.conversation_sessions.length === 1 &&
+            !conversation.users_only &&
+            conversation.type === 'live_chat'
+        ) {
+            const routingPolicySetting = await this.settingsService.findOne(
+                'conversation_at_initiate_notify_policy',
+                req,
+            );
+
+            if (routingPolicySetting) {
+                if (
+                    routingPolicySetting &&
+                    routingPolicySetting.user_settings_value &&
+                    routingPolicySetting.user_settings_value.length
+                ) {
+                    routingPolicy = routingPolicySetting.user_settings_value[0].value;
+                } else {
+                    routingPolicy = routingPolicySetting.default_value;
+                }
+            }
+
+            conversation.routing_policy = routingPolicy;
+        }
+
+        return conversation;
     }
 
     // async findOneWithStatus(id: string, req: any) {

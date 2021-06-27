@@ -45,7 +45,7 @@ export class DataHelper {
         }
 
         _l.without(validFields, 'p', 'pp').forEach((field: any) => {
-            console.log(field);
+            // console.log(field);
 
             // now only supports filter by actual col name
             // default is now only AND for all.

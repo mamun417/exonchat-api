@@ -10,10 +10,19 @@ import { ChatDepartmentService } from '../subscriber/chat-department/department.
 import { UsersService } from '../subscriber/users/users.service';
 import { MailModule } from '../../mail/mail.module';
 import { EventsModule } from '../../events/events.module';
+import { SettingsService } from '../subscriber/settings/settings.service';
 
 @Module({
     imports: [HttpModule, SocketSessionsModule, MailModule, EventsModule],
     controllers: [RatingsController],
-    providers: [PrismaService, RatingsService, ConversationsService, DataHelper, ChatDepartmentService, UsersService],
+    providers: [
+        PrismaService,
+        RatingsService,
+        SettingsService,
+        ConversationsService,
+        DataHelper,
+        ChatDepartmentService,
+        UsersService,
+    ],
 })
 export class RatingModule {}

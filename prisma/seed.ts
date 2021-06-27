@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as _l from 'lodash';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -29,54 +30,56 @@ async function main() {
             permissions: [{ slug: 'client_chat_join', name: 'Client Chat Join', use_for: 'subscriber' }],
         },
         {
-            slug: 'user',
-            name: 'User',
+            slug: 'manager',
+            name: 'Manager',
             use_for: 'subscriber',
-            permissions: [{ slug: 'chat_join', name: 'Chat Join', use_for: 'subscriber' }],
+            permissions: [{ slug: 'agent_assign', name: 'Agent Assign', use_for: 'subscriber' }],
         },
     ];
 
-    const rolesData = await Promise.all(
-        roles.map(async (role) => {
-            return await prisma.role.upsert({
-                where: {
-                    role_identifier: {
-                        slug: role.slug,
-                        use_for: role.use_for,
-                    },
-                },
-                create: {
+    const rolesData = [];
+
+    for (const role of roles) {
+        const roleData = await prisma.role.upsert({
+            where: {
+                role_identifier: {
                     slug: role.slug,
-                    name: role.name,
                     use_for: role.use_for,
-                    permissions: {
-                        connectOrCreate: role.permissions.map((permission: any) => {
-                            return {
-                                where: {
-                                    permission_identifier: { slug: permission.slug, use_for: permission.use_for },
-                                },
-                                create: { slug: permission.slug, use_for: permission.use_for, name: permission.name },
-                            };
-                        }),
-                    },
                 },
-                update: {
-                    name: role.name,
-                    use_for: role.use_for,
-                    permissions: {
-                        connectOrCreate: role.permissions.map((permission: any) => {
-                            return {
-                                where: {
-                                    permission_identifier: { slug: permission.slug, use_for: permission.use_for },
-                                },
-                                create: { slug: permission.slug, use_for: permission.use_for, name: permission.name },
-                            };
-                        }),
-                    },
+            },
+            create: {
+                slug: role.slug,
+                name: role.name,
+                use_for: role.use_for,
+                permissions: {
+                    connectOrCreate: role.permissions.map((permission: any) => {
+                        return {
+                            where: {
+                                permission_identifier: { slug: permission.slug, use_for: permission.use_for },
+                            },
+                            create: { slug: permission.slug, use_for: permission.use_for, name: permission.name },
+                        };
+                    }),
                 },
-            });
-        }),
-    );
+            },
+            update: {
+                name: role.name,
+                use_for: role.use_for,
+                permissions: {
+                    connectOrCreate: role.permissions.map((permission: any) => {
+                        return {
+                            where: {
+                                permission_identifier: { slug: permission.slug, use_for: permission.use_for },
+                            },
+                            create: { slug: permission.slug, use_for: permission.use_for, name: permission.name },
+                        };
+                    }),
+                },
+            },
+        });
+
+        rolesData.push(roleData);
+    }
 
     const subscriptions = await Promise.all([
         await prisma.subscription.create({
@@ -101,7 +104,6 @@ async function main() {
                         create: [
                             {
                                 email: `${namePart}@${namePart}.${namePart}`,
-                                password: '123',
                                 active: true,
                                 role: {
                                     connect: {
@@ -114,10 +116,14 @@ async function main() {
                                         full_name: namePart,
                                     },
                                 },
+                                user_secret: {
+                                    create: {
+                                        password: await bcrypt.hash('123', await bcrypt.genSalt()),
+                                    },
+                                },
                             },
                             {
                                 email: `${namePart}1@${namePart}.${namePart}`,
-                                password: '123',
                                 active: true,
                                 role: {
                                     connect: {
@@ -130,20 +136,29 @@ async function main() {
                                         full_name: namePart,
                                     },
                                 },
+                                user_secret: {
+                                    create: {
+                                        password: await bcrypt.hash('123', await bcrypt.genSalt()),
+                                    },
+                                },
                             },
                             {
                                 email: `${namePart}2@${namePart}.${namePart}`,
-                                password: '123',
                                 active: true,
                                 role: {
                                     connect: {
-                                        id: _l.find(rolesData, { slug: 'user' }).id,
+                                        id: _l.find(rolesData, { slug: 'manager' }).id,
                                     },
                                 },
                                 user_meta: {
                                     create: {
                                         display_name: namePart,
                                         full_name: namePart,
+                                    },
+                                },
+                                user_secret: {
+                                    create: {
+                                        password: await bcrypt.hash('123', await bcrypt.genSalt()),
                                     },
                                 },
                             },

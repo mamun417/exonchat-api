@@ -10,6 +10,7 @@ import { ChatDepartmentService } from '../chat-department/department.service';
 import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
 import { EventsModule } from 'src/events/events.module';
+import { SettingsService } from '../settings/settings.service';
 
 @Module({
     imports: [SocketSessionsModule, HttpModule, MailModule, EventsModule],
@@ -22,6 +23,7 @@ import { EventsModule } from 'src/events/events.module';
         SubscribersService,
         ChatDepartmentService,
         UsersService,
+        SettingsService,
     ],
 })
 export class AiModule {}

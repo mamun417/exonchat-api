@@ -47,7 +47,7 @@ export class MessagesService {
         }
 
         // save msg to speech also by checking auto_save_new_msg_to_speech
-        // i think only clients msg should store.
+        // I think only clients msg should store.
         // intents static content can be searched by live_chats agents msg
         if (!req.user.data.socket_session.user) {
             await this.prisma.speech_recognition.upsert({

@@ -10,6 +10,7 @@ import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
 import { EventsModule } from 'src/events/events.module';
 import { AttachmentsService } from '../attachments/attachments.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Module({
     imports: [SocketSessionsModule, MailModule, EventsModule],
@@ -22,6 +23,7 @@ import { AttachmentsService } from '../attachments/attachments.service';
         ChatDepartmentService,
         UsersService,
         AttachmentsService,
+        SettingsService,
     ],
 })
 export class MessagesModule {}
