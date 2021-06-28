@@ -7,6 +7,7 @@ import * as moment from 'moment';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CheckPasswordDto } from './dto/check-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class PasswordService {
@@ -58,9 +59,13 @@ export class PasswordService {
         return await this.prisma.user.update({
             where: { id: findUser.id },
             data: {
-                password: resetPasswordDto.password,
                 forgot_password_token: null,
                 forgot_password_token_expired: null,
+                user_secret: {
+                    update: {
+                        password: await bcrypt.hash(resetPasswordDto.password, await bcrypt.genSalt()),
+                    },
+                },
             },
         });
     }
@@ -68,9 +73,10 @@ export class PasswordService {
     async check(req: any, checkPasswordDto: CheckPasswordDto) {
         const findUser = await this.prisma.user.findFirst({
             where: { id: req.user.data.id },
+            include: { user_secret: true },
         });
 
-        if (findUser.password !== checkPasswordDto.password)
+        if (!(await bcrypt.compare(checkPasswordDto.password, findUser.user_secret.password)))
             throw new HttpException('Password does not match', HttpStatus.NOT_FOUND);
 
         return { msg: 'Password matched', status: 'success' };
@@ -79,18 +85,21 @@ export class PasswordService {
     async change(req: any, changePasswordDto: ChangePasswordDto) {
         const findUser = await this.prisma.user.findFirst({
             where: { id: req.user.data.id },
+            include: { user_secret: true },
         });
 
-        if (findUser.password !== changePasswordDto.old_password)
+        if (!(await bcrypt.compare(changePasswordDto.old_password, findUser.user_secret.password)))
             throw new HttpException('Old password does not match', HttpStatus.NOT_FOUND);
 
-        if (findUser.password === changePasswordDto.password)
+        if (await bcrypt.compare(changePasswordDto.password, findUser.user_secret.password))
             throw new HttpException('You can not use your old password', HttpStatus.NOT_FOUND);
 
         return await this.prisma.user.update({
             where: { id: findUser.id },
             data: {
-                password: changePasswordDto.password,
+                user_secret: {
+                    update: { password: await bcrypt.hash(changePasswordDto.password, await bcrypt.genSalt()) },
+                },
             },
         });
     }

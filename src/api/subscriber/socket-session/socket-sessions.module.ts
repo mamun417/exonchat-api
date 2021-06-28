@@ -11,11 +11,12 @@ import { PrismaService } from 'src/prisma.service';
 import { AuthModule } from 'src/auth/auth.module';
 import { MailModule } from 'src/mail/mail.module';
 import { EventsModule } from 'src/events/events.module';
+import { SettingsService } from '../settings/settings.service';
 
 @Module({
     imports: [EventsModule, AuthModule, HttpModule, MailModule],
     controllers: [SocketSessionsController],
-    providers: [PrismaService, DataHelper, SocketSessionsService, SubscribersService, UsersService], // DataHelper is needed for SubscriberService
+    providers: [PrismaService, DataHelper, SettingsService, SocketSessionsService, SubscribersService, UsersService], // DataHelper is needed for SubscriberService
     exports: [SocketSessionsService],
 })
 export class SocketSessionsModule {}

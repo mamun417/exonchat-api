@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,7 @@ export class AuthService {
                         attachment: true,
                     },
                 },
+                user_secret: true,
                 role: {
                     select: {
                         id: true,
@@ -49,17 +51,15 @@ export class AuthService {
             throw new HttpException(`Invalid Login Credentials`, HttpStatus.NOT_FOUND);
         }
 
-        const socket_session: any = await this.prisma.socket_session.findFirst({
+        //add socket session also so that if called by socket token api this can handle without problem
+        user.socket_session = await this.prisma.socket_session.findFirst({
             where: {
                 user_id: user.id,
             },
         });
 
-        //add socket session also so that if called by socket token api this can handle without problem
-        user.socket_session = socket_session;
-
-        if (user && user.password === pass) {
-            const { password, ...result } = user;
+        if (user && (await bcrypt.compare(pass, user.user_secret.password))) {
+            const { user_secret, ...result } = user;
             return result;
         }
 

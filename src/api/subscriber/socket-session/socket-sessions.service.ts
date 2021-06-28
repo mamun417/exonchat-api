@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma.service';
 import { DataHelper } from 'src/helper/data-helper';
 import { socket_session } from '@prisma/client';
 import { AuthService } from 'src/auth/auth.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class SocketSessionsService {
@@ -17,6 +18,7 @@ export class SocketSessionsService {
         private authService: AuthService,
         private subscriberService: SubscribersService,
         private userService: UsersService,
+        private settingsService: SettingsService,
     ) {}
 
     async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, req: any) {
@@ -44,7 +46,7 @@ export class SocketSessionsService {
                 };
 
                 return {
-                    bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 7),
+                    bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 15),
                     data: dataForToken,
                     type: 'socket',
                 };
@@ -80,7 +82,7 @@ export class SocketSessionsService {
         };
 
         return {
-            bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 365),
+            bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 15),
             data: dataForToken,
             type: 'socket',
         };
@@ -125,7 +127,37 @@ export class SocketSessionsService {
         });
 
         if (socketSession && socketSession.conversation_sessions.length === 1) {
-            return socketSession.conversation_sessions[0].conversation;
+            const conversation: any = socketSession.conversation_sessions[0].conversation;
+
+            let routingPolicy = 'manual';
+            // if we face issue conversation.conversation_sessions.length === 1 then rethink the use
+            if (
+                conversation &&
+                conversation.conversation_sessions.length === 1 &&
+                !conversation.users_only &&
+                conversation.type === 'live_chat'
+            ) {
+                const routingPolicySetting = await this.settingsService.findOne(
+                    'conversation_at_initiate_notify_policy',
+                    req,
+                );
+
+                if (routingPolicySetting) {
+                    if (
+                        routingPolicySetting &&
+                        routingPolicySetting.user_settings_value &&
+                        routingPolicySetting.user_settings_value.length
+                    ) {
+                        routingPolicy = routingPolicySetting.user_settings_value[0].value;
+                    } else {
+                        routingPolicy = routingPolicySetting.default_value;
+                    }
+                }
+
+                conversation.routing_policy = routingPolicy;
+            }
+
+            return conversation;
         }
 
         return null;

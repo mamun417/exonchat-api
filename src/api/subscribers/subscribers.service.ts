@@ -6,6 +6,7 @@ import { PrismaService } from 'src/prisma.service';
 import { subscriber } from '@prisma/client';
 
 import { DataHelper } from 'src/helper/data-helper';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class SubscribersService {
@@ -75,12 +76,14 @@ export class SubscribersService {
         await this.prisma.user.create({
             data: {
                 email: createSubscriberDto.email,
-                password: createSubscriberDto.password,
                 user_meta: {
                     create: {
                         full_name: createSubscriberDto.full_name,
                         display_name: createSubscriberDto.display_name,
                     },
+                },
+                user_secret: {
+                    create: { password: await bcrypt.hash(createSubscriberDto.password, await bcrypt.genSalt()) },
                 },
                 role: {
                     connect: {

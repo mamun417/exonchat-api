@@ -9,6 +9,7 @@ import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
 import { MailService } from 'src/mail/mail.service';
 import { ConvertUserTypeDto } from './dto/convert-user-type.dto';
 import { EventsGateway } from 'src/events/events.gateway';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -271,7 +272,6 @@ export class UsersService {
         const user: any = await this.prisma.user.create({
             data: {
                 email: invitation.email,
-                password: joinUserDto.password,
                 active: invitation.active,
                 subscriber: { connect: { id: invitation.subscriber_id } },
                 role: { connect: { id: role.id } },
@@ -279,6 +279,11 @@ export class UsersService {
                     create: {
                         full_name: joinUserDto.full_name,
                         display_name: joinUserDto.display_name,
+                    },
+                },
+                user_secret: {
+                    create: {
+                        password: await bcrypt.hash(joinUserDto.password, await bcrypt.genSalt()),
                     },
                 },
                 socket_sessions: {
@@ -464,6 +469,9 @@ export class UsersService {
                 subscriber: {
                     api_key,
                 },
+            },
+            include: {
+                chat_departments: true,
             },
         });
     }

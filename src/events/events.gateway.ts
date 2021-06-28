@@ -5,7 +5,6 @@ import {
     SubscribeMessage,
     WebSocketGateway,
     WebSocketServer,
-    WsResponse,
     OnGatewayInit,
     OnGatewayConnection,
     OnGatewayDisconnect,
@@ -34,12 +33,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // if user then data.ses_user contains user info then socket_session
     // in socket_session has session info.
     // you will see that in some places not containing data.ses_ser.socket_session.subscriber_id
-    // but only data.ses_user.subscriber_id. its only for user end. if you dont get the data that means
+    // but only data.ses_user.subscriber_id. it's only for user end. if you don't get the data that means
     // your ses is not for user
 
-    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
+    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: []}}
     private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
-    private roomsInAConv: any = {}; // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool}}
+    private roomsInAConv: any = {}; // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool, chat_department: '', routing_policy: 'manual/...'}}
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_get_logged_users') // get users list when needed
@@ -98,7 +97,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
-    // load each users coversation so that they can send msg
+    // load each user's conversation so that they can send msg
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_reload_user_to_user_chat')
     async init_user_to_user_chat(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
@@ -120,12 +119,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return;
         }
 
-        const roomName = data.ses_user.socket_session.id;
-
         if (conv_data.length) {
             conv_data.forEach((conv: any) => {
                 if (!this.roomsInAConv.hasOwnProperty(conv.id)) {
-                    this.roomsInAConv[conv.id] = { room_ids: _.map(conv.conversation_sessions, 'socket_session_id') };
+                    this.roomsInAConv[conv.id] = {
+                        room_ids: _.map(conv.conversation_sessions, 'socket_session_id'),
+                        sub_id: conv.subscriber_id,
+                    };
 
                     this.roomsInAConv[conv.id].users_only = true;
                 }
@@ -135,7 +135,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_init_conv_from_user')
-    async init_conversation_from_user(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async init_conversation_from_user(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         let conv_data = null;
         let conv_id = null;
 
@@ -159,17 +159,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            // console.log(e.response.data);
-
-            this.sendError(client, 'ec_init_conv_from_user', e.response.data);
-
-            return;
+            return this.sendError(client, 'ec_init_conv_from_user', e.response.data);
         }
 
         const roomName = data.ses_user.socket_session.id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
-            this.roomsInAConv[conv_id] = { room_ids: [roomName, ...data.ses_ids] };
+            this.roomsInAConv[conv_id] = { room_ids: [roomName, ...data.ses_ids], sub_id: conv_data.subscriber_id };
 
             if (data.users_only) {
                 this.roomsInAConv[conv_id].users_only = true;
@@ -196,21 +192,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             status: 'success',
         });
 
-        // if api error
-        // this.server.to(client.id).emit('ec_error', {
-        //     type: 'warning',
-        //     step: 'ec_conv_initiated_from_user',
-        //     reason: 'err.msg',
-        // });
-
-        console.log('Rooms In Convs => ', this.roomsInAConv);
+        console.log('Rooms In Conversations => ', this.roomsInAConv);
 
         return;
     }
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_init_conv_from_client')
-    async init_conversation_from_client(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async init_conversation_from_client(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         let conv_data = null;
         let conv_id = null;
 
@@ -231,25 +220,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            // console.log(e.response.data);
-
-            this.sendError(client, 'ec_init_conv_from_client', e.response.data);
-
-            return;
+            return this.sendError(client, 'ec_init_conv_from_client', e.response.data);
         }
 
         const roomName = data.ses_user.socket_session.id;
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
-            this.roomsInAConv[conv_id] = { room_ids: [roomName], ai_is_replying: conv_data.ai_is_replying };
+            this.roomsInAConv[conv_id] = {
+                room_ids: [roomName],
+                ai_is_replying: conv_data.ai_is_replying,
+                chat_department: conv_data.chat_department.tag,
+                routing_policy: conv_data.routing_policy,
+                sub_id: conv_data.subscriber_id,
+            };
         } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_init_conv_from_client',
-                reason: 'conv id already exists',
-            });
-
-            return;
+            return this.sendError(client, 'ec_init_conv_from_client', 'conv id already exists');
         }
 
         this.server.in(roomName).emit('ec_conv_initiated_to_client', {
@@ -260,21 +245,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             status: 'success',
         });
 
-        // if api error
-        // this.server.to(client.id).emit('ec_error', {
-        //     type: 'warning',
-        //     step: 'ec_init_conv_from_client',
-        //     reason: 'err.msg',
-        // });
-
-        console.log('Rooms In Convs => ', this.roomsInAConv);
+        console.log('Rooms In Conversations => ', this.roomsInAConv);
 
         return;
     }
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_join_conversation')
-    async joinConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async joinConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
 
         let conv_ses_data = null;
@@ -290,8 +268,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             conv_ses_data = convSesRes.data;
 
-            // console.log(convSesRes);
-
             // if join then turn off ai reply
             if (
                 this.roomsInAConv[data.conv_id].hasOwnProperty('ai_is_replying') &&
@@ -300,27 +276,26 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[data.conv_id].ai_is_replying = false;
             }
         } catch (e) {
-            // console.log(e.response.data);
-
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_join_conversation',
-                reason: e.response.data,
-            });
-
-            return;
+            return this.sendError(client, 'ec_join_conversation', e.response.data);
         }
-
-        // call check api for conv_id, sub_id & ses_id
-        const user_info = {}; //get user info
 
         const roomName = data.ses_user.socket_session.id;
 
-        // call join conversation api and get msg. there will handle join limit also
-        // if done
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             if (!this.roomsInAConv[data.conv_id].room_ids.includes(roomName)) {
                 this.roomsInAConv[data.conv_id].room_ids.push(roomName);
+
+                console.log('Rooms In Conversations => ', this.roomsInAConv);
+            }
+
+            // don't move this condition upward. we need after push
+            // until that agent joins notification works
+            if (
+                this.roomsInAConv[data.conv_id].notify_again &&
+                this.roomsInAConv[data.conv_id].notify_to === roomName
+            ) {
+                this.roomsInAConv[data.conv_id].notify_again = false;
+                this.roomsInAConv[data.conv_id].notify_to = '';
             }
 
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
@@ -332,23 +307,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 });
             });
         } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_join_conversation',
-                reason: 'conversation not matched',
-            });
-
-            return;
+            this.sendError(client, 'ec_join_conversation', 'conversation not matched');
         }
-
-        console.log('Rooms In Convs => ', this.roomsInAConv);
 
         return;
     }
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_leave_conversation')
-    async leaveConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async leaveConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
 
         let conv_ses_data = null;
@@ -364,22 +331,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             conv_ses_data = convSesRes.data;
         } catch (e) {
-            // console.log(e.response.data);
-
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_leave_conversation',
-                reason: e.response.data,
-            });
-
-            return;
+            return this.sendError(client, 'ec_leave_conversation', e.response.data);
         }
 
-        // call check api for conv_id, sub_id & ses_id
-
-        const roomName = data.ses_user.socket_session.id;
-
-        console.log('Rooms In Convs => ', this.roomsInAConv);
+        console.log('Rooms In Conversations => ', this.roomsInAConv);
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
@@ -393,28 +348,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 });
             });
         } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_leave_conversation',
-                reason: 'Already Leaved from Current Conversation',
-            });
-
-            return;
+            this.sendError(client, 'ec_leave_conversation', 'Already left from this conversation');
         }
-
-        // if api error
-        // this.server.to(client.id).emit('ec_error', {
-        //     type: 'warning',
-        //     step: 'at_leave_conversation',
-        //     reason: 'err.msg',
-        // });
 
         return;
     }
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_close_conversation')
-    async closeConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async closeConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
 
         let conv_data = null;
@@ -432,28 +374,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            // console.log(e.response.data);
-
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_close_conversation',
-                reason: e.response.data,
-            });
-
-            return;
+            return this.sendError(client, 'ec_close_conversation', e.response.data);
         }
 
-        // call check api for conv_id, sub_id & ses_id
-
-        const roomName = data.ses_user.socket_session.id;
-
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
-            // clone before remove so that we have all rooms to inform
-
             const userRooms = Object.keys(this.userClientsInARoom).filter(
                 (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
             );
 
+            // clone before remove so that we have all rooms to inform
             let roomsInAConvCopy = _.cloneDeep(this.roomsInAConv[data.conv_id].room_ids);
 
             delete this.roomsInAConv[data.conv_id];
@@ -484,21 +413,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 });
             }
         } else {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_close_conversation',
-                reason: 'Already Closed from Current Conversation',
-            });
-
-            return;
+            this.sendError(client, 'ec_close_conversation', 'This conversation is already closed');
         }
-
-        // if api error
-        // this.server.to(client.id).emit('ec_error', {
-        //     type: 'warning',
-        //     step: 'at_leave_conversation',
-        //     reason: 'err.msg',
-        // });
 
         return;
     }
@@ -514,12 +430,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             if (!convObj) return;
 
             convId = convObj.id;
-
-            if (!this.roomsInAConv.hasOwnProperty(convId)) {
-                this.roomsInAConv[convId] = {
-                    room_ids: _.map(convObj.conversation_sessions, 'socket_session_id'),
-                };
-            }
         }
 
         // send to all connected users
@@ -548,7 +458,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_msg_from_client')
-    async msgFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
+    async msgFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         let convId = this.convIdFromSession(data);
 
         if (!convId) {
@@ -576,13 +486,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             createdMsg = msgRes.data;
         } catch (e) {
-            this.server.to(client.id).emit('ec_error', {
-                type: 'error',
-                step: 'ec_msg_from_client',
-                reason: e.response.data,
-            });
-
-            return;
+            return this.sendError(client, 'ec_msg_from_client', e.response.data);
         }
 
         let aiReplyMsg: any = null;
@@ -611,22 +515,78 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[convId].ai_is_replying = false;
 
                 console.log(e.response.data, 'ai_error');
-                // if need send to emited user
+                // if needed send to emitted user
             }
         }
 
-        // send to all connected users
-        this.sendToAllUsers(data, 'ec_msg_from_client', {
-            ...createdMsg,
-            temp_id: data.temp_id,
-            ai_is_replying: aiReplyMsg && !!aiReplyMsg.ai_resolved,
-        });
+        const convObj = this.roomsInAConv[convId];
+
+        if (!!(aiReplyMsg && !!aiReplyMsg.ai_resolved)) {
+            this.sendToAllUsers(data, 'ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: true,
+                notify: false,
+            });
+        } else if (convObj.notify_again && convObj.notify_to) {
+            this.server.in(convObj.notify_to).emit('ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: false,
+                notify: true,
+            });
+
+            this.sendToAllUsersWithout(data, [convObj.notify_to], 'ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: false,
+                notify: false,
+            });
+        } else if (this.convPolicyIsManual(data)) {
+            // send to all connected users
+            this.sendToAllUsers(data, 'ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: false,
+                notify: this.convIsBasicNotifiable(data),
+            });
+        } else {
+            // we are calling this.convIsBasicNotifiable(data) for safety. if changes then it will safeguard
+            const matchedDepartmentalAgents = this.usersRooms(data).filter((roomId: any) => {
+                return this.userClientsInARoom[roomId].chat_departments?.includes(convObj.chat_department);
+            });
+
+            const subIdMatchedConvs = Object.values(this.roomsInAConv).filter((conv: any) => {
+                return conv.sub_id === data.ses_user.socket_session.subscriber_id && !conv.users_only;
+            });
+
+            if (matchedDepartmentalAgents.length) {
+                if (subIdMatchedConvs.length) {
+                    await this.roundRobinSend(data, createdMsg, matchedDepartmentalAgents, subIdMatchedConvs);
+                } else {
+                    // if start then send any one of the agent with same department
+                    this.server.in(matchedDepartmentalAgents[0]).emit('ec_msg_from_client', {
+                        ...createdMsg,
+                        temp_id: data.temp_id,
+                        ai_is_replying: false, // safely we can assume ai is false
+                        notify: this.convIsBasicNotifiable(data),
+                    });
+                }
+            } else {
+                await this.roundRobinSend(data, createdMsg, this.usersRooms(data), subIdMatchedConvs);
+            }
+        }
 
         if (aiReplyMsg) {
             this.sendToAllUsers(data, 'ec_reply_from_ai', {
                 ...createdMsg,
                 temp_id: data.temp_id,
-                ai_is_replying: aiReplyMsg && !!aiReplyMsg.ai_resolved,
+                ai_is_replying: !!(aiReplyMsg && !!aiReplyMsg.ai_resolved),
+            });
+
+            // send to the user
+            this.server.in(data.ses_user.socket_session.id).emit('ec_reply_from_ai', {
+                ...aiReplyMsg,
             });
         }
 
@@ -635,15 +595,48 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             ...createdMsg,
             temp_id: data.temp_id,
             return_type: 'own',
-        }); // return back to client so that we can update to all tab
-
-        if (aiReplyMsg) {
-            this.server.in(data.ses_user.socket_session.id).emit('ec_reply_from_ai', {
-                ...aiReplyMsg,
-            });
-        }
+        }); // return to client so that we can update to all tab
 
         return;
+    }
+
+    async roundRobinSend(dataObj: any, msgObj: any, roomIds: any, convsValues: any) {
+        const joinedMapperCount = { room_id: '', count: 999 };
+
+        roomIds.forEach((roomId) => {
+            const count = convsValues.filter((conv: any) => {
+                return conv.room_ids.includes(roomId);
+            }).length;
+
+            if (count < joinedMapperCount.count) {
+                joinedMapperCount.room_id = roomId;
+                joinedMapperCount.count = count;
+            }
+        });
+
+        if (joinedMapperCount.room_id && joinedMapperCount.count < 3) {
+            // send only to this with notify
+            this.server.in(joinedMapperCount.room_id).emit('ec_msg_from_client', {
+                ...msgObj,
+                temp_id: dataObj.temp_id,
+                ai_is_replying: false, // safely we can assume ai is false
+                notify: this.convIsBasicNotifiable(dataObj),
+            });
+
+            this.sendToAllUsersWithout(dataObj, [joinedMapperCount.room_id], 'ec_msg_from_client', {
+                ...msgObj,
+                temp_id: dataObj.temp_id,
+                ai_is_replying: false, // safely we can assume ai is false
+                notify: false,
+            });
+        } else {
+            this.sendToAllUsers(dataObj, 'ec_msg_from_client', {
+                ...msgObj,
+                temp_id: dataObj.temp_id,
+                ai_is_replying: false,
+                notify: this.convIsBasicNotifiable(dataObj),
+            });
+        }
     }
 
     @UseGuards(WsJwtGuard)
@@ -695,7 +688,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             temp_id: data.temp_id,
             session_id: data.ses_user.socket_session.id,
             status: data.status,
-        }); // return back to client so that we can update to all tab
+        }); // return to client so that we can update to all tab
 
         return;
     }
@@ -766,7 +759,41 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
-    // for now it can only be called by user cz client data has no conv_id
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_chat_transfer_from_user')
+    async chatTransferFromUser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
+
+        const convObj = this.roomsInAConv[data.conv_id];
+
+        if (!this.usersRooms(data).filter((roomId: any) => roomId === data.notify_to).length) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_chat_transfer_from_user',
+                reason: 'Chat transfer not possible. Agent is not online',
+            });
+        } else if (convObj.room_ids.includes(data.notify_to)) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_chat_transfer_from_user',
+                reason: 'Agent is already connected with this chat',
+            });
+        } else {
+            convObj.notify_again = true;
+            convObj.notify_to = data.notify_to;
+
+            this.server.in(data.notify_to).emit('ec_chat_transfer_from_user', {
+                conv_id: data.conv_id,
+                agent_info: data.agent_info,
+            });
+
+            console.log('Rooms In Conversations => ', this.roomsInAConv);
+        }
+
+        return;
+    }
+
+    // for now, it can only be called by user cz client data has no conv_id
     ownConvObj(data: any) {
         return this.roomsInAConv[data.conv_id];
     }
@@ -777,7 +804,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         );
     }
 
-    // its only for support if system restart happens
+    // it's only for support if system restart happens
     // OR all connected conv relation are cleaned when user|client closed from this conv
     async clientConvFromSession(data: any, client: any) {
         try {
@@ -794,10 +821,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     this.roomsInAConv[convRes.data.id] = {
                         room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
                         ai_is_replying: convRes.data.ai_is_replying,
+                        routing_policy: convRes.data.routing_policy || 'manual',
+                        sub_id: convRes.data.subscriber_id,
+                        users_only: convRes.data.users_only,
                     };
                 }
 
-                console.log('Rooms In Convs => ', this.roomsInAConv);
+                console.log('Rooms In Conversations => ', this.roomsInAConv);
 
                 return convRes.data;
             }
@@ -812,9 +842,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         const convId = this.convIdFromSession(data);
         const convObj = this.roomsInAConv[convId];
 
-        console.log(convObj, convObj && (!convObj.hasOwnProperty('ai_is_replying') || convObj.ai_is_replying));
-
         return convObj && (!convObj.hasOwnProperty('ai_is_replying') || convObj.ai_is_replying);
+    }
+
+    convPolicyIsManual(data: any) {
+        const convId = this.convIdFromSession(data);
+        const convObj = this.roomsInAConv[convId];
+
+        return convObj && (!convObj.routing_policy || convObj.routing_policy === 'manual');
+    }
+
+    convIsBasicNotifiable(data: any) {
+        const convId = this.convIdFromSession(data);
+        const convObj = this.roomsInAConv[convId];
+
+        return convObj && !convObj.ai_is_replying && convObj.room_ids.length === 1;
     }
 
     usersRoomsWithoutMe(data: any, client: any) {
@@ -839,6 +881,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         );
     }
 
+    sendToAllUsersWithout(data: any, roomIds = [], emitName: any, dataObj: any) {
+        this.usersRooms(data).forEach((roomId: any) => {
+            if (!roomIds.includes(roomId)) this.server.in(roomId).emit(emitName, dataObj);
+        });
+    }
+
     sendToAllUsersWithoutMe(data: any, client: any, emitName: any, dataObj: any) {
         this.usersRoomsWithoutMe(data, client).forEach((roomId: any) => {
             this.server.in(roomId).emit(emitName, dataObj);
@@ -861,7 +909,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         });
     }
 
-    // its only for support if system restart happens
+    // it's only for support if system restart happens
     // OR all connected conv relation are cleaned when user|client closed from this conv
     async sysHasConvAndSocketSessionRecheck(data: any, client: any) {
         if (this.convRoomsHasSession(data, client)) return true;
@@ -903,7 +951,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return false;
     }
 
-    // dont call it directly. call sysHasConvAndSocketSessionRecheck
+    // don't call it directly. call sysHasConvAndSocketSessionRecheck
     async recheckSysHasConv(data: any, client: any) {
         const convId = data.conv_id;
 
@@ -926,9 +974,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                     this.roomsInAConv[convId].users_only = convRes.data.users_only;
                     this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
+                    this.roomsInAConv[convId].routing_policy = convRes.data.routing_policy || 'manual';
+                    this.roomsInAConv[convId].sub_id = convRes.data.subscriber_id;
                 }
 
-                console.log('Rooms In Convs => ', this.roomsInAConv);
+                console.log('Rooms In Conversations => ', this.roomsInAConv);
 
                 return true;
             }
@@ -939,13 +989,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return false;
     }
 
-    // dont call it directly
+    // don't call it directly
     convIsUserOnly(data: any) {
         return !!this.roomsInAConv[data.conv_id].users_only;
     }
 
     afterInit(server: Server) {
-        console.log('Init');
+        console.log('Socket Gateway Initialized');
     }
 
     async handleConnection(client: Socket, ...args: any[]) {
@@ -957,6 +1007,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // this.client.join(roomName)
 
         let socket_session = null;
+        let chat_departments = null;
 
         const queryParams = client?.handshake?.query;
 
@@ -965,12 +1016,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (decodedToken) {
                 socket_session = decodedToken.data.socket_session;
+                chat_departments = decodedToken.data.chat_departments;
                 // console.log(socket_session);
             } else {
-                this.sendError(client, 'at_connect', 'token invalid');
+                return this.sendError(client, 'at_connect', 'token invalid');
             }
         } else {
-            this.sendError(client, 'at_connect', 'token invalid');
+            return this.sendError(client, 'at_connect', 'token invalid');
         }
 
         const roomName = socket_session.id;
@@ -985,6 +1037,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             };
 
             if (queryParams.client_type === 'user') {
+                if (chat_departments && chat_departments.length) {
+                    this.userClientsInARoom[roomName].chat_departments = _.map(chat_departments, 'tag');
+                }
+
                 const userRooms = Object.keys(this.userClientsInARoom).filter(
                     (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
                 );
@@ -1005,7 +1061,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         console.log('User Clients => ', this.userClientsInARoom);
         console.log('Normal Clients => ', this.normalClientsInARoom);
-        console.log('Rooms In Convs => ', this.roomsInAConv);
+        console.log('Rooms In Conversations => ', this.roomsInAConv);
     }
 
     handleDisconnect(client: Socket) {
@@ -1023,10 +1079,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 socket_session = decodedToken.data.socket_session;
                 // console.log(socket_session);
             } else {
-                this.sendError(client, 'at_connect', 'token invalid');
+                return this.sendError(client, 'at_connect', 'token invalid');
             }
         } else {
-            this.sendError(client, 'at_connect', 'token invalid');
+            return this.sendError(client, 'at_connect', 'token invalid');
         }
 
         const roomName = socket_session.id;
@@ -1073,7 +1129,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         console.log('User Clients => ', this.userClientsInARoom);
         console.log('Normal Clients => ', this.normalClientsInARoom);
-        console.log('Rooms In Convs => ', this.roomsInAConv);
+        console.log('Rooms In Conversations => ', this.roomsInAConv);
     }
 
     sendError(client: any, step: string, msg = 'you are doing something wrong', extra = {}) {
