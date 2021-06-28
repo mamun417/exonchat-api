@@ -132,8 +132,8 @@ async function main() {
                                 },
                                 user_meta: {
                                     create: {
-                                        display_name: namePart,
-                                        full_name: namePart,
+                                        display_name: `${namePart}1`,
+                                        full_name: `${namePart}1`,
                                     },
                                 },
                                 user_secret: {
@@ -152,8 +152,8 @@ async function main() {
                                 },
                                 user_meta: {
                                     create: {
-                                        display_name: namePart,
-                                        full_name: namePart,
+                                        display_name: `${namePart}2`,
+                                        full_name: `${namePart}2`,
                                     },
                                 },
                                 user_secret: {

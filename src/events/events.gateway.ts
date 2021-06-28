@@ -288,6 +288,16 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
             }
 
+            // don't move this condition upward. we need after push
+            // until that agent joins notification works
+            if (
+                this.roomsInAConv[data.conv_id].notify_again &&
+                this.roomsInAConv[data.conv_id].notify_to === roomName
+            ) {
+                this.roomsInAConv[data.conv_id].notify_again = false;
+                this.roomsInAConv[data.conv_id].notify_to = '';
+            }
+
             this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
                 this.server.in(room).emit('ec_is_joined_from_conversation', {
                     data: {
@@ -509,19 +519,39 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        // if is manual or ai is working then send to all agent. frontend will manage notification if not ai
-        if (this.convPolicyIsManual(data) || !!(aiReplyMsg && !!aiReplyMsg.ai_resolved)) {
+        const convObj = this.roomsInAConv[convId];
+
+        if (!!(aiReplyMsg && !!aiReplyMsg.ai_resolved)) {
+            this.sendToAllUsers(data, 'ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: true,
+                notify: false,
+            });
+        } else if (convObj.notify_again && convObj.notify_to) {
+            this.server.in(convObj.notify_to).emit('ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: false,
+                notify: true,
+            });
+
+            this.sendToAllUsersWithout(data, [convObj.notify_to], 'ec_msg_from_client', {
+                ...createdMsg,
+                temp_id: data.temp_id,
+                ai_is_replying: false,
+                notify: false,
+            });
+        } else if (this.convPolicyIsManual(data)) {
             // send to all connected users
             this.sendToAllUsers(data, 'ec_msg_from_client', {
                 ...createdMsg,
                 temp_id: data.temp_id,
-                ai_is_replying: !!(aiReplyMsg && !!aiReplyMsg.ai_resolved),
+                ai_is_replying: false,
                 notify: this.convIsBasicNotifiable(data),
             });
         } else {
             // we are calling this.convIsBasicNotifiable(data) for safety. if changes then it will safeguard
-            const convObj = this.roomsInAConv[convId];
-
             const matchedDepartmentalAgents = this.usersRooms(data).filter((roomId: any) => {
                 return this.userClientsInARoom[roomId].chat_departments?.includes(convObj.chat_department);
             });
@@ -532,42 +562,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (matchedDepartmentalAgents.length) {
                 if (subIdMatchedConvs.length) {
-                    const joinedMapperCount = { room_id: '', count: 999 };
-
-                    matchedDepartmentalAgents.forEach((roomId) => {
-                        const count = _.filter(subIdMatchedConvs, (conv: any) => {
-                            return conv.room_ids.includes(roomId);
-                        }).length;
-
-                        if (count < joinedMapperCount.count) {
-                            joinedMapperCount.room_id = roomId;
-                            joinedMapperCount.count = count;
-                        }
-                    });
-
-                    if (joinedMapperCount.room_id && joinedMapperCount.count < 3) {
-                        // send only to this with notify
-                        this.server.in(joinedMapperCount.room_id).emit('ec_msg_from_client', {
-                            ...createdMsg,
-                            temp_id: data.temp_id,
-                            ai_is_replying: false, // safely we can assume ai is false
-                            notify: this.convIsBasicNotifiable(data),
-                        });
-                    } else {
-                        this.sendToAllUsers(data, 'ec_msg_from_client', {
-                            ...createdMsg,
-                            temp_id: data.temp_id,
-                            ai_is_replying: false,
-                            notify: this.convIsBasicNotifiable(data),
-                        });
-
-                        this.sendToAllUsersWithout(data, [joinedMapperCount.room_id], 'ec_msg_from_client', {
-                            ...createdMsg,
-                            temp_id: data.temp_id,
-                            ai_is_replying: false, // safely we can assume ai is false
-                            notify: this.convIsBasicNotifiable(data),
-                        });
-                    }
+                    await this.roundRobinSend(data, createdMsg, matchedDepartmentalAgents, subIdMatchedConvs);
                 } else {
                     // if start then send any one of the agent with same department
                     this.server.in(matchedDepartmentalAgents[0]).emit('ec_msg_from_client', {
@@ -578,42 +573,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     });
                 }
             } else {
-                const joinedMapperCount = { room_id: '', count: 999 };
-
-                this.usersRooms(data).forEach((roomId) => {
-                    const count = subIdMatchedConvs.filter((conv: any) => {
-                        return conv.room_ids.includes(roomId);
-                    }).length;
-
-                    if (count < joinedMapperCount.count) {
-                        joinedMapperCount.room_id = roomId;
-                        joinedMapperCount.count = count;
-                    }
-                });
-
-                if (joinedMapperCount.room_id && joinedMapperCount.count < 3) {
-                    // send only to this with notify
-                    this.server.in(joinedMapperCount.room_id).emit('ec_msg_from_client', {
-                        ...createdMsg,
-                        temp_id: data.temp_id,
-                        ai_is_replying: false, // safely we can assume ai is false
-                        notify: this.convIsBasicNotifiable(data),
-                    });
-
-                    this.sendToAllUsersWithout(data, [joinedMapperCount.room_id], 'ec_msg_from_client', {
-                        ...createdMsg,
-                        temp_id: data.temp_id,
-                        ai_is_replying: false, // safely we can assume ai is false
-                        notify: false,
-                    });
-                } else {
-                    this.sendToAllUsers(data, 'ec_msg_from_client', {
-                        ...createdMsg,
-                        temp_id: data.temp_id,
-                        ai_is_replying: false,
-                        notify: this.convIsBasicNotifiable(data),
-                    });
-                }
+                await this.roundRobinSend(data, createdMsg, this.usersRooms(data), subIdMatchedConvs);
             }
         }
 
@@ -638,6 +598,45 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }); // return to client so that we can update to all tab
 
         return;
+    }
+
+    async roundRobinSend(dataObj: any, msgObj: any, roomIds: any, convsValues: any) {
+        const joinedMapperCount = { room_id: '', count: 999 };
+
+        roomIds.forEach((roomId) => {
+            const count = convsValues.filter((conv: any) => {
+                return conv.room_ids.includes(roomId);
+            }).length;
+
+            if (count < joinedMapperCount.count) {
+                joinedMapperCount.room_id = roomId;
+                joinedMapperCount.count = count;
+            }
+        });
+
+        if (joinedMapperCount.room_id && joinedMapperCount.count < 3) {
+            // send only to this with notify
+            this.server.in(joinedMapperCount.room_id).emit('ec_msg_from_client', {
+                ...msgObj,
+                temp_id: dataObj.temp_id,
+                ai_is_replying: false, // safely we can assume ai is false
+                notify: this.convIsBasicNotifiable(dataObj),
+            });
+
+            this.sendToAllUsersWithout(dataObj, [joinedMapperCount.room_id], 'ec_msg_from_client', {
+                ...msgObj,
+                temp_id: dataObj.temp_id,
+                ai_is_replying: false, // safely we can assume ai is false
+                notify: false,
+            });
+        } else {
+            this.sendToAllUsers(dataObj, 'ec_msg_from_client', {
+                ...msgObj,
+                temp_id: dataObj.temp_id,
+                ai_is_replying: false,
+                notify: this.convIsBasicNotifiable(dataObj),
+            });
+        }
     }
 
     @UseGuards(WsJwtGuard)
@@ -760,6 +759,40 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return;
     }
 
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_chat_transfer_from_user')
+    async chatTransferFromUser(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
+        if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
+
+        const convObj = this.roomsInAConv[data.conv_id];
+
+        if (!this.usersRooms(data).filter((roomId: any) => roomId === data.notify_to).length) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_chat_transfer_from_user',
+                reason: 'Chat transfer not possible. Agent is not online',
+            });
+        } else if (convObj.room_ids.includes(data.notify_to)) {
+            this.server.to(client.id).emit('ec_error', {
+                type: 'error',
+                step: 'ec_chat_transfer_from_user',
+                reason: 'Agent is already connected with this chat',
+            });
+        } else {
+            convObj.notify_again = true;
+            convObj.notify_to = data.notify_to;
+
+            this.server.in(data.notify_to).emit('ec_chat_transfer_from_user', {
+                conv_id: data.conv_id,
+                agent_info: data.agent_info,
+            });
+
+            console.log('Rooms In Conversations => ', this.roomsInAConv);
+        }
+
+        return;
+    }
+
     // for now, it can only be called by user cz client data has no conv_id
     ownConvObj(data: any) {
         return this.roomsInAConv[data.conv_id];
@@ -823,7 +856,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         const convId = this.convIdFromSession(data);
         const convObj = this.roomsInAConv[convId];
 
-        return convObj && !convObj.ai_is_replying && (convObj.room_ids.length === 1 || convObj.again_notify);
+        return convObj && !convObj.ai_is_replying && convObj.room_ids.length === 1;
     }
 
     usersRoomsWithoutMe(data: any, client: any) {
