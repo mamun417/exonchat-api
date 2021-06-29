@@ -5,6 +5,7 @@ import { DataHelper } from 'src/helper/data-helper';
 import { UpdateUiSettingsDto } from './dto/update-ui-settings.dto';
 import * as _l from 'lodash';
 import { UpdateAppSettingsDto } from './dto/update-app-settings.dto';
+import { UpdateChatSettingsDto } from './dto/update-chat-settings.dto';
 
 @Injectable()
 export class SettingsService {
@@ -170,6 +171,90 @@ export class SettingsService {
         return this.prisma.setting.findMany({
             where: {
                 category: 'app',
+                user_type: 'subscriber',
+                subscriber_id: null,
+            },
+            include: {
+                user_settings_value: {
+                    where: {
+                        subscriber_id: req.user.data.subscriber_id,
+                    },
+                },
+            },
+        });
+    }
+
+    async updateChatSetting(req: any, updateChatSettingsDto: UpdateChatSettingsDto) {
+        if (!updateChatSettingsDto.chat_settings.length)
+            throw new HttpException(`Chat Settings can not be empty`, HttpStatus.BAD_REQUEST);
+
+        const adminUser = await this.prisma.user.findFirst({
+            where: { id: req.user.data.id, role: { slug: 'admin' } },
+        });
+
+        if (!adminUser)
+            throw new HttpException(
+                `You dont have permission to change some of the settings >>>`,
+                HttpStatus.FORBIDDEN,
+            );
+
+        const settings = [];
+
+        for (const setting of updateChatSettingsDto.chat_settings) {
+            if (!_l.isPlainObject(setting) || !setting.name || !setting.value)
+                throw new HttpException(`Chat Settings update structure not good`, HttpStatus.BAD_REQUEST);
+
+            const temp: any = await this.findOneWithException(setting.name, req);
+
+            if (temp.category !== 'conversation' || temp.user_type !== 'subscriber' || temp.subscriber_id)
+                throw new HttpException(
+                    `You dont have permission to change some of the settings ----`,
+                    HttpStatus.FORBIDDEN,
+                );
+
+            settings.push({
+                ...setting,
+                from_db: temp,
+            });
+        }
+
+        for (const setting of settings) {
+            const updateOrCreate: any = {};
+
+            if (setting.from_db.user_settings_value.length) {
+                updateOrCreate.update = {
+                    where: { id: setting.from_db.user_settings_value[0].id },
+                    data: { value: setting.value },
+                };
+            } else {
+                updateOrCreate.create = { value: setting.value, subscriber_id: req.user.data.subscriber_id };
+            }
+
+            if (setting.from_db.user_type)
+                await this.prisma.setting.update({
+                    where: {
+                        slug_identifier: {
+                            slug: setting.name,
+                            category: 'conversation',
+                            user_type: 'subscriber',
+                        },
+                    },
+                    data: {
+                        user_settings_value: {
+                            ...updateOrCreate,
+                        },
+                    },
+                });
+        }
+
+        return this.getChatSettings(req);
+    }
+
+    async getChatSettings(req: any) {
+        // if no user_settings_value then use the default_value from root
+        return this.prisma.setting.findMany({
+            where: {
+                category: 'conversation',
                 user_type: 'subscriber',
                 subscriber_id: null,
             },

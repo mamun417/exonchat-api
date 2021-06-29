@@ -3,6 +3,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { SettingsService } from './settings.service';
 import { UpdateUiSettingsDto } from './dto/update-ui-settings.dto';
 import { UpdateAppSettingsDto } from './dto/update-app-settings.dto';
+import { UpdateChatSettingsDto } from './dto/update-chat-settings.dto';
 
 @Controller('settings')
 export class SettingsController {
@@ -31,5 +32,17 @@ export class SettingsController {
     @Get('app')
     getAppSettings(@Request() req: any) {
         return this.settingsService.getAppSettings(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('chat')
+    updateChatSettings(@Request() req: any, @Body() updateChatSettingsDto: UpdateChatSettingsDto) {
+        return this.settingsService.updateChatSetting(req, updateChatSettingsDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('chat')
+    getChatSettings(@Request() req: any) {
+        return this.settingsService.getChatSettings(req);
     }
 }
