@@ -117,25 +117,25 @@ model user_invitation {
 }
 
 model user {
-  id                            String               @id @default(cuid())
-  email                         String               @db.VarChar
-  active                        Boolean              @default(false)
-  online_status                 Boolean              @default(true)
-  created_at                    DateTime             @default(now()) @db.Timestamp(6)
-  updated_at                    DateTime             @default(now()) @db.Timestamp(6)
+  id                            String                  @id @default(cuid())
+  email                         String                  @db.VarChar
+  active                        Boolean                 @default(false)
+  online_status                 user_online_status_enum @default(online)
+  created_at                    DateTime                @default(now()) @db.Timestamp(6)
+  updated_at                    DateTime                @default(now()) @db.Timestamp(6)
   user_meta                     user_meta?
   user_secret                   user_secret?
-  subscriber                    subscriber           @relation(fields: [subscriber_id], references: [id])
+  subscriber                    subscriber              @relation(fields: [subscriber_id], references: [id])
   subscriber_id                 String
-  role                          role                 @relation(fields: [role_id], references: [id])
+  role                          role                    @relation(fields: [role_id], references: [id])
   role_id                       String
   extra_permissions             extra_permission[]
   socket_sessions               socket_session[]
   chat_departments              chat_department[]
   chat_templates                chat_template[]
   settings                      user_setting_value[]
-  forgot_password_token         String?              @db.VarChar
-  forgot_password_token_expired DateTime?            @db.Timestamp(6)
+  forgot_password_token         String?                 @db.VarChar
+  forgot_password_token_expired DateTime?               @db.Timestamp(6)
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
 }
@@ -452,6 +452,15 @@ enum permission_use_for_enum {
 enum role_use_for_enum {
   subscriber
   administrator
+}
+
+enum user_online_status_enum {
+  online
+  offline
+  invisible
+  vacation
+  sick
+  other
 }
 
 enum user_invitation_status_enum {

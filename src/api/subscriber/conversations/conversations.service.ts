@@ -682,9 +682,6 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                messages: {
-                    some: {},
-                },
                 conversation_sessions: {
                     every: {
                         socket_session: {
