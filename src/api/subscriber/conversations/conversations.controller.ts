@@ -3,6 +3,7 @@ import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@
 import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -109,6 +110,16 @@ export class ConversationsController {
     @Post(':id/close')
     close(@Param('id') id: string, @Request() req: any) {
         return this.conversationsService.close(id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post(':id/other_info')
+    conversationUpdateOtherInfo(
+        @Param('id') id: string,
+        @Request() req: any,
+        @Body() conversationOtherInfo: ConversationOtherInfoDto,
+    ) {
+        return this.conversationsService.conversationUpdateOtherInfo(id, req, conversationOtherInfo);
     }
 
     @UseGuards(JwtAuthGuard)

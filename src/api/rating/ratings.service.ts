@@ -36,7 +36,7 @@ export class RatingsService {
             },
         });
 
-        this.ws.sendToAllUsers({ ses_user: req.user.data }, 'ec_conversation_rated_from_client', createdRating);
+        this.ws.sendToAllUsers({ ses_user: req.user.data }, false, 'ec_conversation_rated_from_client', createdRating);
 
         return createdRating;
     }
