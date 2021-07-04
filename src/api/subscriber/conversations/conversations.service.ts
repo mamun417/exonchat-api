@@ -9,6 +9,7 @@ import { DataHelper } from 'src/helper/data-helper';
 import { SocketSessionsService } from '../socket-session/socket-sessions.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { SettingsService } from '../settings/settings.service';
+import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -346,6 +347,22 @@ export class ConversationsService {
                     },
                 },
             },
+        });
+    }
+
+    async conversationUpdateOtherInfo(id: string, req: any, conversationOtherInfo: ConversationOtherInfoDto) {
+        const subscriberId = req.user.data.socket_session.subscriber_id;
+        const socketSessionId = req.user.data.socket_session.id;
+
+        const conversation = await this.findOneWithException(id, { subscriber_id: subscriberId });
+
+        const otherInfo = conversation.other_info || {};
+
+        otherInfo['notify_to'] = conversationOtherInfo.notify_to_value;
+
+        return this.prisma.conversation.update({
+            where: { id: conversation.id },
+            data: { other_info: otherInfo },
         });
     }
 

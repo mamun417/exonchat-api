@@ -39,19 +39,23 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [], status: 'online/offline/invisible'}}
     private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
-    private roomsInAConv: any = {}; // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool, chat_department: '', routing_policy: 'manual/...'}}
+
+    // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool, chat_department: '', routing_policy: 'manual/...', notify_again: true/false, notify_to: 'ses_id'}}
+    // if notify_to that means it's only for this agent. it will also maintain for transfer chat
+    // if a browser reload happens then send the agents departmental chat by that notify_to. if no notify_to then also it's for him
+    private roomsInAConv: any = {};
 
     usersRoomBySubscriberId(subscriberId: any, onlineStatus = true) {
         return Object.keys(this.userClientsInARoom).filter(
             (roomId: any) =>
                 this.userClientsInARoom[roomId].sub_id === subscriberId &&
-                (!onlineStatus || (onlineStatus && this.userClientsInARoom[roomId].status === 'online')),
+                (!onlineStatus || (onlineStatus && this.userClientsInARoom[roomId].online_status === 'online')),
         );
     }
 
     // if onlineStatus true only true online users will filter else all other
     usersRoom(socketRes: any, onlineStatus = true) {
-        return this.usersRoomBySubscriberId(socketRes.ses_user.subscriber_id, onlineStatus);
+        return this.usersRoomBySubscriberId(socketRes.ses_user.socket_session.subscriber_id, onlineStatus);
     }
 
     // send to a tab/socket client instance
@@ -85,7 +89,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return convObj && (!convObj.routing_policy || convObj.routing_policy === 'manual');
     }
 
-    async roundRobinSend(socketRes: any, resObj: any, roomIds: any, convsValues: any) {
+    async roundRobinSend(client: any, socketRes: any, resObj: any, roomIds: any, convsValues: any) {
         const joinedMapperCount = { room_id: '', count: 999 };
 
         roomIds.forEach((roomId) => {
@@ -101,9 +105,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         if (joinedMapperCount.room_id && joinedMapperCount.count < 3) {
             // send only to this room with notify
+            this.roomsInAConv[resObj.conv_id].notify_to = joinedMapperCount.room_id;
+
             this.sendToSocketRoom(joinedMapperCount.room_id, 'ec_conv_initiated_from_client', {
-                data: { ...resObj, notify: true },
+                data: { ...resObj, notify: true, join: true },
             });
+
+            // await this.updateConversationNotifyToValueInDB(client, resObj.conv_id, joinedMapperCount.room_id);
 
             this.sendToAllUsersWithout(socketRes, true, [joinedMapperCount.room_id], 'ec_conv_initiated_from_client', {
                 data: { ...resObj, notify: false },
@@ -120,6 +128,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             });
         }
     }
+
+    // I think no need for nw
+    // async updateConversationNotifyToValueInDB(client: any, convId: string, sesId: string) {
+    //     try {
+    //         const convRes: any = await this.httpService
+    //             .post(
+    //                 `http://localhost:3000/conversations/${convId}/other_info`,
+    //                 {
+    //                     notify_to_value: sesId,
+    //                 },
+    //                 { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
+    //             )
+    //             .toPromise();
+    //     } catch (e) {}
+    // }
 
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_get_logged_users') // get users list when needed
@@ -275,7 +298,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         let conv_id = null;
 
         const matchedDepartmentalAgents = this.usersRoom(socketRes).filter((roomId: any) => {
-            return this.userClientsInARoom[roomId].chat_departments?.includes(conv_data.chat_department);
+            return this.userClientsInARoom[roomId].chat_departments?.includes(socketRes.department_tag);
         });
 
         if (!matchedDepartmentalAgents.length) {
@@ -326,6 +349,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.sendToSocketRooms(matchedDepartmentalAgents, 'ec_conv_initiated_from_client', {
                 data: { ...sendRes, notify: true },
             });
+
+            this.sendToAllUsersWithout(socketRes, true, matchedDepartmentalAgents, 'ec_conv_initiated_from_client', {
+                data: { ...sendRes, notify: false },
+            });
         } else {
             // we are calling this.convIsBasicNotifiable(data) for safety. if changes then it will safeguard
 
@@ -335,12 +362,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             });
 
             if (subIdMatchedConvs.length) {
-                await this.roundRobinSend(socketRes, sendRes, matchedDepartmentalAgents, subIdMatchedConvs);
+                await this.roundRobinSend(client, socketRes, sendRes, matchedDepartmentalAgents, subIdMatchedConvs);
             } else {
                 // if start then send any one of the agent with same department
-                this.sendToSocketRoom(matchedDepartmentalAgents[0], 'ec_conv_initiated_from_client', {
-                    data: { ...sendRes, notify: true },
+                const agentSesId = matchedDepartmentalAgents[0];
+
+                this.roomsInAConv[conv_id].notify_to = agentSesId;
+
+                this.sendToSocketRoom(agentSesId, 'ec_conv_initiated_from_client', {
+                    data: { ...sendRes, notify: true, join: true },
                 });
+
+                // await this.updateConversationNotifyToValueInDB(client, conv_id, agentSesId);
 
                 this.sendToAllUsersWithout(
                     socketRes,
@@ -355,7 +388,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         // send back to the client
-        this.sendToSocketRoom(roomName, 'ec_conv_initiated_to_client', { data: sendRes });
+        this.sendToSocketRoom(roomName, 'ec_conv_initiated_to_client', { data: sendRes, status: 'success' });
 
         console.log('Rooms In Conversations => ', this.roomsInAConv);
 
@@ -837,9 +870,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     this.roomsInAConv[convRes.data.id] = {
                         room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
                         ai_is_replying: convRes.data.ai_is_replying,
-                        routing_policy: convRes.data.routing_policy || 'manual',
+                        routing_policy: convRes.data.routing_policy || 'manual', // check from other_info also
                         sub_id: convRes.data.subscriber_id,
                         users_only: convRes.data.users_only,
+                        notify_to: convRes.data.other_info?.notify_to || null,
+                        chat_department: convRes.data.chat_department.tag,
                     };
                 }
 
@@ -966,6 +1001,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
                     this.roomsInAConv[convId].routing_policy = convRes.data.routing_policy || 'manual';
                     this.roomsInAConv[convId].sub_id = convRes.data.subscriber_id;
+                    this.roomsInAConv[convId].chat_department = convRes.data.chat_department.tag;
+
+                    if (convRes.data.other_info) {
+                        this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
+                    }
                 }
 
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
@@ -998,13 +1038,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
                 },
                 chat_department: true,
-                messages: {
-                    where: { socket_session_id: { not: null } },
-                    include: { attachments: true },
-                    orderBy: { created_at: 'desc' },
-                    take: 1,
-                },
-                closed_by: { include: { user: true } },
             },
             orderBy: { created_at: 'desc' },
         });
@@ -1019,8 +1052,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 this.roomsInAConv[convId].users_only = conv.users_only;
                 this.roomsInAConv[convId].ai_is_replying = conv.ai_is_replying;
-                this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual';
+                this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual'; // or check conv.other_info.routing_policy
                 this.roomsInAConv[convId].sub_id = conv.subscriber_id;
+
+                if (conv.other_info) {
+                    this.roomsInAConv[convId].notify_to = conv.other_info?.notify_to || null;
+                }
             }
         });
     }

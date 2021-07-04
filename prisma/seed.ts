@@ -198,7 +198,28 @@ async function main() {
                                       },
                                   },
                               }
-                            : {};
+                            : {
+                                  users: {
+                                      connect: [
+                                          {
+                                              id: _l.find(subscriber.users, [
+                                                  'email',
+                                                  subscriber.company_name === 'test'
+                                                      ? 'test@test.test'
+                                                      : 'other@other.other',
+                                              ]).id,
+                                          },
+                                          {
+                                              id: _l.find(subscriber.users, [
+                                                  'email',
+                                                  subscriber.company_name === 'test'
+                                                      ? 'test2@test.test'
+                                                      : 'other2@other.other',
+                                              ]).id,
+                                          },
+                                      ],
+                                  },
+                              };
 
                     await prisma.chat_department.create({
                         data: {
