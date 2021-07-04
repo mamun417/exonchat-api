@@ -457,6 +457,105 @@ export class ConversationsService {
         };
     }
 
+    async chatHistory(req: any, query: any) {
+        const relationContainsObj = {
+            contains: query.s,
+            mode: 'insensitive',
+        };
+
+        const filterHelper = this.dataHelper.paginationAndFilter(
+            [
+                'p',
+                'pp',
+                {
+                    name: 's',
+                    type: 'static_relation',
+                    relation: {
+                        OR: [
+                            {
+                                conversation_sessions: {
+                                    some: {
+                                        socket_session: {
+                                            OR: [
+                                                { init_name: relationContainsObj },
+                                                { init_email: relationContainsObj },
+                                            ],
+                                        },
+                                    },
+                                },
+                            },
+                            {
+                                chat_department: {
+                                    tag: relationContainsObj,
+                                },
+                            },
+                        ],
+                    },
+                },
+            ],
+            query,
+        );
+
+        const whereQuery = {
+            NOT: { closed_at: null },
+            subscriber_id: req.user.data.subscriber_id,
+            users_only: false,
+            messages: { some: {} },
+            ...filterHelper.where,
+        };
+
+        const count = await this.prisma.conversation.count({
+            where: whereQuery,
+        });
+
+        const result = await this.prisma.conversation.findMany({
+            where: whereQuery,
+            include: {
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: { include: { user_meta: true } },
+                            },
+                        },
+                    },
+                },
+                messages: {
+                    where: {
+                        socket_session: {
+                            user_id: null,
+                        },
+                    },
+                    take: 1,
+                    orderBy: {
+                        updated_at: 'desc',
+                    },
+                    include: { attachments: true },
+                },
+                chat_department: true,
+                closed_by: { include: { user: true } },
+                conversation_rating: true,
+            },
+            orderBy: {
+                // currently orderby does not work for many entry
+                // like here i needed messages orderby time
+                updated_at: 'desc',
+            },
+            ...filterHelper.pagination,
+        });
+
+        return {
+            chat_histories: {
+                data: result,
+                pagination: {
+                    current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
+                    total_page: Math.ceil(count / (query.hasOwnProperty('pp') ? parseInt(query.pp) : 10)),
+                    total: count,
+                },
+            },
+        };
+    }
+
     async clientConversation(id: any, req: any, query: any) {
         return this.prisma.conversation.findFirst({
             where: {

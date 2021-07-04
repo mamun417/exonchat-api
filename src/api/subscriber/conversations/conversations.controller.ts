@@ -28,6 +28,12 @@ export class ConversationsController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Post('chat-history')
+    chatHistory(@Request() req: any, @Query() query) {
+        return this.conversationsService.chatHistory(req, query);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Get('client-previous-conversations')
     clientPreviousConversations(@Request() req: any, @Query() query) {
         return this.conversationsService.clientPreviousConversations(req, query);
