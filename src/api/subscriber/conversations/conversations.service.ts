@@ -674,12 +674,11 @@ export class ConversationsService {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
                 closed_at: null,
-                messages: { some: {} },
                 conversation_sessions: {
                     some: {
                         socket_session: {
                             user_id: {
-                                not: req.user.data.id,
+                                not: null,
                             },
                         },
                     },
@@ -708,7 +707,6 @@ export class ConversationsService {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
                 closed_at: null,
-                messages: { some: {} },
                 conversation_sessions: {
                     some: {
                         socket_session: {
@@ -761,7 +759,6 @@ export class ConversationsService {
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
-                messages: { some: {} },
                 closed_at: {
                     not: null,
                 },
