@@ -454,6 +454,7 @@ export class UsersService {
                     },
                 },
                 chat_departments: true,
+                socket_sessions: true,
             },
         });
     }
