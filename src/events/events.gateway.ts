@@ -149,7 +149,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async usersOnline(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
         this.sendToSocketClient(client, 'ec_logged_users_res', {
             users: this.usersRoom(socketRes, false).map((roomId: any) => {
-                return { ses_id: roomId, online_status: this.userClientsInARoom[roomId].status };
+                return { ses_id: roomId, online_status: this.userClientsInARoom[roomId].online_status };
             }), // true or false check first
         });
 
