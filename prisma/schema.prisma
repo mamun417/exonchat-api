@@ -300,17 +300,18 @@ model conversation_rating {
 }
 
 model conversation_session {
-  id                String         @id @default(cuid())
-  joined_at         DateTime?      @db.Timestamp(6)
-  left_at           DateTime?      @db.Timestamp(6)
-  created_at        DateTime       @default(now()) @db.Timestamp(6)
-  updated_at        DateTime       @default(now()) @db.Timestamp(6)
-  socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
-  socket_session_id String
-  conversation      conversation   @relation(fields: [conversation_id], references: [id])
-  conversation_id   String
-  subscriber_id     String
-  subscriber        subscriber     @relation(fields: [subscriber_id], references: [id])
+  id                 String         @id @default(cuid())
+  joined_at          DateTime?      @db.Timestamp(6)
+  last_msg_seen_time DateTime?      @db.Timestamp(6)
+  left_at            DateTime?      @db.Timestamp(6)
+  created_at         DateTime       @default(now()) @db.Timestamp(6)
+  updated_at         DateTime       @default(now()) @db.Timestamp(6)
+  socket_session     socket_session @relation(fields: [socket_session_id], references: [id])
+  socket_session_id  String
+  conversation       conversation   @relation(fields: [conversation_id], references: [id])
+  conversation_id    String
+  subscriber_id      String
+  subscriber         subscriber     @relation(fields: [subscriber_id], references: [id])
 
   @@unique(fields: [conversation_id, socket_session_id], name: "conv_ses_identifier")
 }
