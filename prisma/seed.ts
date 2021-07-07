@@ -253,7 +253,7 @@ async function main() {
             slug: 'global_color',
             display_name: 'Global Color',
             category: 'ui',
-            default_value: 'green',
+            default_value: 'blue-grey',
             user_type: 'user',
         },
 
