@@ -87,6 +87,12 @@ export class ConversationsService {
                             },
                         ],
                     },
+                    include: {
+                        conversation_sessions: {
+                            include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                        },
+                        chat_department: true,
+                    },
                 });
 
                 if (conv) {
@@ -319,16 +325,16 @@ export class ConversationsService {
                         id: socketSessionId,
                     },
                 },
-                conversation_sessions: {
-                    updateMany: {
-                        where: {
-                            left_at: null,
-                        },
-                        data: {
-                            left_at: new Date(),
-                        },
-                    },
-                },
+                // conversation_sessions: {
+                //     updateMany: {
+                //         where: {
+                //             left_at: null,
+                //         },
+                //         data: {
+                //             left_at: new Date(),
+                //         },
+                //     },
+                // },
                 closed_at: new Date(Date.now() + 1000),
             },
             include: {
@@ -337,15 +343,15 @@ export class ConversationsService {
                         user: { include: { user_meta: true } },
                     },
                 },
-                conversation_sessions: {
-                    include: {
-                        socket_session: {
-                            include: {
-                                user: { include: { user_meta: true } },
-                            },
-                        },
-                    },
-                },
+                // conversation_sessions: {
+                //     include: {
+                //         socket_session: {
+                //             include: {
+                //                 user: { include: { user_meta: true } },
+                //             },
+                //         },
+                //     },
+                // },
             },
         });
     }

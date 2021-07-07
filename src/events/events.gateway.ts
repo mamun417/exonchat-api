@@ -527,12 +527,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
             );
 
-            // clone before remove so that we have all rooms to inform
+            // clone before remove so that we can inform client. it can be simplified
             let roomsInAConvCopy = _.cloneDeep(this.roomsInAConv[data.conv_id].room_ids);
 
             delete this.roomsInAConv[data.conv_id];
 
             userRooms.forEach((room: any) => {
+                // filter agents
                 roomsInAConvCopy = roomsInAConvCopy.filter((copyRoom: any) => copyRoom !== room);
 
                 this.server.in(room).emit('ec_is_closed_from_conversation', {
