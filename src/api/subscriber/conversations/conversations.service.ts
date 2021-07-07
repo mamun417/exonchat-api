@@ -10,6 +10,7 @@ import { SocketSessionsService } from '../socket-session/socket-sessions.service
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { SettingsService } from '../settings/settings.service';
 import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
+import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -724,7 +725,7 @@ export class ConversationsService {
                     where: { socket_session_id: { not: null } },
                     include: { attachments: true },
                     orderBy: { created_at: 'desc' },
-                    take: 1,
+                    take: 10,
                 },
                 closed_by: { include: { user: true } },
             },
@@ -975,6 +976,15 @@ export class ConversationsService {
                 },
             },
         };
+    }
+
+    async updateLastMsgSeenTime(id: string, req: any, updateLastMsgSeenTimeDto: UpdateLastMsgSeenTimeDto) {
+        return await this.prisma.conversation_session.update({
+            where: { id: id },
+            data: {
+                last_msg_seen_time: updateLastMsgSeenTimeDto.last_msg_seen_time,
+            },
+        });
     }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {
