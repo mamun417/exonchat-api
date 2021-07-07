@@ -818,26 +818,53 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     @UseGuards(WsJwtGuard)
-    @SubscribeMessage('ec_chat_transfer_from_user')
+    @SubscribeMessage('ec_chat_transfer')
     async chatTransferFromUser(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<any> {
+        // emit data
+        // {
+        //      conv_id: must, notify_to: if_from_agent, agent_info: if_from_agent{agents_user_obj not ses/conv_ses},
+        //      notify_except: if_from_client[ses_ids], client_info: client_socket_ses_obj, reason: transfer_reason
+        // }
+        //for now notify_to will determine for whome this transfer
+
         if (!(await this.sysHasConvAndSocketSessionRecheck(socketRes, client))) return;
 
         const convObj = this.roomsInAConv[socketRes.conv_id];
 
-        if (!this.usersRoom(socketRes).filter((roomId: any) => roomId === socketRes.notify_to).length) {
-            this.sendError(client, 'ec_chat_transfer_from_user', 'Chat transfer not possible. Agent is not online');
-        } else if (convObj.room_ids.includes(socketRes.notify_to)) {
-            this.sendError(client, 'ec_chat_transfer_from_user', 'Agent is already connected with this chat');
-        } else {
-            convObj.notify_again = true;
-            convObj.notify_to = socketRes.notify_to;
+        // if notify to then transfer manually
+        if (socketRes.notify_to) {
+            if (!this.usersRoom(socketRes).filter((roomId: any) => roomId === socketRes.notify_to).length) {
+                this.sendError(client, 'ec_chat_transfer_from_user', 'Chat transfer not possible. Agent is not online');
+            } else if (convObj.room_ids.includes(socketRes.notify_to)) {
+                this.sendError(client, 'ec_chat_transfer_from_user', 'Agent is already connected with this chat');
+            } else {
+                convObj.notify_again = true;
+                convObj.notify_to = socketRes.notify_to;
 
-            this.sendToSocketRoom(socketRes.notify_to, 'ec_chat_transfer_from_user', {
-                conv_id: socketRes.conv_id,
-                agent_info: socketRes.agent_info,
+                this.sendToSocketRoom(socketRes.notify_to, 'ec_chat_transfer', {
+                    conv_id: socketRes.conv_id,
+                    agent_info: socketRes.agent_info,
+                    from: 'agent',
+                });
+
+                console.log('Rooms In Conversations => ', this.roomsInAConv);
+            }
+        } else {
+            // take this department's agents, except the one chatting. for future except is array omit all joined
+            // for now if agents are online, send to them only
+            const agents = this.usersRoom(socketRes).filter((roomId: any) => {
+                return (
+                    this.userClientsInARoom[roomId].chat_departments?.includes(convObj.chat_department) &&
+                    (!socketRes.notify_except || !socketRes.notify_except.includes(roomId))
+                );
             });
 
-            console.log('Rooms In Conversations => ', this.roomsInAConv);
+            this.sendToSocketRooms(agents, 'ec_chat_transfer', {
+                conv_id: socketRes.conv_id,
+                client_info: socketRes.client_info,
+                reason: socketRes.reason,
+                from: 'client',
+            });
         }
 
         return;
