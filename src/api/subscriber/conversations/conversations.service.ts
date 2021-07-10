@@ -975,7 +975,7 @@ export class ConversationsService {
         });
 
         return {
-            conversations: {
+            conversation: {
                 data: result,
                 pagination: {
                     current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
