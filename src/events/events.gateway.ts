@@ -656,6 +656,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 )
                 .toPromise();
 
+            this.normalClientsInARoom[ownRoomId].chat_status = 'active';
+
             createdMsg = msgRes.data;
         } catch (e) {
             return this.sendError(client, 'ec_msg_from_client', e.response.data);
