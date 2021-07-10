@@ -359,15 +359,15 @@ export class ConversationsService {
                         user: { include: { user_meta: true } },
                     },
                 },
-                // conversation_sessions: {
-                //     include: {
-                //         socket_session: {
-                //             include: {
-                //                 user: { include: { user_meta: true } },
-                //             },
-                //         },
-                //     },
-                // },
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: { include: { user_meta: true } },
+                            },
+                        },
+                    },
+                },
             },
         });
     }
