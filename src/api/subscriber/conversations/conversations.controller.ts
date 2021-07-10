@@ -5,6 +5,7 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
+import { CloseConversationDto } from './dto/close-conversation.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -109,8 +110,8 @@ export class ConversationsController {
 
     @UseGuards(JwtAuthGuard)
     @Post(':id/close')
-    close(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.close(id, req);
+    close(@Param('id') id: string, @Request() req: any, @Body() closeConversationDto: CloseConversationDto) {
+        return this.conversationsService.close(id, req, closeConversationDto);
     }
 
     @UseGuards(JwtAuthGuard)

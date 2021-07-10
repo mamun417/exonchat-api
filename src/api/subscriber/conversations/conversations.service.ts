@@ -11,6 +11,7 @@ import { ChatDepartmentService } from '../chat-department/department.service';
 import { SettingsService } from '../settings/settings.service';
 import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
+import { CloseConversationDto } from './dto/close-conversation.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -304,7 +305,7 @@ export class ConversationsService {
         });
     }
 
-    async close(id: string, req: any) {
+    async close(id: string, req: any, closeConversationDto: CloseConversationDto) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
@@ -316,6 +317,13 @@ export class ConversationsService {
             throw new HttpException('Already closed from this conversation', HttpStatus.CONFLICT);
         }
 
+        const convSes = await this.prisma.conversation_session.findFirst({
+            where: {
+                conversation_id: id,
+                socket_session_id: socketSessionId,
+            },
+        });
+
         return await this.prisma.conversation.update({
             where: {
                 id: id,
@@ -326,16 +334,23 @@ export class ConversationsService {
                         id: socketSessionId,
                     },
                 },
-                // conversation_sessions: {
-                //     updateMany: {
-                //         where: {
-                //             left_at: null,
-                //         },
-                //         data: {
-                //             left_at: new Date(),
-                //         },
-                //     },
-                // },
+                conversation_sessions: {
+                    update: {
+                        where: { id: convSes.id },
+                        data: {
+                            closed_reason: closeConversationDto.closed_reason || '',
+                        },
+                    },
+                    // not using now
+                    //     updateMany: {
+                    //         where: {
+                    //             left_at: null,
+                    //         },
+                    //         data: {
+                    //             left_at: new Date(),
+                    //         },
+                    //     },
+                },
                 closed_at: new Date(Date.now() + 1000),
             },
             include: {

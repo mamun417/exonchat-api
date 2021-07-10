@@ -529,14 +529,24 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async closeConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
 
+        const ownRoomId = data.ses_user.socket_session.id;
+
         let conv_data = null;
         let conv_id = null;
+
+        // partial dataObj
+        // closed reason now can send from 30min inactivity
+        // if client = {
+        //          closed_reason: string,
+        // }
 
         try {
             const convRes: any = await this.httpService
                 .post(
                     `http://localhost:3000/conversations/${data.conv_id}/close`,
-                    {},
+                    {
+                        closed_reason: data.closed_reason || '',
+                    },
                     { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                 )
                 .toPromise();
