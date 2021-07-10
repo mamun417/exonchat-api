@@ -38,7 +38,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // your ses is not for user
 
     public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [], status: 'online/offline/invisible'}}
-    private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id}}
+    private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_status: active/inactive}}
 
     // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool, chat_department: '', routing_policy: 'manual/...', notify_again: true/false, notify_to: 'ses_id'}}
     // if notify_to that means it's only for this agent. it will also maintain for transfer chat
@@ -163,21 +163,44 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const dataSendObj: any = {};
 
-        // for now only user
-        if (socketRes.online_status && ['online', 'offline', 'invisible'].includes(socketRes.online_status)) {
+        // body = {
+        //      online_status = ['online', 'offline', 'invisible'], for user
+        //      chat_status = ['active', 'inactive'] for client
+        //      status_for = client/user
+        // }
+
+        if (
+            socketRes.status_for !== 'client' &&
+            socketRes.online_status &&
+            ['online', 'offline', 'invisible'].includes(socketRes.online_status)
+        ) {
             this.userClientsInARoom[roomName].online_status = socketRes.online_status;
 
             dataSendObj.online_status = socketRes.online_status;
         }
 
+        if (
+            socketRes.status_for === 'client' &&
+            socketRes.chat_status &&
+            ['active', 'inactive'].includes(socketRes.chat_status)
+        ) {
+            this.normalClientsInARoom[roomName].chat_status = socketRes.chat_status;
+
+            // if emit needed then make dataSendObj
+        }
+
         if (Object.keys(dataSendObj).length) {
-            // send to all users
-            this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_updated_socket_room_info_res', {
-                action: 'online_status',
-                type: 'user',
-                ses_id: roomName,
-                data: dataSendObj,
-            });
+            if (socketRes.status_for === 'user') {
+                // send to all users
+                this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_updated_socket_room_info_res', {
+                    action: 'online_status',
+                    type: 'user',
+                    ses_id: roomName,
+                    data: dataSendObj,
+                });
+            } else {
+                // no need to send to client for now
+            }
         } else {
             // send error
         }
@@ -186,22 +209,24 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     @UseGuards(WsJwtGuard)
-    @SubscribeMessage('ec_get_clients_ses_id_status')
+    @SubscribeMessage('ec_get_client_ses_id_status')
     async getClientsSesIdStatus(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
         const roomName = data.ses_user.socket_session.id;
 
-        let status = 'left';
+        let status = 'inactive';
 
         if (data.hasOwnProperty('client_ses_id') && data.client_ses_id) {
             if (
                 this.normalClientsInARoom.hasOwnProperty(data.client_ses_id) &&
                 this.normalClientsInARoom[data.client_ses_id].socket_client_ids.length &&
-                this.normalClientsInARoom[data.client_ses_id].sub_id === data.ses_user.subscriber_id
+                this.normalClientsInARoom[data.client_ses_id].sub_id === data.ses_user.subscriber_id &&
+                (!this.normalClientsInARoom[data.client_ses_id].hasOwnProperty('chat_status') ||
+                    this.normalClientsInARoom[data.client_ses_id].chat_status === 'active')
             ) {
-                status = 'online';
+                status = 'active';
             }
 
-            this.server.in(roomName).emit('ec_get_clients_ses_id_status_res', {
+            this.server.in(roomName).emit('ec_get_client_ses_id_status_res', {
                 ses_id: data.client_ses_id,
                 status: status,
             });
