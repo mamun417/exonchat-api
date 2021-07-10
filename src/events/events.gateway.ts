@@ -1082,6 +1082,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[convId].ai_is_replying = conv.ai_is_replying;
                 this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual'; // or check conv.other_info.routing_policy
                 this.roomsInAConv[convId].sub_id = conv.subscriber_id;
+                this.roomsInAConv[convId].chat_department = conv.chat_department.tag;
 
                 if (conv.other_info) {
                     this.roomsInAConv[convId].notify_to = conv.other_info?.notify_to || null;
