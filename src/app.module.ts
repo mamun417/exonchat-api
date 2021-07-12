@@ -31,6 +31,7 @@ import { WHMCSModule } from './api/subscriber/apps/third-party/whmcs/whmcs.modul
 import { ProfileModule } from './api/profile/profile.module';
 import { AttachmentsModule } from './api/subscriber/attachments/attachments.module';
 import { PasswordModule } from './api/password/password.module';
+import { OfflineChatReq } from './api/subscriber/offline-chat-request/offline-chat-req.module';
 import { RatingModule } from './api/rating/ratings.module';
 
 @Module({
@@ -80,6 +81,8 @@ import { RatingModule } from './api/rating/ratings.module';
         PasswordModule,
 
         RatingModule,
+
+        OfflineChatReq,
     ],
     controllers: [AppController],
     providers: [

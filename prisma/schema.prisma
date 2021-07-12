@@ -36,7 +36,7 @@ model subscriber {
   user_settings              user_setting_value[]
   settings                   setting[]
   attachments                attachment[]
-  chat_tickets               chat_ticket[]
+  offline_chat_requests      offline_chat_req[]
 }
 
 model subscriber_ai {
@@ -265,7 +265,7 @@ model socket_session {
   closed_conversations  conversation[]              @relation(name: "closed_by")
   messages              message[]
   attachments           attachment[]
-  chat_tickets          chat_ticket[]
+  offline_chat_requests offline_chat_req[]
 }
 
 model conversation {
@@ -347,8 +347,10 @@ model message {
   socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
 }
 
-model chat_ticket {
+model offline_chat_req {
   id                 String           @id @default(cuid())
+  name               String
+  email              String
   subject            String
   message            String
   priority           String?          @default("normal")
@@ -460,18 +462,18 @@ model chat_template {
 }
 
 model chat_department {
-  id             String          @id @default(cuid())
-  tag            String
-  description    String
-  active         Boolean         @default(true)
-  created_at     DateTime        @default(now()) @db.Timestamp(6)
-  updated_at     DateTime        @default(now()) @db.Timestamp(6)
-  subscriber_id  String
-  subscriber     subscriber      @relation(fields: [subscriber_id], references: [id])
-  users          user[]
-  chat_templates chat_template[]
-  conversations  conversation[]
-  chat_tickets   chat_ticket[]
+  id                    String             @id @default(cuid())
+  tag                   String
+  description           String
+  active                Boolean            @default(true)
+  created_at            DateTime           @default(now()) @db.Timestamp(6)
+  updated_at            DateTime           @default(now()) @db.Timestamp(6)
+  subscriber_id         String
+  subscriber            subscriber         @relation(fields: [subscriber_id], references: [id])
+  users                 user[]
+  chat_templates        chat_template[]
+  conversations         conversation[]
+  offline_chat_requests offline_chat_req[]
 
   @@unique(fields: [tag, subscriber_id], name: "tag_identifier")
 }
