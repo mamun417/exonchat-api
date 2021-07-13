@@ -360,6 +360,8 @@ model offline_chat_req {
   socket_session     socket_session?  @relation(fields: [socket_session_id], references: [id])
   subscriber_id      String
   subscriber         subscriber       @relation(fields: [subscriber_id], references: [id])
+  created_at         DateTime         @default(now()) @db.Timestamp(6)
+  updated_at         DateTime         @default(now()) @db.Timestamp(6)
 }
 
 model attachment {
