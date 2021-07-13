@@ -22,7 +22,7 @@ export class OfflineChatReqService {
 
         const whereQuery = {
             subscriber_id: req.user.data.socket_session.subscriber_id,
-            OR: filterHelper.where,
+            ...filterHelper.where,
         };
 
         const count = await this.prisma.offline_chat_req.count({
