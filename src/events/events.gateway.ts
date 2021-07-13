@@ -239,7 +239,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @SubscribeMessage('ec_page_visit_info_from_client')
     async pageVisitInfoFromClient(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
         this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_page_visit_info_from_client', {
-            url: socketRes.url,
+            page_data: socketRes.page_data,
             sent_at: socketRes.sent_at,
             visiting: socketRes.visiting,
             ses_id: socketRes.ses_user.socket_session.id,

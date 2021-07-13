@@ -250,6 +250,7 @@ model socket_session {
   init_name             String?                     @db.VarChar
   init_email            String?                     @db.VarChar
   init_ip               String                      @db.VarChar
+  init_location         Json?
   init_user_agent       String                      @db.VarChar // request header user-agent
   user_info             Json?
   other_info            Json?
