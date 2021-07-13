@@ -22,6 +22,7 @@ export class SocketSessionsService {
     ) {}
 
     async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, req: any) {
+        console.log(req.ip);
         const subscriber = await this.subscriberService.findOneByApiKeyWithException(createSocketSessionDto.api_key);
 
         let userConnector: any = {};
