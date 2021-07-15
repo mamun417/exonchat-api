@@ -1,14 +1,17 @@
-import { Body, Controller, Request, Delete, Get, Ip, Param, Post, Put, UseGuards, Req } from '@nestjs/common';
+import { Body, Controller, Request, Get, Param, Post, UseGuards, Req } from '@nestjs/common';
 import { SocketSessionsService } from './socket-sessions.service';
 import { CreateSocketSessionDto } from './dto/create-socket-session.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+
+import { ClientIp } from '../../../decorators/client-ip.decorator';
+
 @Controller('socket-sessions')
 export class SocketSessionsController {
     constructor(private readonly socketSessionsService: SocketSessionsService) {}
 
     @Post()
-    async create(@Body() createSocketSessionDto: CreateSocketSessionDto, @Req() req: any) {
-        return this.socketSessionsService.createSocketSession(createSocketSessionDto, req);
+    async create(@Body() createSocketSessionDto: CreateSocketSessionDto, @Req() req: any, @ClientIp() clientIp: any) {
+        return this.socketSessionsService.createSocketSession(createSocketSessionDto, req, clientIp);
     }
 
     @UseGuards(JwtAuthGuard)

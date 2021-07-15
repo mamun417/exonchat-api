@@ -6,7 +6,6 @@ import { UsersService } from 'src/api/subscriber/users/users.service';
 
 import { PrismaService } from 'src/prisma.service';
 import { DataHelper } from 'src/helper/data-helper';
-import { socket_session } from '@prisma/client';
 import { AuthService } from 'src/auth/auth.service';
 import { SettingsService } from '../settings/settings.service';
 
@@ -21,7 +20,7 @@ export class SocketSessionsService {
         private settingsService: SettingsService,
     ) {}
 
-    async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, req: any) {
+    async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, req: any, clientIp: any) {
         console.log(req.ip);
         const subscriber = await this.subscriberService.findOneByApiKeyWithException(createSocketSessionDto.api_key);
 
@@ -64,7 +63,7 @@ export class SocketSessionsService {
 
         const createRes: any = await this.prisma.socket_session.create({
             data: {
-                init_ip: req.ip,
+                init_ip: clientIp,
                 init_user_agent: req.headers['user-agent'],
                 use_for: createSocketSessionDto.user_id ? 'user' : 'client',
                 subscriber: {
