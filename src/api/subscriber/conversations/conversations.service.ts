@@ -539,7 +539,6 @@ export class ConversationsService {
             NOT: { closed_at: null },
             subscriber_id: req.user.data.subscriber_id,
             users_only: false,
-            messages: { some: {} },
             ...filterHelper.where,
         };
 
