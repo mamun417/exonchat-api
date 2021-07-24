@@ -13,6 +13,8 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import * as _ from 'lodash';
+import moment from 'moment';
+
 import { WsJwtGuard } from 'src/auth/guards/ws-auth.guard';
 import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from '../prisma.service';
@@ -127,6 +129,26 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 data: { ...resObj, notify: false },
             });
         }
+    }
+
+    clientConvQueuePosition(convId: any, sub_id: any) {
+        const position = _.findIndex(
+            _.sortBy(
+                Object.values(this.roomsInAConv).filter((conv: any) => {
+                    // later check room_ids 1 is client
+                    return (
+                        !conv.users_only &&
+                        conv.chat_type === 'live_chat' &&
+                        conv.sub_id === sub_id &&
+                        conv.room_ids.length === 1
+                    );
+                }),
+                [(conv) => moment(conv.created_at).format('x')],
+            ),
+            ['conv_id', convId],
+        );
+
+        return position === -1 ? null : position;
     }
 
     // I think no need for nw
@@ -250,6 +272,25 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_conv_queue_position')
+    async convQueuePosition(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
+        if (!socketRes.conv_id) return;
+
+        const queue_position = this.clientConvQueuePosition(
+            socketRes.conv_id,
+            socketRes.ses_user.socket_session.subscriber_id,
+        );
+
+        this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_conv_queue_position_res', {
+            conv_id: socketRes.conv_id,
+            queue_position: queue_position,
+            position_for: 'client',
+        });
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_init_conv_from_user')
     async init_conversation_from_user(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         let conv_data = null;
@@ -354,19 +395,26 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         if (!this.roomsInAConv.hasOwnProperty(conv_id)) {
             this.roomsInAConv[conv_id] = {
+                conv_id: conv_id,
                 room_ids: [roomName],
                 ai_is_replying: conv_data.ai_is_replying,
                 chat_department: conv_data.chat_department.tag,
                 routing_policy: conv_data.routing_policy,
                 sub_id: conv_data.subscriber_id,
+                created_at: conv_data.created_at,
+                users_only: conv_data.users_only,
+                chat_type: conv_data.chat_type,
             };
         } else {
             return this.sendError(client, 'ec_init_conv_from_client', 'conv id already exists');
         }
 
+        const queue_position = this.clientConvQueuePosition(conv_id, socketRes.ses_user.socket_session.subscriber_id);
+
         const sendRes = {
             conv_data,
             conv_id,
+            queue_position: queue_position,
         };
 
         if (this.convPolicyIsManual(conv_data)) {
@@ -931,15 +979,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             if (!convRes.data) {
                 this.sendError(client, 'ec_client_conv_check', 'conversation no longer valid');
             } else {
+                const conv_data = convRes.data;
+
                 if (!this.roomsInAConv.hasOwnProperty(convRes.data.id)) {
                     this.roomsInAConv[convRes.data.id] = {
+                        conv_id: convRes.data.id,
                         room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
                         ai_is_replying: convRes.data.ai_is_replying,
                         routing_policy: convRes.data.routing_policy || 'manual', // check from other_info also
                         sub_id: convRes.data.subscriber_id,
-                        users_only: convRes.data.users_only,
                         notify_to: convRes.data.other_info?.notify_to || null,
                         chat_department: convRes.data.chat_department.tag,
+                        created_at: conv_data.created_at,
+                        users_only: conv_data.users_only,
+                        chat_type: conv_data.chat_type,
                     };
                 }
 
@@ -1062,7 +1115,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
                     };
 
+                    this.roomsInAConv[convId].conv_id = convId;
+
                     this.roomsInAConv[convId].users_only = convRes.data.users_only;
+                    this.roomsInAConv[convId].chat_type = convRes.data.type;
+                    this.roomsInAConv[convId].created_at = convRes.data.created_at;
+
                     this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
                     this.roomsInAConv[convId].routing_policy = convRes.data.routing_policy || 'manual';
                     this.roomsInAConv[convId].sub_id = convRes.data.subscriber_id;
@@ -1115,7 +1173,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     room_ids: _.map(conv.conversation_sessions, 'socket_session_id'),
                 };
 
+                this.roomsInAConv[convId].conv_id = conv.id;
+
                 this.roomsInAConv[convId].users_only = conv.users_only;
+                this.roomsInAConv[convId].chat_type = conv.type;
+                this.roomsInAConv[convId].created_at = conv.created_at;
+
                 this.roomsInAConv[convId].ai_is_replying = conv.ai_is_replying;
                 this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual'; // or check conv.other_info.routing_policy
                 this.roomsInAConv[convId].sub_id = conv.subscriber_id;
