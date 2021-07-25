@@ -470,7 +470,7 @@ model chat_template {
 model chat_department {
   id                    String             @id @default(cuid())
   tag                   String
-  description           String
+  description           String?
   active                Boolean            @default(true)
   created_at            DateTime           @default(now()) @db.Timestamp(6)
   updated_at            DateTime           @default(now()) @db.Timestamp(6)

@@ -13,7 +13,7 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import * as _ from 'lodash';
-import moment from 'moment';
+import * as moment from 'moment';
 
 import { WsJwtGuard } from 'src/auth/guards/ws-auth.guard';
 import { AuthService } from 'src/auth/auth.service';
@@ -148,7 +148,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             ['conv_id', convId],
         );
 
-        return position === -1 ? null : position;
+        return position === -1 ? null : position + 1;
     }
 
     // I think no need for nw
@@ -281,7 +281,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             socketRes.ses_user.socket_session.subscriber_id,
         );
 
-        this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_conv_queue_position_res', {
+        this.sendToSocketClient(client, 'ec_conv_queue_position_res', {
             conv_id: socketRes.conv_id,
             queue_position: queue_position,
             position_for: 'client',

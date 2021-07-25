@@ -44,8 +44,6 @@ export class ChatDepartmentService {
         return this.prisma.chat_department.create({
             data: {
                 tag: createDepartmentDto.tag,
-                description: createDepartmentDto.description,
-                active: createDepartmentDto.active,
                 subscriber: { connect: { id: subscriberId } },
                 ...userConnector,
             },
@@ -76,8 +74,6 @@ export class ChatDepartmentService {
                 id: id,
             },
             data: {
-                description: updateDepartmentDto.description,
-                active: updateDepartmentDto.active,
                 ...usersRelationUpdater,
             },
             include: { users: true },
@@ -112,6 +108,7 @@ export class ChatDepartmentService {
         return this.prisma.chat_department.findMany({
             where: {
                 subscriber_id: req.user.data.socket_session.subscriber_id,
+                users: !req.user.data.socket_session.user_id ? { some: {} } : {},
             },
             orderBy: {
                 created_at: 'desc',
