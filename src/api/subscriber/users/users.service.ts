@@ -2,13 +2,17 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { user } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
+
 import { InviteUserDto } from './dto/invite-user.dto';
 import { InvitationUpdateDto } from './dto/invitation-update.dto';
 import { JoinUserDto } from './dto/join-user.dto';
 import { UpdateUserActiveStateDto } from './dto/update-user-active-status.dto';
-import { MailService } from 'src/mail/mail.service';
 import { ConvertUserTypeDto } from './dto/convert-user-type.dto';
+
+import { MailService } from 'src/mail/mail.service';
+
 import { EventsGateway } from 'src/events/events.gateway';
+
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -193,12 +197,30 @@ export class UsersService {
             }
         }
 
+        const invitationAdditionalData: any = {};
+
+        if (inviteUserDto.chat_department_ids) {
+            for (const chat_department_id of inviteUserDto.chat_department_ids) {
+                const department = await this.prisma.chat_department.findFirst({
+                    where: {
+                        subscriber_id: req.user.data.subscriber_id,
+                        id: chat_department_id,
+                    },
+                });
+
+                if (!department) throw new HttpException('Department not found', HttpStatus.NOT_FOUND);
+            }
+
+            invitationAdditionalData.chat_department_ids = inviteUserDto.chat_department_ids;
+        }
+
         const invitationCreated = await this.prisma.user_invitation.create({
             data: {
                 email: inviteUserDto.email,
                 code: '1234',
                 subscriber: { connect: { id: subscriberId } },
                 type: inviteUserDto.type,
+                additional_data: Object.keys(invitationAdditionalData).length ? invitationAdditionalData : null,
                 active: inviteUserDto.active,
             },
             include: {
@@ -269,6 +291,31 @@ export class UsersService {
             throw new HttpException('Something went wrong at assigning role', HttpStatus.NOT_IMPLEMENTED);
         }
 
+        const chatDepartmentConnector: any = {};
+
+        if (invitation.additional_data) {
+            if (invitation.additional_data.chat_department_ids) {
+                chatDepartmentConnector.connect = [];
+
+                for (const chat_department_id of invitation.additional_data.chat_department_ids) {
+                    const department = await this.prisma.chat_department.findFirst({
+                        where: {
+                            subscriber_id: invitation.subscriber_id,
+                            id: chat_department_id,
+                        },
+                    });
+
+                    if (!department)
+                        throw new HttpException(
+                            'Department may be changed. Notify admin for resend invitation',
+                            HttpStatus.NOT_FOUND,
+                        );
+
+                    chatDepartmentConnector.connect.push({ id: chat_department_id });
+                }
+            }
+        }
+
         const user: any = await this.prisma.user.create({
             data: {
                 email: invitation.email,
@@ -294,6 +341,7 @@ export class UsersService {
                         subscriber: { connect: { id: invitation.subscriber_id } },
                     },
                 },
+                chat_departments: chatDepartmentConnector,
             },
         });
 

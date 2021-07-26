@@ -106,16 +106,17 @@ model days_to_name {
 }
 
 model user_invitation {
-  id            String                      @id @default(cuid())
-  email         String
-  code          String
-  type          user_invitation_type_enum
-  status        user_invitation_status_enum @default(pending)
-  active        Boolean                     @default(true)
-  created_at    DateTime                    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime                    @default(now()) @db.Timestamp(6)
-  subscriber    subscriber                  @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String
+  id              String                      @id @default(cuid())
+  email           String
+  code            String
+  additional_data Json?
+  type            user_invitation_type_enum
+  status          user_invitation_status_enum @default(pending)
+  active          Boolean                     @default(true)
+  created_at      DateTime                    @default(now()) @db.Timestamp(6)
+  updated_at      DateTime                    @default(now()) @db.Timestamp(6)
+  subscriber      subscriber                  @relation(fields: [subscriber_id], references: [id])
+  subscriber_id   String
 }
 
 model user {
