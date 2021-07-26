@@ -403,7 +403,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 sub_id: conv_data.subscriber_id,
                 created_at: conv_data.created_at,
                 users_only: conv_data.users_only,
-                chat_type: conv_data.chat_type,
+                chat_type: conv_data.type,
             };
         } else {
             return this.sendError(client, 'ec_init_conv_from_client', 'conv id already exists');
