@@ -178,6 +178,12 @@ export class WHMCSService {
         return msg;
     }
 
+    getClientDetails(req: any, body: any) {
+        const queryObj: any = { action: 'GetClientsDetails', clientid: body.clientid, email: body.email };
+
+        return this.getResponse(req.user.data.subscriber_id, queryObj);
+    }
+
     async getResponse(subId: any, dynamicFields: any) {
         const whmcsApi = await this.prisma.setting.findMany({
             where: {

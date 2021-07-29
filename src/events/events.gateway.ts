@@ -380,6 +380,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         name: socketRes.name,
                         email: socketRes.email,
                         department: socketRes.department,
+                        user_info: socketRes.user_info,
                     },
                     { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                 )

@@ -1,4 +1,14 @@
-import { ArrayNotEmpty, IsArray, IsEmail, IsEnum, IsOptional, isString, IsString, ValidateIf } from 'class-validator';
+import {
+    ArrayNotEmpty,
+    IsArray,
+    IsEmail,
+    IsEnum,
+    IsJSON,
+    IsOptional,
+    isString,
+    IsString,
+    ValidateIf,
+} from 'class-validator';
 
 enum chat_type_enum {
     live_chat = 'live_chat',
@@ -26,4 +36,7 @@ export class CreateConversationDto {
     @IsArray()
     @ArrayNotEmpty()
     ses_ids: Array<string>;
+
+    @IsOptional()
+    user_info: string;
 }

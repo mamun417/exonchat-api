@@ -36,4 +36,10 @@ export class WHMCSController {
     ticketNotification(@Param('ticket_id') ticketId: string, @Param('sub_id') subId: string, @Request() req: any) {
         return this.WHMCSService.ticketNotification(req, ticketId, subId);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('client-details')
+    getClientDetails(@Request() req: any, @Body() body: any) {
+        return this.WHMCSService.getClientDetails(req, body);
+    }
 }

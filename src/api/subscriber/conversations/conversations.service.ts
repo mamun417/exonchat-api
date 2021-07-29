@@ -49,6 +49,7 @@ export class ConversationsService {
                 data: {
                     init_name: createConversationDto.name,
                     init_email: createConversationDto.email,
+                    user_info: createConversationDto.user_info || {},
                 },
             });
 
