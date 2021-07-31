@@ -272,6 +272,28 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_departments_online_status')
+    async departmentsOnlineStatus(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
+        let onlineDepartments = [];
+
+        Object.values(this.userClientsInARoom).forEach((userClient: any) => {
+            if (
+                userClient.sub_id === socketRes.ses_user.socket_session.subscriber_id &&
+                userClient.status === 'online'
+            ) {
+                onlineDepartments = _.union(onlineDepartments, userClient.chat_departments); // merge unique
+            }
+        });
+
+        // you will get only the online departments for now
+        this.sendToSocketClient(client, 'ec_departments_online_status_res', {
+            departments: onlineDepartments,
+        });
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_conv_queue_position')
     async convQueuePosition(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
         if (!socketRes.conv_id) return;
