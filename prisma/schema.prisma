@@ -402,8 +402,8 @@ model chat_bot {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
-  subscriber_id String?
-  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
 
   chat_bot_items chat_bot_item[]
 }
@@ -423,12 +423,12 @@ model chat_bot_item {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
-  subscriber_id String?
-  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  chat_bot_id   String?
-  chat_bot      chat_bot?   @relation(fields: [chat_bot_id], references: [id])
+  subscriber_id String
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  chat_bot_id   String
+  chat_bot      chat_bot   @relation(fields: [chat_bot_id], references: [id])
   intent_id     String?
-  intent        intent?     @relation(fields: [intent_id], references: [id])
+  intent        intent?    @relation(fields: [intent_id], references: [id])
 }
 
 model speech_recognition {
