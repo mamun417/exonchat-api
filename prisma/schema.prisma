@@ -37,6 +37,8 @@ model subscriber {
   settings                   setting[]
   attachments                attachment[]
   offline_chat_requests      offline_chat_req[]
+  chat_bots                  chat_bot[]
+  chat_bot_items             chat_bot_item[]
 }
 
 model subscriber_ai {
@@ -388,6 +390,47 @@ model attachment {
   user_meta                  user_meta?
 }
 
+model chat_bot {
+  id String @id @default(cuid())
+
+  tag             String
+  description     Boolean @default(false)
+  info            Json?
+  additional_info Json?
+  active          Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber_id String
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+
+  chat_bot_items chat_bot_item[]
+}
+
+model chat_bot_item {
+  id String @id @default(cuid())
+
+  tag          String
+  description  Boolean @default(false)
+  content      String?
+  content_json Json? // it's for advance content making
+
+  info            Json?
+  additional_info Json?
+  active          Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber_id String
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  chat_bot_id   String
+  chat_bot      chat_bot   @relation(fields: [chat_bot_id], references: [id])
+  intent_id     String?
+  intent        intent?    @relation(fields: [intent_id], references: [id])
+}
+
 model speech_recognition {
   id                 String      @id @default(cuid())
   speech             String
@@ -402,7 +445,7 @@ model speech_recognition {
   for_delete         Boolean     @default(false)
   created_at         DateTime    @default(now()) @db.Timestamp(6)
   updated_at         DateTime    @default(now()) @db.Timestamp(6)
-  script_name        String?
+  script_name        String? // script_* for cron
   script_status      String?
   script_updated_at  DateTime?   @db.Timestamp(6)
   tsid               String      @default("") // temp_subscriber_Id. its only for unique check. cz relation can be null
@@ -433,6 +476,7 @@ model intent {
   intent_action      intent_action?
   speech_recognition speech_recognition[]
   chat_templates     chat_template[]
+  chat_bot_item      chat_bot_item[]
 }
 
 model intent_action {
