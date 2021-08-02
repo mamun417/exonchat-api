@@ -39,7 +39,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // but only data.ses_user.subscriber_id. it's only for user end. if you don't get the data that means
     // your ses is not for user
 
-    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [], status: 'online/offline/invisible'}}
+    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [], online_status: 'online/offline/invisible'}}
     private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_status: active/inactive}}
 
     // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool, chat_department: '', routing_policy: 'manual/...', notify_again: true/false, notify_to: 'ses_id'}}
@@ -931,7 +931,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // emit data
         // {
         //      conv_id: must, notify_to: if_from_agent, agent_info: if_from_agent{agents_user_obj not ses/conv_ses},
-        //      notify_except: if_from_client[ses_ids], client_info: client_socket_ses_obj, reason: transfer_reason
+        //      notify_except: if_from_client[ses_ids], client_info: client_socket_ses_obj, reason: transfer_reason,
+        //      notify_to_dep: department_name{not id}
         // }
         //for now notify_to will determine for whome this transfer
 
@@ -958,12 +959,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
             }
         } else {
+            // notify_to_dep is string for now. later can be array. y? think yourself
+            // now only supports to all online agents to that dep
+            const to_chat_dep = socketRes.notify_to_dep || convObj.chat_department;
+
             // take this department's agents, except the one chatting. for future except is array omit all joined
             // for now if agents are online, send to them only
             const agents = this.usersRoom(socketRes).filter((roomId: any) => {
                 return (
-                    this.userClientsInARoom[roomId].chat_departments?.includes(convObj.chat_department) &&
-                    (!socketRes.notify_except || !socketRes.notify_except.includes(roomId))
+                    this.userClientsInARoom[roomId].chat_departments?.includes(to_chat_dep) &&
+                    (!socketRes.notify_except || !socketRes.notify_except.includes(roomId)) &&
+                    // test this line
+                    (!to_chat_dep || !convObj.room_ids.includes(roomId)) // to_chat_dep ? then from agent so omit joined agents
                 );
             });
 
