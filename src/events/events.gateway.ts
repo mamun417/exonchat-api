@@ -279,7 +279,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         Object.values(this.userClientsInARoom).forEach((userClient: any) => {
             if (
                 userClient.sub_id === socketRes.ses_user.socket_session.subscriber_id &&
-                userClient.status === 'online'
+                userClient.online_status === 'online'
             ) {
                 onlineDepartments = _.union(onlineDepartments, userClient.chat_departments); // merge unique
             }
