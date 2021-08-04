@@ -652,6 +652,26 @@ export class ConversationsService {
         });
     }
 
+    async clientPreviousConversationsCount(req: any, query: any) {
+        const count = await this.prisma.conversation.count({
+            where: {
+                subscriber_id: req.user.data.subscriber_id,
+                users_only: false,
+                // closed_by_id: null, // uncomment if needed
+                conversation_sessions: {
+                    some: {
+                        socket_session: {
+                            OR: [{ init_email: query.email }], // other field or field email check
+                            user_id: null,
+                        },
+                    },
+                },
+            },
+        });
+
+        return { count };
+    }
+
     async findAllUserToUserConvWithMe(req: any) {
         return this.prisma.conversation.findMany({
             where: {

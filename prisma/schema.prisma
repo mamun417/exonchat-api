@@ -413,6 +413,7 @@ model chat_bot_item {
 
   tag          String
   description  Boolean @default(false)
+  to_message String? // when user click this item create message as this
   content      String?
   content_json Json? // it's for advance content making
 

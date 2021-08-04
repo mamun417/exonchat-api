@@ -961,7 +961,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         } else {
             // notify_to_dep is string for now. later can be array. y? think yourself
             // now only supports to all online agents to that dep
-            const to_chat_dep = socketRes.notify_to_dep || convObj.chat_department;
+            const to_chat_dep = socketRes.notify_to_dep || convObj.chat_department; // to_chat_dep? then from agent else can be from anywhere
 
             // take this department's agents, except the one chatting. for future except is array omit all joined
             // for now if agents are online, send to them only

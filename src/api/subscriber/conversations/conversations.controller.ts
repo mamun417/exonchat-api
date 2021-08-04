@@ -42,6 +42,12 @@ export class ConversationsController {
         return this.conversationsService.clientPreviousConversations(req, query);
     }
 
+    @UseGuards(JwtAuthGuard)
+    @Get('client-previous-conversations-count')
+    clientPreviousConversationsCount(@Request() req: any, @Query() query) {
+        return this.conversationsService.clientPreviousConversationsCount(req, query);
+    }
+
     // @UseGuards(JwtAuthGuard)
     // @Get('client-conversation/:id')
     // clientConversation(@Param('id') id: string, @Request() req: any, @Query() query) {
