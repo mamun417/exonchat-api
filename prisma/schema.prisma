@@ -677,7 +677,7 @@ model chat_department {
 
 enum permission_use_for_enum {
   subscriber
-  administrator
+  owner
 }
 
 enum role_use_for_enum {
