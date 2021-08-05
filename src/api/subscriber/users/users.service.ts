@@ -98,11 +98,15 @@ export class UsersService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
             },
         });
@@ -149,17 +153,20 @@ export class UsersService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
-                socket_sessions: true,
             },
         });
 
-        this.ws.server.in(updated.socket_sessions[0].id).emit('ec_from_api_events', {
+        this.ws.server.in(updated.socket_session.id).emit('ec_from_api_events', {
             action: 'logout',
             msg: 'Your role has changed by admin. You will be logged out now for the changes to take effect',
             reason: 'user type has changed',
@@ -220,11 +227,11 @@ export class UsersService {
                 code: '1234',
                 subscriber: { connect: { id: subscriberId } },
                 type: inviteUserDto.type,
-                additional_data: Object.keys(invitationAdditionalData).length ? invitationAdditionalData : null,
+                additional_info: Object.keys(invitationAdditionalData).length ? invitationAdditionalData : null,
                 active: inviteUserDto.active,
             },
             include: {
-                subscriber: true,
+                subscriber: { include: { subscriber_meta: true } },
             },
         });
 
@@ -333,7 +340,7 @@ export class UsersService {
                         password: await bcrypt.hash(joinUserDto.password, await bcrypt.genSalt()),
                     },
                 },
-                socket_sessions: {
+                socket_session: {
                     create: {
                         init_ip: 'user_ip',
                         init_user_agent: 'user_browser',
@@ -396,12 +403,9 @@ export class UsersService {
                 user_meta: {
                     include: { attachment: true },
                 },
-                socket_sessions: {
+                socket_session: {
                     select: {
                         id: true,
-                    },
-                    orderBy: {
-                        created_at: 'desc',
                     },
                 },
                 role: true,
@@ -431,12 +435,9 @@ export class UsersService {
                 user_meta: {
                     include: { attachment: true },
                 },
-                socket_sessions: {
+                socket_session: {
                     select: {
                         id: true,
-                    },
-                    orderBy: {
-                        created_at: 'desc',
                     },
                 },
                 role: true,
@@ -496,13 +497,16 @@ export class UsersService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
-                socket_sessions: true,
             },
         });
     }
@@ -516,7 +520,7 @@ export class UsersService {
             where: {
                 id,
                 subscriber: {
-                    api_key,
+                    subscriber_secret: { api_key },
                 },
             },
             include: {

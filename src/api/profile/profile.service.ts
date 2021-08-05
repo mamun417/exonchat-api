@@ -6,6 +6,8 @@ import { UpdateAvatarAttachmentDto } from './dto/update-avatar-attachment.dto';
 import { AttachmentsService } from '../subscriber/attachments/attachments.service';
 import { UpdateOnlineStatusDto } from './dto/update-online-status.dto';
 
+import { user } from '@prisma/client';
+
 @Injectable()
 export class ProfileService {
     constructor(
@@ -15,6 +17,18 @@ export class ProfileService {
     ) {}
 
     async update(req: any, updateProfileDto: UpdateProfileDto) {
+        const user = await this.prisma.user.findFirst({
+            where: { id: req.user.data.id },
+            include: { user_meta: true },
+        });
+
+        const userInfo: any = user.user_meta.info || {};
+
+        // replace with their respected info
+        userInfo.facebook = updateProfileDto.facebook || userInfo.facebook || '';
+        userInfo.twitter = updateProfileDto.twitter || userInfo.twitter || '';
+        userInfo.linkedin = updateProfileDto.linkedin || userInfo.linkedin || '';
+
         return this.prisma.user.update({
             where: {
                 id: req.user.data.id,
@@ -26,9 +40,7 @@ export class ProfileService {
                         display_name: updateProfileDto.display_name,
                         phone: updateProfileDto.phone,
                         address: updateProfileDto.address,
-                        facebook: updateProfileDto.facebook,
-                        twitter: updateProfileDto.twitter,
-                        linkedin: updateProfileDto.linkedin,
+                        info: userInfo,
                     },
                 },
             },
@@ -53,13 +65,16 @@ export class ProfileService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
-                socket_sessions: true,
             },
         });
     }
@@ -93,13 +108,16 @@ export class ProfileService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
-                socket_sessions: true,
             },
         });
     }
@@ -138,13 +156,16 @@ export class ProfileService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
-                socket_sessions: true,
             },
         });
     }

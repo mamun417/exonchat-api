@@ -10,7 +10,7 @@ export class SystemScriptService {
     }
 
     //when a intent is marked for delete or update, delete will be happened last
-    // cz delete is action for take. thats y its safe that after delete no submit will happen
+    // cz delete is action for take. that's y its safe that after delete no submit will happen
     async intentEntryForSubmit(req: any) {
         const intentForUpdate = await this.prisma.intent.findFirst({
             where: {
