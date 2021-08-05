@@ -8,227 +8,298 @@ datasource db {
 }
 
 model subscriber {
-  id                         String                  @id @default(cuid())
-  company_name               String                  @unique
-  display_name               String
-  api_key                    String                  @unique @default(cuid())
-  active                     Boolean                 @default(false)
-  created_at                 DateTime                @default(now()) @db.Timestamp(6)
-  updated_at                 DateTime                @default(now()) @db.Timestamp(6)
-  subscriber_subscription    subscriber_subscription @relation(fields: [subscriber_subscription_id], references: [id])
-  subscriber_subscription_id String
-  ai                         subscriber_ai?
-  roles                      role[]
-  extra_permissions          extra_permission[]
-  users                      user[]
-  socket_sessions            socket_session[]
-  conversations              conversation[]
-  messages                   message[]
-  conversation_sessions      conversation_session[]
-  conversation_ratings       conversation_rating[]
-  conversation_tags          conversation_tag[]
-  intents                    intent[]
-  intent_actions             intent_action[]
-  speech_recognitions        speech_recognition[]
-  chat_departments           chat_department[]
-  chat_templates             chat_template[]
-  user_invitations           user_invitation[]
-  user_settings              user_setting_value[]
-  settings                   setting[]
-  attachments                attachment[]
-  offline_chat_requests      offline_chat_req[]
-  chat_bots                  chat_bot[]
-  chat_bot_items             chat_bot_item[]
+  id String @id @default(cuid())
+
+  active Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber_subscription subscriber_subscription?
+  subscriber_secret       subscriber_secret?
+  subscriber_meta         subscriber_meta?
+  subscriber_ai           subscriber_ai?
+
+  roles                 role[]
+  extra_permissions     extra_permission[]
+  users                 user[]
+  socket_sessions       socket_session[]
+  conversations         conversation[]
+  messages              message[]
+  conversation_sessions conversation_session[]
+  conversation_ratings  conversation_rating[]
+  conversation_tags     conversation_tag[]
+  conversation_notes    conversation_note[]
+  chat_bots             chat_bot[]
+  chat_bot_items        chat_bot_item[]
+  intents               intent[]
+  intent_actions        intent_action[]
+  speech_recognitions   speech_recognition[]
+  chat_departments      chat_department[]
+  chat_templates        chat_template[]
+  user_invitations      user_invitation[]
+  user_settings         user_setting_value[]
+  settings              setting[]
+  attachments           attachment[]
+  offline_chat_requests offline_chat_req[]
+}
+
+model subscriber_secret {
+  id String @id @default(cuid())
+
+  api_key String @unique @default(cuid())
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String     @unique
+}
+
+model subscriber_meta {
+  id String @id @default(cuid())
+
+  company_name String @unique
+  display_name String
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String     @unique
 }
 
 model subscriber_ai {
-  id            String     @id @default(cuid())
-  access_token  String
-  app_id        String
-  app_name      String
+  id String @id @default(cuid())
+
+  access_token String
+  app_id       String
+  app_name     String
+
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
   subscriber_id String     @unique
 }
 
 model subscription {
-  id                         String                      @id @default(cuid())
-  slug                       String                      @unique
-  display_name               String
-  one_day_price              Int
-  active                     Boolean                     @default(false)
-  subscriber_subscriptions   subscriber_subscription[]
-  package_element_values     package_element_value[]
-  subscription_days_to_names subscription_days_to_name[]
-}
+  id String @id @default(cuid())
 
-model subscriber_subscription {
-  id              String       @id @default(cuid())
-  created_at      DateTime     @default(now()) @db.Timestamp(6)
-  updated_at      DateTime     @default(now()) @db.Timestamp(6)
-  subscriber      subscriber?
-  subscription    subscription @relation(fields: [subscription_id], references: [id])
-  subscription_id String
+  slug          String  @unique
+  display_name  String
+  one_day_price Int
+  active        Boolean @default(false)
+
+  subscription_days_to_names subscription_days_to_name[]
+  package_element_values     package_element_value[]
+  subscriber_subscriptions   subscriber_subscription[]
 }
 
 model subscription_days_to_name {
-  id              String       @id @default(cuid())
+  id String @id @default(cuid())
+
+  price             Int?
+  discount          Int?
+  in_percentage     Boolean @default(true)
+  offer_tag         String?
+  offer_description String?
+
   subscription    subscription @relation(fields: [subscription_id], references: [id])
   subscription_id String
   days_to_name    days_to_name @relation(fields: [days_to_name_id], references: [id])
   days_to_name_id String
-  price           Int?
+}
+
+model days_to_name {
+  id String @id @default(cuid())
+
+  slug         String
+  display_name String
+  in_days      Int
+
+  subscription_days_to_name subscription_days_to_name[]
 }
 
 // each subscription package element
 model package_element {
-  id            String                 @id @default(cuid())
+  id String @id @default(cuid())
+
   slug          String
   display_name  String
-  value         package_element_value?
-  static        Boolean                @default(false)
-  ui_visibility Boolean                @default(true)
-  active        Boolean                @default(false)
+  static        Boolean @default(true)
+  ui_visibility Boolean @default(true)
+  active        Boolean @default(true)
+
+  package_element_value package_element_value?
 }
 
 // will be use in all the subscription packages if not changed individually
 model package_element_value {
-  id              String          @id @default(cuid())
+  id String @id @default(cuid())
+
+  value String
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   element         package_element @relation(fields: [element_id], references: [id])
   element_id      String
   subscription    subscription    @relation(fields: [subscription_id], references: [id])
   subscription_id String
 }
 
-model days_to_name {
-  id                        String                      @id @default(cuid())
-  slug                      String
-  display_name              String
-  in_days                   Int
-  subscription_days_to_name subscription_days_to_name[]
+// its only for manage extra values
+model subscriber_subscription {
+  id String @id @default(cuid())
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber      subscriber   @relation(fields: [subscriber_id], references: [id])
+  subscriber_id   String       @unique
+  subscription    subscription @relation(fields: [subscription_id], references: [id])
+  subscription_id String
 }
 
 model user_invitation {
-  id              String                      @id @default(cuid())
+  id String @id @default(cuid())
+
   email           String
   code            String
-  additional_data Json?
   type            user_invitation_type_enum
   status          user_invitation_status_enum @default(pending)
   active          Boolean                     @default(true)
-  created_at      DateTime                    @default(now()) @db.Timestamp(6)
-  updated_at      DateTime                    @default(now()) @db.Timestamp(6)
-  subscriber      subscriber                  @relation(fields: [subscriber_id], references: [id])
-  subscriber_id   String
+  additional_info Json?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
 }
 
+// user can be this project managers also. they will diff by roles
 model user {
-  id                            String                  @id @default(cuid())
-  email                         String                  @db.VarChar
-  active                        Boolean                 @default(false)
-  online_status                 user_online_status_enum @default(online)
-  created_at                    DateTime                @default(now()) @db.Timestamp(6)
-  updated_at                    DateTime                @default(now()) @db.Timestamp(6)
-  user_meta                     user_meta?
-  user_secret                   user_secret?
-  subscriber                    subscriber              @relation(fields: [subscriber_id], references: [id])
-  subscriber_id                 String
-  role                          role                    @relation(fields: [role_id], references: [id])
-  role_id                       String
-  extra_permissions             extra_permission[]
-  socket_sessions               socket_session[]
-  chat_departments              chat_department[]
-  chat_templates                chat_template[]
-  settings                      user_setting_value[]
-  forgot_password_token         String?                 @db.VarChar
-  forgot_password_token_expired DateTime?               @db.Timestamp(6)
+  id String @id @default(cuid())
+
+  email         String                  @db.VarChar
+  active        Boolean                 @default(false)
+  online_status user_online_status_enum @default(online)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  user_meta   user_meta?
+  user_secret user_secret?
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+  role          role       @relation(fields: [role_id], references: [id])
+  role_id       String
+
+  extra_permissions extra_permission[]
+  socket_session    socket_session?
+  chat_departments  chat_department[]
+  chat_templates    chat_template[]
+  settings          user_setting_value[]
 
   @@unique(fields: [email, subscriber_id], name: "user_identifier")
 }
 
 model user_secret {
-  id       String  @id @default(cuid())
-  password String  @db.VarChar
-  user     user?   @relation(fields: [user_id], references: [id])
-  user_id  String?
+  id String @id @default(cuid())
+
+  password                      String    @db.VarChar
+  forgot_password_token         String?   @db.VarChar
+  forgot_password_token_expired DateTime? @db.Timestamp(6)
+
+  user    user?   @relation(fields: [user_id], references: [id])
+  user_id String?
 }
 
 model user_meta {
-  id              String      @id @default(cuid())
-  full_name       String      @db.VarChar
+  id String @id @default(cuid())
+
+  full_name       String  @db.VarChar
   display_name    String
-  phone           String?     @db.VarChar
-  address         String?     @db.VarChar
-  facebook        String?     @db.VarChar
-  twitter         String?     @db.VarChar
-  linkedin        String?     @db.VarChar
+  phone           String? @db.VarChar
+  address         String? @db.VarChar
   info            Json?
   additional_info Json?
-  created_at      DateTime    @default(now()) @db.Timestamp(6)
-  updated_at      DateTime    @default(now()) @db.Timestamp(6)
-  user            user?       @relation(fields: [user_id], references: [id])
-  user_id         String?
-  attachment      attachment? @relation(fields: [attachment_id], references: [id])
-  attachment_id   String?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  user          user?       @relation(fields: [user_id], references: [id])
+  user_id       String?
+  attachment    attachment? @relation(fields: [attachment_id], references: [id])
+  attachment_id String?
 }
 
 model setting {
-  id                  String                      @id @default(cuid())
-  slug                String
-  display_name        String
-  description         String?
-  default_value       String?
-  value_options       Json? // its for select type input
-  category            settings_category_type_enum @default(any)
-  sub_category        String?
-  input_type          settings_input_type_enum    @default(text)
-  created_at          DateTime                    @default(now()) @db.Timestamp(6)
-  updated_at          DateTime                    @default(now()) @db.Timestamp(6)
-  user_type           setting_user_type_enum // it will determine where n which page to show
-  subscriber          subscriber?                 @relation(fields: [subscriber_id], references: [id])
-  subscriber_id       String? // subscriber ? then its only for this subscriner else for all
+  id String @id @default(cuid())
+
+  slug          String
+  display_name  String
+  description   String?
+  default_value String?
+  value_options Json? // its for select type input
+  sub_category  String?
+  category      settings_category_type_enum @default(any)
+  input_type    settings_input_type_enum    @default(text)
+  user_type     setting_user_type_enum // it will determine where n which page to show
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String? // subscriber? then its only for this subscriner. if not then for this project managers
+
   user_settings_value user_setting_value[]
 
   @@unique(fields: [slug, category, user_type], name: "slug_identifier")
 }
 
 model user_setting_value {
-  id            String      @id @default(cuid())
-  value         String
-  created_at    DateTime    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  id String @id @default(cuid())
+
+  value String
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   user          user?       @relation(fields: [user_id], references: [id])
   user_id       String? // not user ? then for subscriber
   subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String? // not subscriber ? thne for administrator
+  subscriber_id String? // not subscriber ? then for this project managers (map by user)
   setting       setting?    @relation(fields: [setting_id], references: [id])
   setting_id    String?
 }
 
 model role {
-  id            String            @id @default(cuid())
-  use_for       role_use_for_enum @default(subscriber)
-  slug          String            @db.VarChar
-  name          String            @db.VarChar
-  description   String?           @db.VarChar
-  created_at    DateTime          @default(now()) @db.Timestamp(6)
-  updated_at    DateTime          @default(now()) @db.Timestamp(6)
-  subscriber    subscriber?       @relation(fields: [subscriber_id], references: [id])
+  id String @id @default(cuid())
+
+  use_for     role_use_for_enum @default(subscriber)
+  slug        String            @db.VarChar
+  name        String            @db.VarChar
+  description String?           @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
   subscriber_id String?
-  users         user[]
-  permissions   permission[]
+
+  users       user[]
+  permissions permission[]
 
   @@unique(fields: [slug, use_for], name: "role_identifier")
 }
 
 model permission {
-  id                String                  @id @default(cuid())
-  use_for           permission_use_for_enum @default(subscriber)
-  slug              String                  @unique @db.VarChar
-  name              String                  @db.VarChar
-  description       String?                 @db.VarChar
-  status            Boolean                 @default(true)
-  created_at        DateTime                @default(now()) @db.Timestamp(6)
-  updated_at        DateTime                @default(now()) @db.Timestamp(6)
+  id String @id @default(cuid())
+
+  use_for     permission_use_for_enum @default(subscriber)
+  slug        String                  @unique @db.VarChar
+  name        String                  @db.VarChar
+  description String?                 @db.VarChar
+  status      Boolean                 @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   roles             role[]
   extra_permissions extra_permission[]
 
@@ -236,158 +307,209 @@ model permission {
 }
 
 model extra_permission {
-  id            String      @id @default(cuid())
-  created_at    DateTime    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime    @default(now()) @db.Timestamp(6)
+  id String @id @default(cuid())
+
+  include Boolean @default(true) // include/exclude rule
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String? // if has then all the users in this subscriber
+  subscriber_id String? // if not subscriber but user then for this project manager else not subscriber & not user then for project managers
   permission    permission  @relation(fields: [permission_id], references: [id])
   permission_id String
   user          user?       @relation(fields: [user_id], references: [id])
-  user_id       String?
-  // administrator user pending
-  include       Boolean     @default(true)
+  user_id       String? // if empty for the subscriber
 }
 
 model socket_session {
-  id                    String                      @id @default(cuid())
-  identifier            String?                     @db.VarChar // it will determine by which key we can get the user logged info from api
-  init_name             String?                     @db.VarChar
-  init_email            String?                     @db.VarChar
-  init_ip               String                      @db.VarChar
-  init_location         Json?
-  init_user_agent       String                      @db.VarChar // request header user-agent
-  info                  Json? // save like session related data
-  user_info             Json? // save like user related info
-  additional_info       Json? // save other infos
-  use_for               socket_session_use_for_enum
-  created_at            DateTime                    @default(now()) @db.Timestamp(6)
-  updated_at            DateTime                    @default(now()) @db.Timestamp(6)
-  subscriber_id         String
-  subscriber            subscriber                  @relation(fields: [subscriber_id], references: [id])
-  user_id               String?
-  user                  user?                       @relation(fields: [user_id], references: [id])
+  id String @id @default(cuid())
+
+  init_name       String? @db.VarChar
+  init_email      String? @db.VarChar
+  init_ip         String  @db.VarChar
+  init_location   Json?
+  init_user_agent String  @db.VarChar // request header user-agent
+  info            Json? // save like session related data
+  user_info       Json? // save like user related info
+  additional_info Json? // save other infos
+  use_for         String  @default("own_client") // own client/user / ai / fb / whatsapp /
+  use_for_info    Json?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+  user          user?      @relation(fields: [user_id], references: [id])
+  user_id       String?
+
   conversation_sessions conversation_session[]
-  created_conversations conversation[]              @relation(name: "created_by")
-  closed_conversations  conversation[]              @relation(name: "closed_by")
+  created_conversations conversation[]         @relation(name: "created_by")
+  closed_conversations  conversation[]         @relation(name: "closed_by")
   messages              message[]
   attachments           attachment[]
   offline_chat_requests offline_chat_req[]
 }
 
 model conversation {
-  id                    String                 @id @default(cuid())
-  users_only            Boolean?
-  type                  conversation_type_enum @default(user_to_user_chat)
-  ai_is_replying        Boolean                @default(false)
-  other_info            Json?
-  closed_at             DateTime?              @db.Timestamp(6)
-  created_at            DateTime               @default(now()) @db.Timestamp(6)
-  updated_at            DateTime               @default(now()) @db.Timestamp(6)
-  subscriber_id         String
-  subscriber            subscriber             @relation(fields: [subscriber_id], references: [id])
-  created_by_id         String
-  created_by            socket_session         @relation(name: "created_by", fields: [created_by_id], references: [id])
-  closed_by_id          String?
-  closed_by             socket_session?        @relation(name: "closed_by", fields: [closed_by_id], references: [id])
-  chat_department_id    String?
-  chat_department       chat_department?       @relation(fields: [chat_department_id], references: [id])
-  conversation_rating   conversation_rating?
+  id String @id @default(cuid())
+
+  users_only     Boolean?
+  type           conversation_type_enum @default(user_to_user_chat)
+  ai_is_replying Boolean                @default(false)
+  other_info     Json?
+  closed_at      DateTime?              @db.Timestamp(6)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber          subscriber           @relation(fields: [subscriber_id], references: [id])
+  subscriber_id       String
+  created_by          socket_session       @relation(name: "created_by", fields: [created_by_id], references: [id])
+  created_by_id       String
+  closed_by           socket_session?      @relation(name: "closed_by", fields: [closed_by_id], references: [id])
+  closed_by_id        String?
+  chat_department     chat_department?     @relation(fields: [chat_department_id], references: [id])
+  chat_department_id  String?
+  conversation_rating conversation_rating?
+
   conversation_sessions conversation_session[]
   messages              message[]
   conversation_tags     conversation_tag[]
+  conversation_notes    conversation_note[]
 }
 
 model conversation_tag {
-  id            String         @id @default(cuid())
-  tag           String
-  conversations conversation[]
+  id String @id @default(cuid())
+
+  tag String
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
   subscriber_id String
-  subscriber    subscriber     @relation(fields: [subscriber_id], references: [id])
+
+  conversations conversation[]
 
   @@unique(fields: [tag, subscriber_id], name: "conversation_tag_identifier")
 }
 
-model conversation_rating {
-  id              String       @id @default(cuid())
-  rating          Int?
-  rating_string   String?
-  comment         String?
-  created_at      DateTime     @default(now()) @db.Timestamp(6)
+model conversation_note {
+  id String @id @default(cuid())
+
+  tag String
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   conversation    conversation @relation(fields: [conversation_id], references: [id])
   conversation_id String
-  subscriber_id   String
   subscriber      subscriber   @relation(fields: [subscriber_id], references: [id])
+  subscriber_id   String
+}
+
+model conversation_rating {
+  id String @id @default(cuid())
+
+  rating        Int?
+  rating_string String?
+  comment       String?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  conversation    conversation @relation(fields: [conversation_id], references: [id])
+  conversation_id String
+  subscriber      subscriber   @relation(fields: [subscriber_id], references: [id])
+  subscriber_id   String
 }
 
 model conversation_session {
-  id                 String         @id @default(cuid())
-  joined_at          DateTime?      @db.Timestamp(6)
-  last_msg_seen_time DateTime?      @db.Timestamp(6)
-  left_at            DateTime?      @db.Timestamp(6)
+  id String @id @default(cuid())
+
+  joined_at          DateTime? @db.Timestamp(6)
+  last_msg_seen_time DateTime? @db.Timestamp(6)
+  left_at            DateTime? @db.Timestamp(6)
   left_reason        String?
   closed_reason      String?
-  created_at         DateTime       @default(now()) @db.Timestamp(6)
-  updated_at         DateTime       @default(now()) @db.Timestamp(6)
-  socket_session     socket_session @relation(fields: [socket_session_id], references: [id])
-  socket_session_id  String
-  conversation       conversation   @relation(fields: [conversation_id], references: [id])
-  conversation_id    String
-  subscriber_id      String
-  subscriber         subscriber     @relation(fields: [subscriber_id], references: [id])
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  socket_session    socket_session @relation(fields: [socket_session_id], references: [id])
+  socket_session_id String
+  conversation      conversation   @relation(fields: [conversation_id], references: [id])
+  conversation_id   String
+  subscriber        subscriber     @relation(fields: [subscriber_id], references: [id])
+  subscriber_id     String
 
   @@unique(fields: [conversation_id, socket_session_id], name: "conv_ses_identifier")
 }
 
 model message {
-  id                String          @id @default(cuid())
-  msg               String?
-  sender_type       String?
-  created_at        DateTime        @default(now()) @db.Timestamp(6)
-  updated_at        DateTime        @default(now()) @db.Timestamp(6)
-  attachments       attachment[]
-  conversation_id   String
+  id String @id @default(cuid())
+
+  msg         String?
+  sender_type String?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   conversation      conversation    @relation(fields: [conversation_id], references: [id])
-  subscriber_id     String
+  conversation_id   String
   subscriber        subscriber      @relation(fields: [subscriber_id], references: [id])
-  socket_session_id String?
+  subscriber_id     String
   socket_session    socket_session? @relation(fields: [socket_session_id], references: [id])
+  socket_session_id String?
+
+  attachments attachment[]
 }
 
 model offline_chat_req {
-  id                 String           @id @default(cuid())
-  name               String
-  email              String
-  subject            String
-  message            String
-  priority           String?          @default("normal")
-  chat_department_id String?
+  id String @id @default(cuid())
+
+  name     String
+  email    String
+  subject  String
+  message  String
+  priority String? @default("normal")
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
-  socket_session_id  String?
+  chat_department_id String?
   socket_session     socket_session?  @relation(fields: [socket_session_id], references: [id])
-  subscriber_id      String
+  socket_session_id  String?
   subscriber         subscriber       @relation(fields: [subscriber_id], references: [id])
-  created_at         DateTime         @default(now()) @db.Timestamp(6)
-  updated_at         DateTime         @default(now()) @db.Timestamp(6)
+  subscriber_id      String
+
+  attachments attachment[]
 }
 
 model attachment {
-  id                         String          @id @default(cuid())
+  id String @id @default(cuid())
+
   original_name              String
-  uploaded                   Boolean         @default(false)
-  size                       Int             @default(0) @db.Integer
+  uploaded                   Boolean  @default(false)
+  size                       Int      @default(0) @db.Integer
   ext                        String
-  user_has_control           Boolean         @default(true) // if false user deleted from uploads list but msg can resolve
-  created_at                 DateTime        @default(now()) @db.Timestamp(6)
-  updated_at                 DateTime        @default(now()) @db.Timestamp(6)
-  for_delete_last_checked_at DateTime        @default(now()) @db.Timestamp(6)
-  messages                   message[]
-  subscriber_id              String
-  subscriber                 subscriber      @relation(fields: [subscriber_id], references: [id])
+  user_has_control           Boolean  @default(true) // if false user deleted from uploads list but msg can resolve
+  for_delete_last_checked_at DateTime @default(now()) @db.Timestamp(6)
   folder_path                String // combine with socket_sesion_id. can be date wise also if needed
-  socket_session_id          String?
-  socket_session             socket_session? @relation(fields: [socket_session_id], references: [id])
-  user_meta                  user_meta?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  user_meta user_meta?
+
+  offline_chat_req    offline_chat_req? @relation(fields: [offline_chat_req_id], references: [id])
+  offline_chat_req_id String?
+  subscriber          subscriber        @relation(fields: [subscriber_id], references: [id])
+  subscriber_id       String
+  socket_session      socket_session?   @relation(fields: [socket_session_id], references: [id])
+  socket_session_id   String?
+
+  messages       message[]
+  chat_bot_items chat_bot_item[]
 }
 
 model chat_bot {
@@ -402,8 +524,8 @@ model chat_bot {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
-  subscriber_id String
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
 
   chat_bot_items chat_bot_item[]
 }
@@ -413,7 +535,7 @@ model chat_bot_item {
 
   tag          String
   description  Boolean @default(false)
-  to_message String? // when user click this item create message as this
+  to_message   String? // when user click this item create message as this
   content      String?
   content_json Json? // it's for advance content making
 
@@ -424,104 +546,127 @@ model chat_bot_item {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
-  subscriber_id String
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
-  chat_bot_id   String
+  subscriber_id String
   chat_bot      chat_bot   @relation(fields: [chat_bot_id], references: [id])
-  intent_id     String?
+  chat_bot_id   String
   intent        intent?    @relation(fields: [intent_id], references: [id])
+  intent_id     String?
+
+  attachments attachment[]
 }
 
 model speech_recognition {
-  id                 String      @id @default(cuid())
-  speech             String
-  forced             Boolean     @default(false)
-  confidence         Float       @default(0.0000)
-  resolved           Boolean     @default(false) // after submit get the result
-  has_in_ai          Boolean     @default(false) // submitted to ai
-  submit_to_ai       Boolean     @default(false) // submit to ai
-  remove_from_ai     Boolean     @default(false) // it will handle removing speech from ai. [after remove has_in_ai to false(sys)]
-  active             Boolean     @default(false)
-  ai_last_checked_at DateTime?   @db.Timestamp(6) // check confidence time to time
-  for_delete         Boolean     @default(false)
-  created_at         DateTime    @default(now()) @db.Timestamp(6)
-  updated_at         DateTime    @default(now()) @db.Timestamp(6)
-  script_name        String? // script_* for cron
-  script_status      String?
-  script_updated_at  DateTime?   @db.Timestamp(6)
-  tsid               String      @default("") // temp_subscriber_Id. its only for unique check. cz relation can be null
-  subscriber_id      String?
-  subscriber         subscriber? @relation(fields: [subscriber_id], references: [id])
-  intent_id          String?
-  intent             intent?     @relation(fields: [intent_id], references: [id])
+  id String @id @default(cuid())
+
+  speech     String
+  forced     Boolean @default(false) // resolve direct without ai
+  confidence Float   @default(0.0000)
+  resolved   Boolean @default(false) // after submit get the result
+
+  has_in_ai          Boolean   @default(false) // submitted to ai
+  submit_to_ai       Boolean   @default(false) // submit to ai
+  remove_from_ai     Boolean   @default(false) // it will handle removing speech from ai. [after remove has_in_ai to false(sys)]
+  active             Boolean   @default(false)
+  ai_last_checked_at DateTime? @db.Timestamp(6) // check confidence time to time
+  for_delete         Boolean   @default(false)
+
+  script_name       String?
+  script_status     String?
+  script_updated_at DateTime? @db.Timestamp(6)
+  tsid              String    @default("") // temp_subscriber_Id. its only for unique check. cz relation can be null
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String?
+  intent        intent?     @relation(fields: [intent_id], references: [id])
+  intent_id     String?
 
   @@unique(fields: [speech, tsid, for_delete], name: "speech_subscriber_delete")
 }
 
 model intent {
-  id                 String               @id @default(cuid())
-  tag                String
-  description        String
-  active             Boolean              @default(false)
-  submit_to_ai       Boolean              @default(true)
-  remove_from_ai     Boolean              @default(false)
-  ai_id              String?
-  for_delete         Boolean              @default(false)
-  created_at         DateTime             @default(now()) @db.Timestamp(6)
-  updated_at         DateTime             @default(now()) @db.Timestamp(6)
-  script_name        String?
-  script_status      String?
-  script_updated_at  DateTime?            @db.Timestamp(6)
-  subscriber_id      String?
-  subscriber         subscriber?          @relation(fields: [subscriber_id], references: [id])
-  intent_action      intent_action?
+  id String @id @default(cuid())
+
+  tag         String
+  description String
+
+  active         Boolean @default(false)
+  submit_to_ai   Boolean @default(true)
+  remove_from_ai Boolean @default(false)
+  ai_id          String?
+  for_delete     Boolean @default(false)
+
+  script_name       String?
+  script_status     String?
+  script_updated_at DateTime? @db.Timestamp(6)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  intent_action intent_action?
+
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String?
+
   speech_recognition speech_recognition[]
   chat_templates     chat_template[]
-  chat_bot_item      chat_bot_item[]
+  chat_bot_items     chat_bot_item[]
 }
 
 model intent_action {
-  id            String             @id @default(cuid())
-  type          intent_action_type
-  content       String?
-  action_name   String?
-  external_path String?
-  created_at    DateTime           @default(now()) @db.Timestamp(6)
-  updated_at    DateTime           @default(now()) @db.Timestamp(6)
+  id String @id @default(cuid())
+
+  type         intent_action_type
+  content      String? // by action type it will resolve to path or action or content
+  content_json Json? // it's for advance content making. if type external then hold key value & make info
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber? @relation(fields: [subscriber_id], references: [id])
   subscriber_id String?
-  subscriber    subscriber?        @relation(fields: [subscriber_id], references: [id])
+  intent        intent      @relation(fields: [intent_id], references: [id])
   intent_id     String
-  intent        intent             @relation(fields: [intent_id], references: [id])
 }
 
 model chat_template {
-  id                 String           @id @default(cuid())
-  tag                String
-  description        String
-  content            String? // if no intent then content will kick in
-  is_action          Boolean          @default(false) // if true will try chat_template_action (wip)
-  active             Boolean          @default(false)
-  created_at         DateTime         @default(now()) @db.Timestamp(6)
-  updated_at         DateTime         @default(now()) @db.Timestamp(6)
-  chat_department_id String?
+  id String @id @default(cuid())
+
+  tag         String
+  description String
+  content     String? // if no intent then content will kick in
+  is_action   Boolean @default(false) // if true will try chat_template_action (wip)
+  active      Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
   chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
-  subscriber_id      String?
+  chat_department_id String?
   subscriber         subscriber?      @relation(fields: [subscriber_id], references: [id])
-  user_id            String?
+  subscriber_id      String?
   user               user?            @relation(fields: [user_id], references: [id])
-  intent_id          String?
+  user_id            String?
   intent             intent?          @relation(fields: [intent_id], references: [id])
+  intent_id          String?
 }
 
 model chat_department {
-  id                    String             @id @default(cuid())
-  tag                   String
-  description           String?
-  active                Boolean            @default(true)
-  created_at            DateTime           @default(now()) @db.Timestamp(6)
-  updated_at            DateTime           @default(now()) @db.Timestamp(6)
-  subscriber_id         String
-  subscriber            subscriber         @relation(fields: [subscriber_id], references: [id])
+  id String @id @default(cuid())
+
+  tag         String
+  description String
+  active      Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+
   users                 user[]
   chat_templates        chat_template[]
   conversations         conversation[]
@@ -536,8 +681,8 @@ enum permission_use_for_enum {
 }
 
 enum role_use_for_enum {
+  owner // this project managers
   subscriber
-  administrator
 }
 
 enum user_online_status_enum {
