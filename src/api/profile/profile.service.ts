@@ -71,6 +71,9 @@ export class ProfileService {
                                 display_name: true,
                             },
                         },
+                        subscriber_secret: {
+                            select: { api_key: true },
+                        },
                     },
                 },
                 socket_session: true,
@@ -113,6 +116,9 @@ export class ProfileService {
                                 company_name: true,
                                 display_name: true,
                             },
+                        },
+                        subscriber_secret: {
+                            select: { api_key: true },
                         },
                     },
                 },
@@ -161,6 +167,9 @@ export class ProfileService {
                                 company_name: true,
                                 display_name: true,
                             },
+                        },
+                        subscriber_secret: {
+                            select: { api_key: true },
                         },
                     },
                 },

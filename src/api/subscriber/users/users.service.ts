@@ -104,6 +104,11 @@ export class UsersService {
                                 display_name: true,
                             },
                         },
+                        subscriber_secret: {
+                            select: {
+                                api_key: true,
+                            },
+                        },
                     },
                 },
                 socket_session: true,
@@ -157,6 +162,11 @@ export class UsersService {
                             select: {
                                 company_name: true,
                                 display_name: true,
+                            },
+                        },
+                        subscriber_secret: {
+                            select: {
+                                api_key: true,
                             },
                         },
                     },
@@ -501,6 +511,11 @@ export class UsersService {
                             select: {
                                 company_name: true,
                                 display_name: true,
+                            },
+                        },
+                        subscriber_secret: {
+                            select: {
+                                api_key: true,
                             },
                         },
                     },

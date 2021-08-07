@@ -45,6 +45,11 @@ export class AuthService {
                                 display_name: true,
                             },
                         },
+                        subscriber_secret: {
+                            select: {
+                                api_key: true,
+                            },
+                        },
                     },
                 },
                 socket_session: true,
