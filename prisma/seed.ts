@@ -14,8 +14,8 @@ async function main() {
         {
             slug: 'super_admin',
             name: 'Super Admin',
-            use_for: 'administrator',
-            permissions: [{ slug: 'subscriber_list', name: 'Subscriber List', use_for: 'administrator' }],
+            use_for: 'owner',
+            permissions: [{ slug: 'subscriber_list', name: 'Subscriber List', use_for: 'owner' }],
         },
         {
             slug: 'admin',
@@ -96,10 +96,16 @@ async function main() {
         ['test', 'other'].map(async (namePart, key) => {
             const subscriber = await prisma.subscriber.create({
                 data: {
-                    company_name: namePart,
-                    display_name: namePart,
-                    api_key: namePart,
                     active: true,
+                    subscriber_meta: {
+                        create: {
+                            company_name: namePart,
+                            display_name: namePart,
+                        },
+                    },
+                    subscriber_secret: {
+                        create: { api_key: namePart },
+                    },
                     users: {
                         create: [
                             {
@@ -169,7 +175,7 @@ async function main() {
                             subscription: { connect: { id: subscriptions[0].id } },
                         },
                     },
-                    ai: {
+                    subscriber_ai: {
                         create: {
                             access_token: 'M4N62UXFS75RPPA27NMR2ZZVXLF7LJDF',
                             app_name: 'exonchat',
@@ -178,6 +184,7 @@ async function main() {
                     },
                 },
                 include: {
+                    subscriber_meta: true,
                     users: true,
                 },
             });
@@ -191,7 +198,7 @@ async function main() {
                                       connect: {
                                           id: _l.find(subscriber.users, [
                                               'email',
-                                              subscriber.company_name === 'test'
+                                              subscriber.subscriber_meta.company_name === 'test'
                                                   ? 'test1@test.test'
                                                   : 'other1@other.other',
                                           ]).id,
@@ -204,7 +211,7 @@ async function main() {
                                           {
                                               id: _l.find(subscriber.users, [
                                                   'email',
-                                                  subscriber.company_name === 'test'
+                                                  subscriber.subscriber_meta.company_name === 'test'
                                                       ? 'test@test.test'
                                                       : 'other@other.other',
                                               ]).id,
@@ -212,7 +219,7 @@ async function main() {
                                           {
                                               id: _l.find(subscriber.users, [
                                                   'email',
-                                                  subscriber.company_name === 'test'
+                                                  subscriber.subscriber_meta.company_name === 'test'
                                                       ? 'test2@test.test'
                                                       : 'other2@other.other',
                                               ]).id,

@@ -27,10 +27,6 @@ export class LocalAuthGuard extends AuthGuard('local') {
             throw new HttpException(`Login credential fields can not be empty`, HttpStatus.UNPROCESSABLE_ENTITY);
         }
 
-        const result = (await super.canActivate(context)) as boolean;
-
-        // super.logIn(request);
-
-        return result;
+        return (await super.canActivate(context)) as boolean;
     }
 }

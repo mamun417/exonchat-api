@@ -25,10 +25,14 @@ export class PasswordService {
         await this.prisma.user.update({
             where: { id: findUser.id },
             data: {
-                forgot_password_token: token,
-                forgot_password_token_expired: moment(
-                    Date.now() + eval(process.env.RESET_PASS_TOKEN_EXPIRE_TIME),
-                ).format(),
+                user_secret: {
+                    update: {
+                        forgot_password_token: token,
+                        forgot_password_token_expired: moment(
+                            Date.now() + eval(process.env.RESET_PASS_TOKEN_EXPIRE_TIME),
+                        ).format(),
+                    },
+                },
             },
         });
 
@@ -44,25 +48,28 @@ export class PasswordService {
     async reset(req: any, resetPasswordDto: ResetPasswordDto) {
         const findUser = await this.prisma.user.findFirst({
             where: { email: resetPasswordDto.email },
+            include: {
+                user_secret: true,
+            },
         });
 
         if (!findUser) throw new HttpException(`We can't find a user with that e-mail address`, HttpStatus.NOT_FOUND);
 
-        if (findUser.forgot_password_token !== resetPasswordDto.token) {
+        if (findUser.user_secret.forgot_password_token !== resetPasswordDto.token) {
             throw new HttpException('Token is invalid', HttpStatus.NOT_FOUND);
         }
 
-        if (Date.now() > Number(findUser.forgot_password_token_expired)) {
+        if (Date.now() > Number(findUser.user_secret.forgot_password_token_expired)) {
             throw new HttpException('your token has been expired', HttpStatus.NOT_FOUND);
         }
 
         return await this.prisma.user.update({
             where: { id: findUser.id },
             data: {
-                forgot_password_token: null,
-                forgot_password_token_expired: null,
                 user_secret: {
                     update: {
+                        forgot_password_token: null,
+                        forgot_password_token_expired: null,
                         password: await bcrypt.hash(resetPasswordDto.password, await bcrypt.genSalt()),
                     },
                 },

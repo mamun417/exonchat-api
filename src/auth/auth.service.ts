@@ -12,7 +12,9 @@ export class AuthService {
             where: {
                 email: login_info.email,
                 subscriber: {
-                    company_name: login_info.company_name,
+                    subscriber_meta: {
+                        company_name: login_info.company_name,
+                    },
                 },
             },
             include: {
@@ -37,26 +39,27 @@ export class AuthService {
                 subscriber: {
                     select: {
                         id: true,
-                        company_name: true,
-                        display_name: true,
-                        api_key: true,
+                        subscriber_meta: {
+                            select: {
+                                company_name: true,
+                                display_name: true,
+                            },
+                        },
+                        subscriber_secret: {
+                            select: {
+                                api_key: true,
+                            },
+                        },
                     },
                 },
+                socket_session: true,
                 chat_departments: true,
-                socket_sessions: true,
             },
         });
 
         if (!user) {
             throw new HttpException(`Invalid Login Credentials`, HttpStatus.NOT_FOUND);
         }
-
-        //add socket session also so that if called by socket token api this can handle without problem
-        user.socket_session = await this.prisma.socket_session.findFirst({
-            where: {
-                user_id: user.id,
-            },
-        });
 
         if (user && (await bcrypt.compare(pass, user.user_secret.password))) {
             const { user_secret, ...result } = user;
@@ -125,7 +128,7 @@ export class AuthService {
                     const decodedRefreshToken = this.jwtService.verify(refreshToken);
 
                     if (decodedRefreshToken.bearerToken === bearerToken) {
-                        const bearerToken = await this.jwtService.sign(
+                        const bearerToken = this.jwtService.sign(
                             {
                                 data: decodedRefreshToken.user,
                             },
@@ -133,7 +136,7 @@ export class AuthService {
                             { expiresIn: 60 * 5 * 60 },
                         );
 
-                        const refreshToken = await this.signRefreshToken({
+                        const refreshToken = this.signRefreshToken({
                             bearerToken: bearerToken,
                             user: decodedRefreshToken.user,
                         });

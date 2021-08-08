@@ -21,8 +21,8 @@ export class SubscribersService {
             throw new HttpException('Something went wrong. Please contact support', HttpStatus.NOT_FOUND);
         }
 
-        const subscriber = await this.prisma.subscriber.findUnique({
-            where: { company_name: createSubscriberDto.company_name },
+        const subscriber = await this.prisma.subscriber.findFirst({
+            where: { subscriber_meta: { company_name: createSubscriberDto.company_name } },
         });
 
         if (subscriber) {
@@ -55,10 +55,19 @@ export class SubscribersService {
         // use transaction
         const createdSubscriber = await this.prisma.subscriber.create({
             data: {
-                company_name: createSubscriberDto.company_name,
-                display_name: createSubscriberDto.company_display_name,
                 active: true,
-                ai: {
+                subscriber_meta: {
+                    create: {
+                        company_name: createSubscriberDto.company_name,
+                        display_name: createSubscriberDto.company_display_name,
+                    },
+                },
+                subscriber_secret: {
+                    create: {
+                        api_key: '123',
+                    },
+                },
+                subscriber_ai: {
                     create: {
                         app_name: createSubscriberDto.company_name,
                         app_id: aiAppCreateRes.data.app_id,
@@ -90,7 +99,7 @@ export class SubscribersService {
                         id: adminRole.id,
                     },
                 },
-                socket_sessions: {
+                socket_session: {
                     create: {
                         init_ip: 'user_ip',
                         init_user_agent: 'user_browser',
@@ -118,8 +127,8 @@ export class SubscribersService {
     }
 
     async findOneByApiKey(api_key: string): Promise<subscriber> {
-        return this.prisma.subscriber.findUnique({
-            where: { api_key },
+        return this.prisma.subscriber.findFirst({
+            where: { subscriber_secret: { api_key } },
         });
     }
 
