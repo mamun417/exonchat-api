@@ -1,17 +1,9 @@
 import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
 
-export class UpdateTemplateDto {
+export class UpdateChatBotDto {
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     description: string;
-
-    @ValidateIf((o) => !o.intent_id)
-    @IsString()
-    content: string;
-
-    @IsOptional()
-    @IsString()
-    intent_id: string;
 
     @IsOptional()
     @IsString()

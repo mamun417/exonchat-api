@@ -212,12 +212,14 @@ model user_secret {
 model user_meta {
   id String @id @default(cuid())
 
-  full_name       String  @db.VarChar
-  display_name    String
-  phone           String? @db.VarChar
-  address         String? @db.VarChar
-  info            Json?
-  additional_info Json?
+  full_name    String  @db.VarChar
+  display_name String
+  phone        String? @db.VarChar
+  address      String? @db.VarChar
+
+  department_priority Json?
+  info                Json?
+  additional_info     Json?
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -517,6 +519,7 @@ model chat_bot {
 
   tag             String
   description     Boolean @default(false)
+  content         String? // id need to show content before items
   info            Json?
   additional_info Json?
   active          Boolean @default(false)
@@ -524,16 +527,23 @@ model chat_bot {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
-  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
-  subscriber_id String
+  resolve_by_chat_bot_item chat_bot_item? @relation(name: "resolveToChatBot")
 
-  chat_bot_items chat_bot_item[]
+  chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
+  chat_department_id String?
+  subscriber         subscriber       @relation(fields: [subscriber_id], references: [id])
+  subscriber_id      String
+
+  chat_bot_items chat_bot_item[] @relation(name: "chatBotsRelation")
+
+  @@unique(fields: [tag, subscriber_id], name: "chat_bot_identifier")
 }
 
 model chat_bot_item {
   id String @id @default(cuid())
 
   tag          String
+  display_name String
   description  Boolean @default(false)
   to_message   String? // when user click this item create message as this
   content      String?
@@ -546,14 +556,18 @@ model chat_bot_item {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
+  resolve_to_chat_bot    chat_bot? @relation(name: "resolveToChatBot", fields: [resolve_to_chat_bot_id], references: [id])
+  resolve_to_chat_bot_id String?
+
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
   subscriber_id String
-  chat_bot      chat_bot   @relation(fields: [chat_bot_id], references: [id])
-  chat_bot_id   String
   intent        intent?    @relation(fields: [intent_id], references: [id])
   intent_id     String?
 
   attachments attachment[]
+  chat_bots   chat_bot[]   @relation(name: "chatBotsRelation")
+
+  @@unique(fields: [tag, subscriber_id], name: "chat_bot_item_identifier")
 }
 
 model speech_recognition {
@@ -668,6 +682,7 @@ model chat_department {
   subscriber_id String
 
   users                 user[]
+  chat_bots             chat_bot[]
   chat_templates        chat_template[]
   conversations         conversation[]
   offline_chat_requests offline_chat_req[]

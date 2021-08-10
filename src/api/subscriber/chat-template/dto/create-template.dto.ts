@@ -6,7 +6,7 @@ export class CreateTemplateDto {
     tag: string;
 
     @IsString()
-    @IsNotEmpty()
+    @IsOptional()
     description: string;
 
     @ValidateIf((o) => !o.intent_id)
