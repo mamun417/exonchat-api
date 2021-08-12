@@ -4,6 +4,8 @@ import { ChatBotService } from './chat-bot.service';
 import { CreateChatBotDto } from './dto/create-chat-bot.dto';
 import { UpdateChatBotDto } from './dto/update-chat-bot.dto';
 import { UpdateChatBotActiveStateDto } from './dto/update-chat-bot-active-state.dto';
+import { CreateChatBotItemDto } from './dto/create-chat-bot-item.dto';
+import { UpdateChatBotItemDto } from './dto/update-chat-bot-item.dto';
 
 @Controller('chat-templates')
 export class ChatBotController {
@@ -22,9 +24,21 @@ export class ChatBotController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Post()
+    createBotItem(@Request() req: any, @Body() createChatBotItemDto: CreateChatBotItemDto) {
+        return this.chatBotService.createBotItem(req, createChatBotItemDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post(':id')
     update(@Param('id') id: string, @Request() req: any, @Body() updateChatBotDto: UpdateChatBotDto) {
         return this.chatBotService.update(id, req, updateChatBotDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('bot-item/:id')
+    updateBotItem(@Param('id') id: string, @Request() req: any, @Body() updateChatBotItemDto: UpdateChatBotItemDto) {
+        return this.chatBotService.updateBotItem(id, req, updateChatBotItemDto);
     }
 
     @UseGuards(JwtAuthGuard)
@@ -35,6 +49,16 @@ export class ChatBotController {
         @Body() updateChatBotActiveStateDto: UpdateChatBotActiveStateDto,
     ) {
         return this.chatBotService.updateActiveState(id, req, updateChatBotActiveStateDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('bot-item/:id/active-status')
+    updateBotItemActiveState(
+        @Param('id') id: string,
+        @Request() req: any,
+        @Body() updateChatBotActiveStateDto: UpdateChatBotActiveStateDto, // UpdateChatBotActiveStateDto same for both
+    ) {
+        return this.chatBotService.updateBotItemActiveState(id, req, updateChatBotActiveStateDto);
     }
 
     @UseGuards(JwtAuthGuard)
