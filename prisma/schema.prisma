@@ -27,6 +27,7 @@ model subscriber {
   conversations         conversation[]
   messages              message[]
   conversation_sessions conversation_session[]
+  conversation_channels conversation_channel[]
   conversation_ratings  conversation_rating[]
   conversation_tags     conversation_tag[]
   conversation_notes    conversation_note[]
@@ -346,12 +347,13 @@ model socket_session {
   user          user?      @relation(fields: [user_id], references: [id])
   user_id       String?
 
-  conversation_sessions conversation_session[]
-  created_conversations conversation[]         @relation(name: "created_by")
-  closed_conversations  conversation[]         @relation(name: "closed_by")
-  messages              message[]
-  attachments           attachment[]
-  offline_chat_requests offline_chat_req[]
+  conversation_sessions         conversation_session[]
+  created_conversations         conversation[]         @relation(name: "created_by")
+  created_conversation_channels conversation_channel[] @relation(name: "conversation_channel_created_by")
+  closed_conversations          conversation[]         @relation(name: "closed_by")
+  messages                      message[]
+  attachments                   attachment[]
+  offline_chat_requests         offline_chat_req[]
 }
 
 model conversation {
@@ -366,15 +368,17 @@ model conversation {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
-  subscriber          subscriber           @relation(fields: [subscriber_id], references: [id])
-  subscriber_id       String
-  created_by          socket_session       @relation(name: "created_by", fields: [created_by_id], references: [id])
-  created_by_id       String
-  closed_by           socket_session?      @relation(name: "closed_by", fields: [closed_by_id], references: [id])
-  closed_by_id        String?
-  chat_department     chat_department?     @relation(fields: [chat_department_id], references: [id])
-  chat_department_id  String?
-  conversation_rating conversation_rating?
+  subscriber         subscriber       @relation(fields: [subscriber_id], references: [id])
+  subscriber_id      String
+  created_by         socket_session   @relation(name: "created_by", fields: [created_by_id], references: [id])
+  created_by_id      String
+  closed_by          socket_session?  @relation(name: "closed_by", fields: [closed_by_id], references: [id])
+  closed_by_id       String?
+  chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
+  chat_department_id String?
+
+  conversation_rating  conversation_rating?
+  conversation_channel conversation_channel?
 
   conversation_sessions conversation_session[]
   messages              message[]
@@ -433,6 +437,9 @@ model conversation_session {
   left_reason        String?
   closed_reason      String?
 
+  can_send_message Boolean @default(true) // it's only now for group or channel. true then can send msg else only see
+  active           Boolean @default(true) // it's now for group or channel so that user remove can happen but msg history kept
+
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
@@ -444,6 +451,27 @@ model conversation_session {
   subscriber_id     String
 
   @@unique(fields: [conversation_id, socket_session_id], name: "conv_ses_identifier")
+}
+
+// create this with conversation. then assign users to conversation_session
+model conversation_channel {
+  id String @id @default(cuid())
+
+  tag          String
+  display_name String
+  subtitle     String
+  info         Json?
+  other_info   Json?
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber      subscriber     @relation(fields: [subscriber_id], references: [id])
+  subscriber_id   String
+  conversation    conversation   @relation(fields: [conversation_id], references: [id])
+  conversation_id String
+  created_by      socket_session @relation(name: "conversation_channel_created_by", fields: [created_by_id], references: [id])
+  created_by_id   String
 }
 
 model message {
@@ -730,6 +758,7 @@ enum conversation_type_enum {
   live_chat
   user_to_user_chat
   group_chat
+  channel_chat
 }
 
 enum intent_action_type {
