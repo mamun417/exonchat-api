@@ -385,12 +385,35 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         let conv_data = null;
         let conv_id = null;
 
+        const requiredFields = ['name', 'email', 'department'];
+
+        const requiredFieldsErrors: any = {};
+
+        requiredFields.forEach((field: any) => {
+            if (!socketRes.hasOwnProperty(field) || !socketRes[field]) {
+                requiredFieldsErrors[field] = `${field} field is required`;
+            }
+        });
+
+        console.log({ requiredFieldsErrors });
+
+        if (requiredFieldsErrors.length) {
+            return this.sendError(
+                client,
+                'ec_init_conv_from_client',
+                { reason: { messages: requiredFieldsErrors } },
+                { cause: 'required_field' },
+            );
+        }
+
         const matchedDepartmentalAgents = this.usersRoom(socketRes).filter((roomId: any) => {
             return this.userClientsInARoom[roomId].chat_departments?.includes(socketRes.department_tag);
         });
 
         if (!matchedDepartmentalAgents.length) {
-            return this.sendError(client, 'ec_init_conv_from_client', 'Agents are not online for this department');
+            return this.sendError(client, 'ec_init_conv_from_client', 'Agents are not online for this department', {
+                cause: 'offline_agent',
+            });
         }
 
         try {
@@ -1372,7 +1395,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         console.log('Rooms In Conversations => ', this.roomsInAConv);
     }
 
-    sendError(client: any, step: string, msg = 'you are doing something wrong', extra = {}) {
+    sendError(client: any, step: string, msg: string | any = 'you are doing something wrong', extra = {}) {
         client.emit('ec_error', {
             type: 'warning',
             step: step,
