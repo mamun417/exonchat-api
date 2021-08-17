@@ -395,13 +395,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         });
 
-        console.log({ requiredFieldsErrors });
-
-        if (requiredFieldsErrors.length) {
+        if (Object.keys(requiredFieldsErrors).length) {
             return this.sendError(
                 client,
                 'ec_init_conv_from_client',
-                { reason: { messages: requiredFieldsErrors } },
+                { messages: requiredFieldsErrors },
                 { cause: 'required_field' },
             );
         }
