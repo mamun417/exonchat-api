@@ -11,7 +11,8 @@
         "outDir": "./dist",
         "baseUrl": "./",
         "incremental": true,
+        "skipLibCheck": true
     },
-    "include": [ "src"],
-    "exclude": [ "uploads", "node_modules", "dist", "test"]
+    "include": ["src"],
+    "exclude": ["uploads", "node_modules", "dist", "test"]
 }

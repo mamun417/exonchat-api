@@ -1,5 +1,6 @@
-import { DataHelper } from './../../helper/data-helper';
-import { HttpModule, Module } from '@nestjs/common';
+import { DataHelper } from '../../helper/data-helper';
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { PrismaService } from 'src/prisma.service';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';

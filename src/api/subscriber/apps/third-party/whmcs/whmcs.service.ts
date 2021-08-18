@@ -1,4 +1,5 @@
-import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { PrismaService } from 'src/prisma.service';
 
 import * as _l from 'lodash';

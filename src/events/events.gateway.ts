@@ -1,4 +1,5 @@
-import { HttpService, UseGuards } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import {
     MessageBody,
     ConnectedSocket,
@@ -19,7 +20,13 @@ import { WsJwtGuard } from 'src/auth/guards/ws-auth.guard';
 import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from '../prisma.service';
 
-@WebSocketGateway({ serveClient: false })
+@WebSocketGateway({ serveClient: false,cors: {
+        origin: [process.env.CLIENT_URL],
+        methods: ["GET", "POST"],
+        allowedHeaders: ['Accept', 'Content-Type', 'Access-Control-Allow-Headers', 'Authorization', 'X-Requested-With'],
+        preflightContinue: true,
+        credentials: true
+    } })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     constructor(private httpService: HttpService, private authService: AuthService, private prisma: PrismaService) {}
 
@@ -1258,7 +1265,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const queryParams = client?.handshake?.query;
 
-        if (queryParams && queryParams.hasOwnProperty('token')) {
+        if (queryParams && queryParams.token) {
             decodedToken = this.authService.verifyToken(queryParams.token);
 
             if (decodedToken) {
@@ -1327,7 +1334,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         const queryParams = client?.handshake?.query;
 
-        if (queryParams && queryParams.hasOwnProperty('token')) {
+        if (queryParams && queryParams.token) {
             const decodedToken = this.authService.verifyToken(queryParams.token);
 
             if (decodedToken) {
