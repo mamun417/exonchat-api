@@ -1,4 +1,5 @@
-import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { PrismaService } from 'src/prisma.service';
 import { ConversationsService } from '../conversations/conversations.service';

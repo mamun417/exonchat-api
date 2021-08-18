@@ -1,5 +1,5 @@
-import { HttpModule, Module } from '@nestjs/common';
-
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { SubscribersService } from 'src/api/subscribers/subscribers.service';
 import { UsersService } from 'src/api/subscriber/users/users.service';
 import { SocketSessionsService } from './socket-sessions.service';

@@ -1,4 +1,4 @@
-import { HttpException, HttpService, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { CreateRatingDto } from './dto/create-rating.dto';
 import { ConversationsService } from '../subscriber/conversations/conversations.service';

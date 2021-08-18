@@ -1,4 +1,5 @@
-import { HttpModule, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { PrismaService } from 'src/prisma.service';
 import { OfflineChatReqController } from './offline-chat-req.controller';
 import { OfflineChatReqService } from './offline-chat-req.service';
