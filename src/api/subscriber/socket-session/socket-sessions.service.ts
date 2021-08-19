@@ -9,6 +9,20 @@ import { DataHelper } from 'src/helper/data-helper';
 import { AuthService } from 'src/auth/auth.service';
 import { SettingsService } from '../settings/settings.service';
 
+import { CountryResponse, Reader } from "maxmind";
+import * as fs from "fs";
+import { join } from "path";
+
+let ipToLocationLookup = null;
+try {
+    if(fs.existsSync(`${join(process.cwd(), 'ip-location-db')}/GeoLite2-Country.mmdb`)) {
+        const buffer = fs.readFileSync(`${join(process.cwd(), 'ip-location-db')}/GeoLite2-Country.mmdb`);
+        ipToLocationLookup = new Reader<CountryResponse>(buffer);
+    }
+} catch (e) {
+
+}
+
 @Injectable()
 export class SocketSessionsService {
     constructor(
@@ -61,10 +75,13 @@ export class SocketSessionsService {
             };
         }
 
+        console.log(ipToLocationLookup.get(clientIp) || {});
+
         const createRes: any = await this.prisma.socket_session.create({
             data: {
                 init_ip: clientIp,
                 init_user_agent: req.headers['user-agent'],
+                init_location : ipToLocationLookup ? ipToLocationLookup.get(clientIp) || {} : {},
                 use_for: createSocketSessionDto.user_id ? 'user' : 'client',
                 subscriber: {
                     connect: {

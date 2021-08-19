@@ -2,6 +2,7 @@
 .env
 /dist
 /node_modules
+/ip-location-db
 
 # Logs
 logs
