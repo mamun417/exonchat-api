@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, Post } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
 import { PrismaService } from 'src/prisma.service';
 
@@ -213,7 +213,18 @@ export class ConversationsService {
             },
         });
 
+        const logMessage = await this.prisma.message.create({
+            data: {
+                msg: 'initiate',
+                message_type: 'log',
+                socket_session: { connect: { id: socketSessionId } },
+                conversation: { connect: { id: conversation.id } },
+                subscriber: { connect: { id: subscriberId } },
+            },
+        });
+
         conversation.routing_policy = routingPolicy;
+        conversation.log_message = logMessage;
 
         return conversation;
     }
@@ -228,11 +239,11 @@ export class ConversationsService {
             where: {
                 conversation_id: conversation.id,
                 socket_session_id: socketSessionId,
-                left_at: null,
             },
         });
 
-        if (convSes) throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
+        if (convSes && !convSes.left_at)
+            throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
 
         await this.prisma.conversation.update({
             where: {
@@ -243,27 +254,60 @@ export class ConversationsService {
             },
         });
 
-        return this.prisma.conversation_session.create({
-            data: {
-                joined_at: new Date(),
-                subscriber: {
-                    connect: { id: subscriberId },
-                },
-                socket_session: {
-                    connect: { id: socketSessionId },
-                },
-                conversation: {
-                    connect: { id: conversation.id },
-                },
-            },
-            include: {
-                socket_session: {
-                    include: {
-                        user: { include: { user_meta: true } },
+        let convSesRes: any;
+
+        if (!convSes) {
+            convSesRes = await this.prisma.conversation_session.create({
+                data: {
+                    joined_at: new Date(),
+                    subscriber: {
+                        connect: { id: subscriberId },
+                    },
+                    socket_session: {
+                        connect: { id: socketSessionId },
+                    },
+                    conversation: {
+                        connect: { id: conversation.id },
                     },
                 },
+                include: {
+                    socket_session: {
+                        include: {
+                            user: { include: { user_meta: true } },
+                        },
+                    },
+                },
+            });
+        } else {
+            convSesRes = await this.prisma.conversation_session.update({
+                where: {
+                    id: convSes.id,
+                },
+                data: {
+                    joined_at: new Date(),
+                    left_at: null,
+                },
+                include: {
+                    socket_session: {
+                        include: {
+                            user: { include: { user_meta: true } },
+                        },
+                    },
+                },
+            });
+        }
+
+        convSesRes.log_message = await this.prisma.message.create({
+            data: {
+                msg: 'joined',
+                message_type: 'log',
+                socket_session: { connect: { id: socketSessionId } },
+                conversation: { connect: { id: conversation.id } },
+                subscriber: { connect: { id: subscriberId } },
             },
         });
+
+        return convSesRes;
     }
 
     async leave(id: string, req: any) {
@@ -289,7 +333,7 @@ export class ConversationsService {
             throw new HttpException(`Already left from this conversation`, HttpStatus.CONFLICT);
         }
 
-        return this.prisma.conversation_session.findUnique({
+        const convSesRes: any = await this.prisma.conversation_session.findUnique({
             where: {
                 conv_ses_identifier: {
                     conversation_id: conversation.id,
@@ -304,6 +348,18 @@ export class ConversationsService {
                 },
             },
         });
+
+        convSesRes.log_message = await this.prisma.message.create({
+            data: {
+                msg: 'left',
+                message_type: 'log',
+                socket_session: { connect: { id: socketSessionId } },
+                conversation: { connect: { id: conversation.id } },
+                subscriber: { connect: { id: subscriberId } },
+            },
+        });
+
+        return convSesRes;
     }
 
     async close(id: string, req: any, closeConversationDto: CloseConversationDto) {
@@ -325,7 +381,7 @@ export class ConversationsService {
             },
         });
 
-        return await this.prisma.conversation.update({
+        const convRes: any = await this.prisma.conversation.update({
             where: {
                 id: id,
             },
@@ -342,15 +398,6 @@ export class ConversationsService {
                             closed_reason: closeConversationDto.closed_reason || '',
                         },
                     },
-                    // not using now
-                    //     updateMany: {
-                    //         where: {
-                    //             left_at: null,
-                    //         },
-                    //         data: {
-                    //             left_at: new Date(),
-                    //         },
-                    //     },
                 },
                 closed_at: new Date(Date.now() + 1000),
             },
@@ -371,6 +418,18 @@ export class ConversationsService {
                 },
             },
         });
+
+        convRes.log_message = await this.prisma.message.create({
+            data: {
+                msg: 'closed',
+                message_type: 'log',
+                socket_session: { connect: { id: socketSessionId } },
+                conversation: { connect: { id: conversation.id } },
+                subscriber: { connect: { id: subscriberId } },
+            },
+        });
+
+        return convRes;
     }
 
     async conversationUpdateOtherInfo(id: string, req: any, conversationOtherInfo: ConversationOtherInfoDto) {
