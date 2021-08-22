@@ -13,6 +13,8 @@ import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
 
+import * as _l from 'lodash';
+
 @Injectable()
 export class ConversationsService {
     constructor(
@@ -448,15 +450,103 @@ export class ConversationsService {
         });
     }
 
-    async findAll(req: any): Promise<conversation[]> {
-        return this.prisma.conversation.findMany({
-            where: {
-                subscriber_id: req.user.data.subscriber_id,
+    async findAllNotClosed(req: any, query: any) {
+        const relationContainsObj = {
+            contains: query.s,
+            mode: 'insensitive',
+        };
+
+        let modeQuery = {};
+
+        if (query.hasOwnProperty('mode') && _l.isArray(query.mode)) {
+            if (query.mode.includes('in_queue')) {
+                modeQuery = {
+                    conversation_sessions: {
+                        some: {
+                            socket_session: {
+                                user_id: null,
+                            },
+                        },
+                    },
+                };
+            }
+        }
+
+        const filterHelper = this.dataHelper.paginationAndFilter(
+            [
+                'p',
+                'pp',
+                {
+                    name: 'mode_query',
+                    type: 'static_relation',
+                    relation: {
+                        ...modeQuery,
+                    },
+                },
+            ],
+            query,
+        );
+
+        const whereQuery = {
+            subscriber_id: req.user.data.subscriber_id,
+            users_only: false,
+            closed_at: null,
+            ...filterHelper.where,
+        };
+
+        const count = await this.prisma.conversation.count({
+            where: whereQuery,
+        });
+
+        // relation write test
+        // await this.prisma.conversation.findMany({
+        //     where: {
+        //
+        //     },
+        // });
+
+        const result = await this.prisma.conversation.findMany({
+            where: whereQuery,
+            include: {
+                conversation_sessions: {
+                    include: {
+                        socket_session: {
+                            include: {
+                                user: { include: { user_meta: true } },
+                            },
+                        },
+                    },
+                },
+                messages: {
+                    where: {
+                        socket_session: {
+                            user_id: null,
+                        },
+                    },
+                    take: 1,
+                    orderBy: {
+                        updated_at: 'desc',
+                    },
+                    include: { attachments: true },
+                },
+                chat_department: true,
             },
             orderBy: {
-                created_at: 'desc',
+                updated_at: 'desc',
             },
+            ...filterHelper.pagination,
         });
+
+        return {
+            conversations: {
+                data: result,
+                pagination: {
+                    current_page: query.hasOwnProperty('p') ? parseInt(query.p) : 1,
+                    total_page: Math.ceil(count / (query.hasOwnProperty('pp') ? parseInt(query.pp) : 10)),
+                    total: count,
+                },
+            },
+        };
     }
 
     async clientsConversations(req: any, query: any) {

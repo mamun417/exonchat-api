@@ -3,6 +3,7 @@
 /dist
 /node_modules
 /ip-location-db
+/uploads
 
 # Logs
 logs

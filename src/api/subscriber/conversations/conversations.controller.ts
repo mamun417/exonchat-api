@@ -14,8 +14,8 @@ export class ConversationsController {
     // use permission guard
     @UseGuards(JwtAuthGuard)
     @Get()
-    findAll(@Request() req: any) {
-        return this.conversationsService.findAll(req);
+    findAll(@Request() req: any, @Query() query) {
+        return this.conversationsService.findAllNotClosed(req, query);
     }
 
     @UseGuards(JwtAuthGuard)
