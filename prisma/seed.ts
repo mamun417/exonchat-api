@@ -112,7 +112,7 @@ async function main() {
                     },
                 },
                 subscriber_secret: {
-                    create: { api_key: cuid() },
+                    create: { api_key: "exonhost" },
                 },
                 users: {
                     create: [
