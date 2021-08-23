@@ -395,7 +395,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         let conv_data = null;
         let conv_id = null;
 
-        const requiredFields = ['name', 'email', 'department'];
+        const requiredFields = ['name', 'email', 'department', 'message'];
 
         const requiredFieldsErrors: any = {};
 

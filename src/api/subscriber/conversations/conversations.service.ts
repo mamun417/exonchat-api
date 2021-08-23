@@ -710,6 +710,7 @@ export class ConversationsService {
                 },
                 messages: {
                     where: {
+                        message_type: { not: 'log' },
                         socket_session: {
                             user_id: null,
                         },
