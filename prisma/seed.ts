@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import * as _l from 'lodash';
 import * as bcrypt from 'bcrypt';
+import cuid from 'cuid';
 
 const prisma = new PrismaClient();
 
@@ -92,168 +93,267 @@ async function main() {
         }),
     ]);
 
-    const subscriberData = await Promise.all(
-        ['test', 'other'].map(async (namePart, key) => {
-            const subscriber = await prisma.subscriber.create({
-                data: {
-                    active: true,
-                    subscriber_meta: {
-                        create: {
-                            company_name: namePart,
-                            display_name: namePart,
-                        },
-                    },
-                    subscriber_secret: {
-                        create: { api_key: namePart },
-                    },
-                    users: {
-                        create: [
-                            {
-                                email: `${namePart}@${namePart}.${namePart}`,
-                                active: true,
-                                role: {
-                                    connect: {
-                                        id: _l.find(rolesData, { slug: 'admin' }).id,
-                                    },
-                                },
-                                user_meta: {
-                                    create: {
-                                        display_name: namePart,
-                                        full_name: namePart,
-                                    },
-                                },
-                                user_secret: {
-                                    create: {
-                                        password: await bcrypt.hash('123', await bcrypt.genSalt()),
-                                    },
-                                },
-                            },
-                            {
-                                email: `${namePart}1@${namePart}.${namePart}`,
-                                active: true,
-                                role: {
-                                    connect: {
-                                        id: _l.find(rolesData, { slug: 'agent' }).id,
-                                    },
-                                },
-                                user_meta: {
-                                    create: {
-                                        display_name: `${namePart}1`,
-                                        full_name: `${namePart}1`,
-                                    },
-                                },
-                                user_secret: {
-                                    create: {
-                                        password: await bcrypt.hash('123', await bcrypt.genSalt()),
-                                    },
-                                },
-                            },
-                            {
-                                email: `${namePart}2@${namePart}.${namePart}`,
-                                active: true,
-                                role: {
-                                    connect: {
-                                        id: _l.find(rolesData, { slug: 'manager' }).id,
-                                    },
-                                },
-                                user_meta: {
-                                    create: {
-                                        display_name: `${namePart}2`,
-                                        full_name: `${namePart}2`,
-                                    },
-                                },
-                                user_secret: {
-                                    create: {
-                                        password: await bcrypt.hash('123', await bcrypt.genSalt()),
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                    subscriber_subscription: {
-                        create: {
-                            subscription: { connect: { id: subscriptions[0].id } },
-                        },
-                    },
-                    subscriber_ai: {
-                        create: {
-                            access_token: 'M4N62UXFS75RPPA27NMR2ZZVXLF7LJDF',
-                            app_name: 'exonchat',
-                            app_id: '3931523956965521',
-                        },
+    // saleh@exonhost.com
+
+    const adminUser = await prisma.user.findFirst({
+        where: {
+            email: 'saleh@exonhost.com',
+        },
+    });
+
+    if (!adminUser) {
+        const subscriber = await prisma.subscriber.create({
+            data: {
+                active: true,
+                subscriber_meta: {
+                    create: {
+                        company_name: 'exonhost',
+                        display_name: 'ExonHost',
                     },
                 },
-                include: {
-                    subscriber_meta: true,
-                    users: true,
+                subscriber_secret: {
+                    create: { api_key: cuid() },
                 },
-            });
-
-            await Promise.all(
-                ['other', 'support', 'technical'].map(async (tp, key) => {
-                    const userConnector =
-                        tp === 'support'
-                            ? {
-                                  users: {
-                                      connect: {
-                                          id: _l.find(subscriber.users, [
-                                              'email',
-                                              subscriber.subscriber_meta.company_name === 'test'
-                                                  ? 'test1@test.test'
-                                                  : 'other1@other.other',
-                                          ]).id,
-                                      },
-                                  },
-                              }
-                            : {
-                                  users: {
-                                      connect: [
-                                          {
-                                              id: _l.find(subscriber.users, [
-                                                  'email',
-                                                  subscriber.subscriber_meta.company_name === 'test'
-                                                      ? 'test@test.test'
-                                                      : 'other@other.other',
-                                              ]).id,
-                                          },
-                                          {
-                                              id: _l.find(subscriber.users, [
-                                                  'email',
-                                                  subscriber.subscriber_meta.company_name === 'test'
-                                                      ? 'test2@test.test'
-                                                      : 'other2@other.other',
-                                              ]).id,
-                                          },
-                                      ],
-                                  },
-                              };
-
-                    await prisma.chat_department.create({
-                        data: {
-                            tag: tp,
-                            description: tp,
-                            subscriber: { connect: { id: subscriber.id } },
-                            ...userConnector,
+                users: {
+                    create: [
+                        {
+                            email: 'saleh@exonhost.com',
+                            active: true,
+                            role: {
+                                connect: {
+                                    id: _l.find(rolesData, { slug: 'admin' }).id,
+                                },
+                            },
+                            user_meta: {
+                                create: {
+                                    display_name: 'Saleh Ahmed',
+                                    full_name: 'Saleh Ahmed',
+                                },
+                            },
+                            user_secret: {
+                                create: {
+                                    password: await bcrypt.hash('0000', await bcrypt.genSalt()),
+                                },
+                            },
                         },
-                    });
-                }),
-            );
-        }),
-    );
+                    ],
+                },
+                subscriber_subscription: {
+                    create: {
+                        subscription: { connect: { id: subscriptions[0].id } },
+                    },
+                },
+                subscriber_ai: {
+                    create: {
+                        access_token: 'M4N62UXFS75RPPA27NMR2ZZVXLF7LJDF',
+                        app_name: 'exonchat',
+                        app_id: '3931523956965521',
+                    },
+                },
+            },
+            include: {
+                subscriber_meta: true,
+                users: true,
+            },
+        });
 
-    const users = await prisma.user.findMany();
+        await Promise.all(
+            ['other', 'support', 'technical'].map(async (tp, key) => {
+                const userConnector =
+                    tp === 'technical'
+                        ? {
+                              users: {
+                                  connect: {
+                                      id: subscriber.users[0].id,
+                                  },
+                              },
+                          }
+                        : {};
 
-    for (const user of users) {
+                await prisma.chat_department.create({
+                    data: {
+                        tag: tp,
+                        description: tp,
+                        subscriber: { connect: { id: subscriber.id } },
+                        ...userConnector,
+                    },
+                });
+            }),
+        );
+
         await prisma.socket_session.create({
             data: {
                 init_ip: 'ip',
                 init_user_agent: 'browser',
                 use_for: 'user',
-                user: { connect: { id: user.id } },
-                subscriber: { connect: { id: user.subscriber_id } },
+                user: { connect: { id: subscriber.users[0].id } },
+                subscriber: { connect: { id: subscriber.id } },
             },
         });
     }
+
+    // const subscriberData = await Promise.all(
+    //     ['test', 'other'].map(async (namePart, key) => {
+    //         const subscriber = await prisma.subscriber.create({
+    //             data: {
+    //                 active: true,
+    //                 subscriber_meta: {
+    //                     create: {
+    //                         company_name: namePart,
+    //                         display_name: namePart,
+    //                     },
+    //                 },
+    //                 subscriber_secret: {
+    //                     create: { api_key: namePart },
+    //                 },
+    //                 users: {
+    //                     create: [
+    //                         {
+    //                             email: `${namePart}@${namePart}.${namePart}`,
+    //                             active: true,
+    //                             role: {
+    //                                 connect: {
+    //                                     id: _l.find(rolesData, { slug: 'admin' }).id,
+    //                                 },
+    //                             },
+    //                             user_meta: {
+    //                                 create: {
+    //                                     display_name: namePart,
+    //                                     full_name: namePart,
+    //                                 },
+    //                             },
+    //                             user_secret: {
+    //                                 create: {
+    //                                     password: await bcrypt.hash('123', await bcrypt.genSalt()),
+    //                                 },
+    //                             },
+    //                         },
+    //                         {
+    //                             email: `${namePart}1@${namePart}.${namePart}`,
+    //                             active: true,
+    //                             role: {
+    //                                 connect: {
+    //                                     id: _l.find(rolesData, { slug: 'agent' }).id,
+    //                                 },
+    //                             },
+    //                             user_meta: {
+    //                                 create: {
+    //                                     display_name: `${namePart}1`,
+    //                                     full_name: `${namePart}1`,
+    //                                 },
+    //                             },
+    //                             user_secret: {
+    //                                 create: {
+    //                                     password: await bcrypt.hash('123', await bcrypt.genSalt()),
+    //                                 },
+    //                             },
+    //                         },
+    //                         {
+    //                             email: `${namePart}2@${namePart}.${namePart}`,
+    //                             active: true,
+    //                             role: {
+    //                                 connect: {
+    //                                     id: _l.find(rolesData, { slug: 'manager' }).id,
+    //                                 },
+    //                             },
+    //                             user_meta: {
+    //                                 create: {
+    //                                     display_name: `${namePart}2`,
+    //                                     full_name: `${namePart}2`,
+    //                                 },
+    //                             },
+    //                             user_secret: {
+    //                                 create: {
+    //                                     password: await bcrypt.hash('123', await bcrypt.genSalt()),
+    //                                 },
+    //                             },
+    //                         },
+    //                     ],
+    //                 },
+    //                 subscriber_subscription: {
+    //                     create: {
+    //                         subscription: { connect: { id: subscriptions[0].id } },
+    //                     },
+    //                 },
+    //                 subscriber_ai: {
+    //                     create: {
+    //                         access_token: 'M4N62UXFS75RPPA27NMR2ZZVXLF7LJDF',
+    //                         app_name: 'exonchat',
+    //                         app_id: '3931523956965521',
+    //                     },
+    //                 },
+    //             },
+    //             include: {
+    //                 subscriber_meta: true,
+    //                 users: true,
+    //             },
+    //         });
+    //
+    //         await Promise.all(
+    //             ['other', 'support', 'technical'].map(async (tp, key) => {
+    //                 const userConnector =
+    //                     tp === 'support'
+    //                         ? {
+    //                               users: {
+    //                                   connect: {
+    //                                       id: _l.find(subscriber.users, [
+    //                                           'email',
+    //                                           subscriber.subscriber_meta.company_name === 'test'
+    //                                               ? 'test1@test.test'
+    //                                               : 'other1@other.other',
+    //                                       ]).id,
+    //                                   },
+    //                               },
+    //                           }
+    //                         : {
+    //                               users: {
+    //                                   connect: [
+    //                                       {
+    //                                           id: _l.find(subscriber.users, [
+    //                                               'email',
+    //                                               subscriber.subscriber_meta.company_name === 'test'
+    //                                                   ? 'test@test.test'
+    //                                                   : 'other@other.other',
+    //                                           ]).id,
+    //                                       },
+    //                                       {
+    //                                           id: _l.find(subscriber.users, [
+    //                                               'email',
+    //                                               subscriber.subscriber_meta.company_name === 'test'
+    //                                                   ? 'test2@test.test'
+    //                                                   : 'other2@other.other',
+    //                                           ]).id,
+    //                                       },
+    //                                   ],
+    //                               },
+    //                           };
+    //
+    //                 await prisma.chat_department.create({
+    //                     data: {
+    //                         tag: tp,
+    //                         description: tp,
+    //                         subscriber: { connect: { id: subscriber.id } },
+    //                         ...userConnector,
+    //                     },
+    //                 });
+    //             }),
+    //         );
+    //     }),
+    // );
+    //
+    // const users = await prisma.user.findMany();
+    //
+    // for (const user of users) {
+    //     await prisma.socket_session.create({
+    //         data: {
+    //             init_ip: 'ip',
+    //             init_user_agent: 'browser',
+    //             use_for: 'user',
+    //             user: { connect: { id: user.id } },
+    //             subscriber: { connect: { id: user.subscriber_id } },
+    //         },
+    //     });
+    // }
 
     const settingsData = [
         {

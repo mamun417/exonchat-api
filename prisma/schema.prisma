@@ -12,6 +12,8 @@ model subscriber {
 
   active Boolean @default(false)
 
+  allowed_sites String[]
+
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
@@ -477,7 +479,7 @@ model conversation_channel {
 model message {
   id String @id @default(cuid())
 
-  msg          String?
+  msg          String?           @db.Text
   message_type message_type_enum @default(message)
   sender_type  String?
 
