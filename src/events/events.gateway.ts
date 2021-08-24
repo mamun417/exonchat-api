@@ -811,6 +811,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             ...createdMsg,
             temp_id: socketRes.temp_id,
             ai_is_replying: false,
+            init_message_from_client: socketRes.hasOwnProperty('init_message_from_client'),
         });
 
         if (aiReplyMsg) {
