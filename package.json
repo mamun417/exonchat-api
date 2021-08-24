@@ -45,6 +45,7 @@
         "class-transformer": "^0.4.0",
         "class-validator": "^0.13.1",
         "cookie-parser": "^1.4.5",
+        "cuid": "^2.1.8",
         "helmet": "^4.6.0",
         "maxmind": "^4.3.2",
         "moment": "^2.29.1",
