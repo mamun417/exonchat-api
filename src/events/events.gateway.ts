@@ -975,9 +975,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // if notify to then transfer manually
         if (socketRes.notify_to) {
             if (!this.usersRoom(socketRes).filter((roomId: any) => roomId === socketRes.notify_to).length) {
-                this.sendError(client, 'ec_chat_transfer_from_user', 'Chat transfer not possible. Agent is not online');
+                return this.sendError(
+                    client,
+                    'ec_chat_transfer_from_user',
+                    'Chat transfer not possible. Agent is not online',
+                );
             } else if (convObj.room_ids.includes(socketRes.notify_to)) {
-                this.sendError(client, 'ec_chat_transfer_from_user', 'Agent is already connected with this chat');
+                return this.sendError(
+                    client,
+                    'ec_chat_transfer_from_user',
+                    'Agent is already connected with this chat',
+                );
             } else {
                 convObj.notify_again = true;
                 convObj.notify_to = socketRes.notify_to;
@@ -1013,6 +1021,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 from: 'client',
             });
         }
+
+        this.sendToSocketClient(client, 'ec_chat_transfer_res', {
+            conv_id: socketRes.conv_id,
+            data: socketRes,
+        });
 
         return;
     }
