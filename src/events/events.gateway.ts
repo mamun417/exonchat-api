@@ -19,6 +19,7 @@ import * as moment from 'moment';
 import { WsJwtGuard } from 'src/auth/guards/ws-auth.guard';
 import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from '../prisma.service';
+import { Helper } from '../helper/helper';
 
 @WebSocketGateway({
     serveClient: false,
@@ -31,7 +32,12 @@ import { PrismaService } from '../prisma.service';
     },
 })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
-    constructor(private httpService: HttpService, private authService: AuthService, private prisma: PrismaService) {}
+    constructor(
+        private httpService: HttpService,
+        private authService: AuthService,
+        private prisma: PrismaService,
+        private helper: Helper,
+    ) {}
 
     @WebSocketServer()
     server: Server;
@@ -442,7 +448,16 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             conv_data = convRes.data;
             conv_id = convRes.data.id;
         } catch (e) {
-            return this.sendError(client, 'ec_init_conv_from_client', e.response.data);
+            const messages = this.helper.makeErrorMessages(e.response.data.message);
+
+            return this.sendError(
+                client,
+                'ec_init_conv_from_client',
+                { messages },
+                {
+                    cause: 'socket_error_ec_init_conv_from_client',
+                },
+            );
         }
 
         const roomName = socketRes.ses_user.socket_session.id;
