@@ -58,7 +58,22 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [], online_status: 'online/offline/invisible'}}
     private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_status: active/inactive}}
 
-    // {conv_id: {room_ids: [], sub_id: subscriber_id, users_only: bool, ai_is_replying: bool, chat_department: '', routing_policy: 'manual/...', notify_again: true/false, notify_to: 'ses_id'}}
+    convObjSkeleton = {
+        conv_id: {
+            room_ids: [],
+            sub_id: 'subscriber_id',
+            users_only: 'bool',
+            ai_is_replying: 'bool',
+            chat_department: '',
+            routing_policy: 'manual/...',
+            notify_again: 'bool',
+            notify_to: 'ses_id',
+            last_msg_time_agent: 'null | 0 | timestamp', // null = no join, 0 = join bt no msg, if null can inactive check
+            last_msg_time_client: 'null | 0 | timestamp',
+            chat_inactive_log_handled: 'bool',
+            timing_actions_interval: 'null | interval',
+        },
+    };
     // if notify_to that means it's only for this agent. it will also maintain for transfer chat
     // if a browser reload happens then send the agents departmental chat by that notify_to. if no notify_to then also it's for him
     private roomsInAConv: any = {};
@@ -473,6 +488,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 created_at: conv_data.created_at,
                 users_only: conv_data.users_only,
                 chat_type: conv_data.type,
+                last_msg_time_client: null,
+                last_msg_time_agent: null,
+                chat_inactive_log_handled: false,
+                timing_actions_interval: setInterval(() => this.convTimingActionsInterval(conv_id), 10000),
             };
         } else {
             return this.sendError(client, 'ec_init_conv_from_client', 'conv id already exists');
@@ -679,6 +698,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 (roomId: any) => this.userClientsInARoom[roomId].sub_id === data.ses_user.socket_session.subscriber_id,
             );
 
+            // before clone remove interval check
+            clearInterval(this.roomsInAConv[data.conv_id].timing_actions_interval);
+
             // clone before remove so that we can inform client. it can be simplified
             let roomsInAConvCopy = _.cloneDeep(this.roomsInAConv[data.conv_id].room_ids);
 
@@ -784,6 +806,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 .toPromise();
 
             this.normalClientsInARoom[ownRoomId].chat_status = 'active';
+            this.roomsInAConv[convId].last_msg_time_client = new Date(msgRes.data.created_at).getTime();
+            this.roomsInAConv[convId].chat_inactive_log_handled = false;
 
             createdMsg = msgRes.data;
         } catch (e) {
@@ -1070,6 +1094,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.sendError(client, 'ec_client_conv_check', 'conversation no longer valid');
             } else {
                 const conv_data = convRes.data;
+                const convId = conv_data.id;
 
                 if (!this.roomsInAConv.hasOwnProperty(convRes.data.id)) {
                     this.roomsInAConv[convRes.data.id] = {
@@ -1084,6 +1109,61 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         users_only: conv_data.users_only,
                         chat_type: conv_data.chat_type,
                     };
+
+                    if (convRes.data.other_info) {
+                        this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
+                    }
+
+                    const convObj = this.roomsInAConv[convId];
+
+                    convObj.last_msg_time_client = 0;
+                    convObj.last_msg_time_agent = null;
+
+                    const lastClientMsg = await this.prisma.message.findFirst({
+                        where: {
+                            message_type: { not: 'log' },
+                            conversation_id: convId,
+                            socket_session: { user_id: null },
+                        },
+                        orderBy: { created_at: 'desc' },
+                    });
+
+                    if (lastClientMsg) {
+                        convObj.last_msg_time_client = new Date(lastClientMsg.created_at).getTime();
+                    }
+
+                    // for now we are checking agents were joined
+                    if (convRes.data.conversation_sessions.length > 1) {
+                        const lastAgentMsg = await this.prisma.message.findFirst({
+                            where: {
+                                message_type: { not: 'log' },
+                                conversation_id: convId,
+                                socket_session: { user_id: { not: null } },
+                            },
+                            orderBy: { created_at: 'desc' },
+                        });
+
+                        if (lastAgentMsg) {
+                            convObj.last_msg_time_agent = new Date(lastAgentMsg.created_at).getTime();
+                        } else {
+                            convObj.last_msg_time_agent = 0;
+                        }
+
+                        const chatInactiveLog = await this.prisma.message.findFirst({
+                            where: {
+                                message_type: 'log',
+                                conversation_id: convId,
+                                socket_session: { user_id: null },
+                            },
+                            orderBy: { created_at: 'desc' },
+                        });
+
+                        convObj.chat_inactive_log_handled =
+                            chatInactiveLog &&
+                            new Date(chatInactiveLog.created_at).getTime() > convObj.last_msg_time_client;
+                    }
+
+                    convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
                 }
 
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
@@ -1219,6 +1299,57 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     if (convRes.data.other_info) {
                         this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
                     }
+
+                    const convObj = this.roomsInAConv[convId];
+
+                    convObj.last_msg_time_client = 0;
+                    convObj.last_msg_time_agent = null;
+
+                    const lastClientMsg = await this.prisma.message.findFirst({
+                        where: {
+                            message_type: { not: 'log' },
+                            conversation_id: convId,
+                            socket_session: { user_id: null },
+                        },
+                        orderBy: { created_at: 'desc' },
+                    });
+
+                    if (lastClientMsg) {
+                        convObj.last_msg_time_client = new Date(lastClientMsg.created_at).getTime();
+                    }
+
+                    // for now we are checking agents were joined
+                    if (convRes.data.conversation_sessions.length > 1) {
+                        const lastAgentMsg = await this.prisma.message.findFirst({
+                            where: {
+                                message_type: { not: 'log' },
+                                conversation_id: convId,
+                                socket_session: { user_id: { not: null } },
+                            },
+                            orderBy: { created_at: 'desc' },
+                        });
+
+                        if (lastAgentMsg) {
+                            convObj.last_msg_time_agent = new Date(lastAgentMsg.created_at).getTime();
+                        } else {
+                            convObj.last_msg_time_agent = 0;
+                        }
+
+                        const chatInactiveLog = await this.prisma.message.findFirst({
+                            where: {
+                                message_type: 'log',
+                                conversation_id: convId,
+                                socket_session: { user_id: null },
+                            },
+                            orderBy: { created_at: 'desc' },
+                        });
+
+                        convObj.chat_inactive_log_handled =
+                            chatInactiveLog &&
+                            new Date(chatInactiveLog.created_at).getTime() > convObj.last_msg_time_client;
+                    }
+
+                    convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
                 }
 
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
@@ -1251,16 +1382,29 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
                 },
                 chat_department: true,
+                messages: {
+                    where: {
+                        message_type: 'log',
+                        msg: 'chat_inactive',
+                        socket_session: { user_id: null },
+                    },
+                    orderBy: { created_at: 'desc' },
+                    take: 1,
+                },
             },
             orderBy: { created_at: 'desc' },
         });
 
-        allConvs.forEach((conv: any) => {
+        for (const tempConv of allConvs) {
+            const conv: any = tempConv;
             const convId = conv.id;
 
             if (!this.roomsInAConv.hasOwnProperty(convId)) {
                 this.roomsInAConv[convId] = {
-                    room_ids: _.map(conv.conversation_sessions, 'socket_session_id'),
+                    room_ids: _.map(
+                        conv.conversation_sessions.filter((convSes: any) => !convSes.left_at),
+                        'socket_session_id',
+                    ),
                 };
 
                 this.roomsInAConv[convId].conv_id = conv.id;
@@ -1277,8 +1421,71 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 if (conv.other_info) {
                     this.roomsInAConv[convId].notify_to = conv.other_info?.notify_to || null;
                 }
+
+                const convObj = this.roomsInAConv[convId];
+
+                convObj.last_msg_time_client = 0;
+                convObj.last_msg_time_agent = null;
+
+                const lastClientMsg = await this.prisma.message.findFirst({
+                    where: {
+                        message_type: { not: 'log' },
+                        conversation_id: convId,
+                        socket_session: { user_id: null },
+                    },
+                    orderBy: { created_at: 'desc' },
+                });
+
+                if (lastClientMsg) {
+                    convObj.last_msg_time_client = new Date(lastClientMsg.created_at).getTime();
+                }
+
+                // for now we are checking agents were joined
+                if (conv.conversation_sessions.length > 1) {
+                    const lastAgentMsg = await this.prisma.message.findFirst({
+                        where: {
+                            message_type: { not: 'log' },
+                            conversation_id: convId,
+                            socket_session: { user_id: { not: null } },
+                        },
+                        orderBy: { created_at: 'desc' },
+                    });
+
+                    if (lastAgentMsg) {
+                        convObj.last_msg_time_agent = new Date(lastAgentMsg.created_at).getTime();
+                    } else {
+                        convObj.last_msg_time_agent = 0;
+                    }
+
+                    convObj.chat_inactive_log_handled =
+                        !!conv.messages.length &&
+                        new Date(conv.messages[0].created_at).getTime() > convObj.last_msg_time_client;
+                }
+
+                convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
             }
-        });
+        }
+
+        console.log(this.roomsInAConv);
+    }
+
+    convTimingActionsInterval(convId: any) {
+        const convObj = this.roomsInAConv[convId];
+
+        if (convObj.hasOwnProperty('chat_inactive_log_handled') && !convObj.chat_inactive_log_handled) {
+            if (new Date().getTime() > convObj.last_msg_time_client + 2 * 60 * 1000) {
+                console.log('chat inactive stored');
+                convObj.chat_inactive_log_handled = true;
+            }
+        }
+
+        // console.log(
+        //     convId,
+        //     convObj.hasOwnProperty('chat_inactive_log_handled'),
+        //     convObj.chat_inactive_log_handled,
+        //     convObj.last_msg_time_client,
+        //     new Date().getTime() < convObj.last_msg_time_client + 2 * 60 * 1000,
+        // );
     }
 
     async handleConnection(client: Socket, ...args: any[]) {
@@ -1439,5 +1646,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             reason: msg,
             ...extra,
         });
+    }
+
+    async sleep(ms = 3000) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }
