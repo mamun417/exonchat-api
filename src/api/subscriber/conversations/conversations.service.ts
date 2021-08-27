@@ -14,6 +14,7 @@ import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
 
 import * as _l from 'lodash';
+import { LeaveConversationDto } from './dto/leave-conversation.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -312,9 +313,9 @@ export class ConversationsService {
         return convSesRes;
     }
 
-    async leave(id: string, req: any) {
+    async leave(id: string, req: any, leaveConversationDto: LeaveConversationDto) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
-        const socketSessionId = req.user.data.socket_session.id;
+        const socketSessionId = leaveConversationDto.socket_session_id || req.user.data.socket_session.id;
 
         const conversation = await this.findOneWithException(id, {
             subscriber_id: subscriberId,

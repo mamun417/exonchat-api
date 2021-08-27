@@ -6,6 +6,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
+import { LeaveConversationDto } from './dto/leave-conversation.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -110,8 +111,8 @@ export class ConversationsController {
 
     @UseGuards(JwtAuthGuard)
     @Post(':id/leave')
-    leave(@Param('id') id: string, @Request() req: any) {
-        return this.conversationsService.leave(id, req);
+    leave(@Param('id') id: string, @Request() req: any, @Body() leaveConversationDto: LeaveConversationDto) {
+        return this.conversationsService.leave(id, req, leaveConversationDto);
     }
 
     @UseGuards(JwtAuthGuard)

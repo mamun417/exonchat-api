@@ -93,8 +93,30 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         });
     }
 
-    sendToAllUsers(socketRes: any, onlyOnlineUsers = true, emitName: any, emitObj: any) {
+    sendToAllUsers(
+        socketRes: any,
+        onlyOnlineUsers = true,
+        emitName: any,
+        emitObj: any,
+        sendToConvClient = false,
+        conv: any = {},
+    ) {
         this.sendToSocketRooms(this.usersRoom(socketRes, onlyOnlineUsers), emitName, emitObj);
+
+        if (sendToConvClient && conv) {
+            this.sendToConvClient(conv, socketRes, emitName, emitObj);
+        }
+    }
+
+    sendToConvClient(conv: any, socketRes: any, emitName: any, emitObj: any) {
+        const ownClients = Object.keys(this.normalClientsInARoom).filter(
+            (roomId: any) =>
+                this.normalClientsInARoom[roomId]?.sub_id === socketRes.ses_user.socket_session.subscriber_id,
+        );
+
+        const convClients = conv.room_ids.filter((roomId: any) => ownClients.includes(roomId));
+
+        this.sendToSocketRooms(convClients, emitName, emitObj);
     }
 
     sendToAllUsersWithout(socketRes: any, onlyOnlineUsers = true, exceptRoomIds = [], emitName: any, emitObj: any) {
@@ -585,14 +607,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[data.conv_id].notify_to = '';
             }
 
-            this.roomsInAConv[data.conv_id].room_ids.forEach((room: any) => {
-                this.server.in(room).emit('ec_is_joined_from_conversation', {
-                    data: {
-                        conv_ses_data,
-                    },
+            this.sendToAllUsers(
+                data,
+                false,
+                'ec_is_joined_from_conversation',
+                {
+                    data: { conv_ses_data },
                     status: 'success',
-                });
-            });
+                },
+                true,
+                this.roomsInAConv[data.conv_id],
+            );
         } else {
             this.sendError(client, 'ec_join_conversation', 'conversation not matched');
         }
@@ -628,12 +653,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
             _.remove(this.roomsInAConv[data.conv_id].room_ids, (item: any) => item === data.ses_user.socket_session.id);
 
-            roomsInAConvCopy[data.conv_id].room_ids.forEach((room: any) => {
-                this.server.in(room).emit('ec_is_leaved_from_conversation', {
+            this.sendToAllUsers(
+                data,
+                false,
+                'ec_is_leaved_from_conversation',
+                {
                     data: { conv_ses_data },
                     status: 'success',
-                });
-            });
+                },
+                true,
+                roomsInAConvCopy[data.conv_id],
+            );
         } else {
             this.sendError(client, 'ec_leave_conversation', 'Already left from this conversation');
         }
@@ -697,19 +727,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 });
             });
 
-            // if closed from client then it can be empty so check for error free
-            if (roomsInAConvCopy.length) {
-                // for now only one room id will present & it is clients
-                roomsInAConvCopy.forEach((room: string) => {
-                    this.server.in(room).emit('ec_is_closed_from_conversation', {
-                        data: {
-                            conv_data,
-                            conv_id,
-                        },
-                        status: 'success',
-                    });
-                });
-            }
+            this.sendToAllUsers(
+                data,
+                false,
+                'ec_is_closed_from_conversation',
+                {
+                    data: {
+                        conv_data,
+                        conv_id,
+                    },
+                    status: 'success',
+                },
+                true,
+                roomsInAConvCopy[data.conv_id],
+            );
         } else {
             this.sendError(client, 'ec_close_conversation', 'This conversation is already closed');
         }
@@ -986,16 +1017,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         if (!(await this.sysHasConvAndSocketSessionRecheck(socketRes, client))) return;
 
         const convObj = this.roomsInAConv[socketRes.conv_id];
+        let isTransferred = false;
 
         // if notify to then transfer manually
         if (socketRes.notify_to) {
-            if (!this.usersRoom(socketRes).filter((roomId: any) => roomId === socketRes.notify_to).length) {
-                return this.sendError(
-                    client,
-                    'ec_chat_transfer_from_user',
-                    'Chat transfer not possible. Agent is not online',
-                );
-            } else if (convObj.room_ids.includes(socketRes.notify_to)) {
+            if (convObj.room_ids.includes(socketRes.notify_to)) {
                 return this.sendError(
                     client,
                     'ec_chat_transfer_from_user',
@@ -1010,6 +1036,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     agent_info: socketRes.agent_info,
                     from: 'agent',
                 });
+
+                isTransferred = true;
 
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
             }
@@ -1029,12 +1057,69 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 );
             });
 
+            if (!agents.length) {
+                return this.sendError(
+                    client,
+                    'ec_chat_transfer_from_user',
+                    'Chat transfer not possible. Department is not online',
+                );
+            }
+
             this.sendToSocketRooms(agents, 'ec_chat_transfer', {
                 conv_id: socketRes.conv_id,
                 client_info: socketRes.client_info,
                 reason: socketRes.reason,
                 from: 'client',
             });
+
+            isTransferred = true;
+        }
+
+        // leave joined agents
+        if (isTransferred) {
+            if (this.roomsInAConv.hasOwnProperty(socketRes.conv_id)) {
+                // clone before remove so that we have all rooms to inform
+                const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
+
+                _.remove(
+                    this.roomsInAConv[socketRes.conv_id].room_ids,
+                    (item: any) => !this.convClientRoom(socketRes).includes(item),
+                );
+
+                const joinedAgents = roomsInAConvCopy[socketRes.conv_id].room_ids.filter(
+                    (roomId: any) => !this.normalClientsInARoom.hasOwnProperty(roomId),
+                );
+
+                for (const room of joinedAgents) {
+                    let conv_ses_data = null;
+
+                    try {
+                        const convSesRes: any = await this.httpService
+                            .post(
+                                `http://localhost:3000/conversations/${socketRes.conv_id}/leave`,
+                                { socket_session_id: room },
+                                { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
+                            )
+                            .toPromise();
+
+                        conv_ses_data = convSesRes.data;
+                    } catch (e) {
+                        console.log(e);
+                    }
+
+                    this.sendToAllUsers(
+                        socketRes,
+                        false,
+                        'ec_is_leaved_from_conversation',
+                        {
+                            data: { conv_ses_data },
+                            status: 'success',
+                        },
+                        true,
+                        roomsInAConvCopy[socketRes.conv_id],
+                    );
+                }
+            }
         }
 
         this.sendToSocketClient(client, 'ec_chat_transfer_res', {
