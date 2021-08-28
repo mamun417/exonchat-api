@@ -1050,6 +1050,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // emit data
         // {
         //      conv_id: must, notify_to: if_from_agent, agent_info: if_from_agent{agents_user_obj not ses/conv_ses},
+        //      notify_to_info: if notify to then must. it holds user info not session info
         //      notify_except: if_from_client[ses_ids], client_info: client_socket_ses_obj, reason: transfer_reason,
         //      notify_to_dep: department_name{not id}
         // }
@@ -1144,21 +1145,55 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                             .toPromise();
 
                         conv_ses_data = convSesRes.data;
+
+                        this.sendToAllUsers(
+                            socketRes,
+                            false,
+                            'ec_is_leaved_from_conversation',
+                            {
+                                data: { conv_ses_data },
+                                status: 'success',
+                            },
+                            true,
+                            roomsInAConvCopy[socketRes.conv_id],
+                        );
                     } catch (e) {
                         console.log(e);
                     }
+                }
 
-                    this.sendToAllUsers(
-                        socketRes,
-                        false,
-                        'ec_is_leaved_from_conversation',
-                        {
-                            data: { conv_ses_data },
-                            status: 'success',
+                if (socketRes.notify_to) {
+                    const makeMsg = `transfer_${socketRes.notify_to}_${socketRes.notify_to.user_meta.display_name}`;
+
+                    const transferMsg = await this.prisma.message.create({
+                        data: {
+                            message_type: 'log',
+                            msg: makeMsg,
+                            conversation: { connect: { id: socketRes.conv_id } },
+                            subscriber: { connect: { id: convObj.sub_id } },
+                            socket_session: { connect: { id: socketRes.ses_user.socket_session.id } },
                         },
-                        true,
-                        roomsInAConvCopy[socketRes.conv_id],
+                        include: {
+                            conversation: {
+                                include: {
+                                    conversation_sessions: {
+                                        include: {
+                                            socket_session: { include: { user: { include: { user_meta: true } } } },
+                                        },
+                                    },
+                                    chat_department: true,
+                                },
+                            },
+                        },
+                    });
+
+                    this.sendToSocketRooms(
+                        this.usersRoomBySubscriberId(convObj.sub_id, false),
+                        'ec_msg_from_user',
+                        transferMsg,
                     );
+
+                    this.sendToSocketRoom(this.clientRoomFromConv(convObj), 'ec_msg_to_client', transferMsg);
                 }
             }
         }
