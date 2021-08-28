@@ -352,15 +352,17 @@ export class ConversationsService {
             },
         });
 
-        convSesRes.log_message = await this.prisma.message.create({
-            data: {
-                msg: 'left',
-                message_type: 'log',
-                socket_session: { connect: { id: socketSessionId } },
-                conversation: { connect: { id: conversation.id } },
-                subscriber: { connect: { id: subscriberId } },
-            },
-        });
+        if (!leaveConversationDto.hasOwnProperty('do_log') || leaveConversationDto.do_log === true) {
+            convSesRes.log_message = await this.prisma.message.create({
+                data: {
+                    msg: 'left',
+                    message_type: 'log',
+                    socket_session: { connect: { id: socketSessionId } },
+                    conversation: { connect: { id: conversation.id } },
+                    subscriber: { connect: { id: subscriberId } },
+                },
+            });
+        }
 
         return convSesRes;
     }

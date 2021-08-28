@@ -710,22 +710,22 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             );
 
             // clone before remove so that we can inform client. it can be simplified
-            let roomsInAConvCopy = _.cloneDeep(this.roomsInAConv[data.conv_id].room_ids);
+            const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
 
             delete this.roomsInAConv[data.conv_id];
 
-            userRooms.forEach((room: any) => {
-                // filter agents
-                roomsInAConvCopy = roomsInAConvCopy.filter((copyRoom: any) => copyRoom !== room);
-
-                this.server.in(room).emit('ec_is_closed_from_conversation', {
-                    data: {
-                        conv_data,
-                        conv_id,
-                    },
-                    status: 'success',
-                });
-            });
+            // userRooms.forEach((room: any) => {
+            //     // filter agents
+            //     roomsInAConvCopy = roomsInAConvCopy.filter((copyRoom: any) => copyRoom !== room);
+            //
+            //     this.server.in(room).emit('ec_is_closed_from_conversation', {
+            //         data: {
+            //             conv_data,
+            //             conv_id,
+            //         },
+            //         status: 'success',
+            //     });
+            // });
 
             this.sendToAllUsers(
                 data,
@@ -1097,7 +1097,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         const convSesRes: any = await this.httpService
                             .post(
                                 `http://localhost:3000/conversations/${socketRes.conv_id}/leave`,
-                                { socket_session_id: room },
+                                { socket_session_id: room, do_log: false },
                                 { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                             )
                             .toPromise();
