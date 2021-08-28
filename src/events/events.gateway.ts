@@ -490,7 +490,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 chat_type: conv_data.type,
                 last_msg_time_client: null,
                 last_msg_time_agent: null,
-                chat_inactive_log_handled: false,
+                // dont store chat_inactive_log_handled key. cz only join can do that
                 timing_actions_interval: setInterval(() => this.convTimingActionsInterval(conv_id), 10000),
             };
         } else {
@@ -592,6 +592,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[data.conv_id].room_ids.push(roomName);
 
                 console.log('Rooms In Conversations => ', this.roomsInAConv);
+            }
+
+            // for now only checking if join is for first time. currently agents cant initiate client chat so 2 is ok
+            // not property chat_inactive_log_handled check means its first time also
+            // room_ids does not mean actual joins. its for current status. if all left then room_ids is without client
+            // so server restarts chat_inactive_log_handled checks. if not then dont worry
+            if (
+                this.roomsInAConv[data.conv_id].room_ids.length === 2 &&
+                !this.roomsInAConv[data.conv_id].hasOwnProperty('chat_inactive_log_handled')
+            ) {
+                this.roomsInAConv[data.conv_id].chat_inactive_log_handled = false;
+                this.roomsInAConv[data.conv_id].last_msg_time_client = new Date(conv_ses_data.created_at).getTime();
             }
 
             // don't move this condition upward. we need after push
@@ -807,7 +819,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             this.normalClientsInARoom[ownRoomId].chat_status = 'active';
             this.roomsInAConv[convId].last_msg_time_client = new Date(msgRes.data.created_at).getTime();
-            this.roomsInAConv[convId].chat_inactive_log_handled = false;
+
+            // update chat_inactive_log_handled if only this property has. cz inactivity check happens only after join
+            // so if joined then update to false so that new log can be inserted
+            if (this.roomsInAConv[convId].hasOwnProperty('chat_inactive_log_handled')) {
+                this.roomsInAConv[convId].chat_inactive_log_handled = false;
+            }
 
             createdMsg = msgRes.data;
         } catch (e) {
@@ -1149,11 +1166,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                             convObj.last_msg_time_agent = 0;
                         }
 
+                        const firstJoin = _.sortBy(
+                            convRes.data.conversation_sessions.filter((convSes: any) => convSes.socket_session.user_id),
+                            [(convSes) => moment(convSes.created_at).format('x')],
+                        );
+
+                        if (new Date(firstJoin.created_at).getTime() > convObj.last_msg_time_client) {
+                            convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
+                        }
+
                         const chatInactiveLog = await this.prisma.message.findFirst({
                             where: {
+                                msg: 'chat_inactive',
                                 message_type: 'log',
                                 conversation_id: convId,
-                                socket_session: { user_id: null },
                             },
                             orderBy: { created_at: 'desc' },
                         });
@@ -1335,11 +1361,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                             convObj.last_msg_time_agent = 0;
                         }
 
+                        const firstJoin = _.sortBy(
+                            convRes.data.conversation_sessions.filter((convSes: any) => convSes.socket_session.user_id),
+                            [(convSes) => moment(convSes.created_at).format('x')],
+                        );
+
+                        if (new Date(firstJoin.created_at).getTime() > convObj.last_msg_time_client) {
+                            convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
+                        }
+
                         const chatInactiveLog = await this.prisma.message.findFirst({
                             where: {
+                                msg: 'chat_inactive',
                                 message_type: 'log',
                                 conversation_id: convId,
-                                socket_session: { user_id: null },
                             },
                             orderBy: { created_at: 'desc' },
                         });
@@ -1386,7 +1421,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     where: {
                         message_type: 'log',
                         msg: 'chat_inactive',
-                        socket_session: { user_id: null },
                     },
                     orderBy: { created_at: 'desc' },
                     take: 1,
@@ -1424,6 +1458,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 const convObj = this.roomsInAConv[convId];
 
+                // from this line upto last same type of conditions has more then 2 places
                 convObj.last_msg_time_client = 0;
                 convObj.last_msg_time_agent = null;
 
@@ -1441,6 +1476,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 }
 
                 // for now we are checking agents were joined
+                // if joined start inactivity check
                 if (conv.conversation_sessions.length > 1) {
                     const lastAgentMsg = await this.prisma.message.findFirst({
                         where: {
@@ -1457,6 +1493,19 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         convObj.last_msg_time_agent = 0;
                     }
 
+                    // get first join for check clients msg before or after
+                    const firstJoin = _.sortBy(
+                        conv.conversation_sessions.filter((convSes: any) => convSes.socket_session.user_id),
+                        [(convSes) => moment(convSes.created_at).format('x')],
+                    );
+
+                    // store join time if client msg was before join. so that inactivity count starts from join
+                    if (new Date(firstJoin.created_at).getTime() > convObj.last_msg_time_client) {
+                        convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
+                    }
+
+                    // assign key only when if any joins happen.
+                    // true if has log & log is newer then client msg &
                     convObj.chat_inactive_log_handled =
                         !!conv.messages.length &&
                         new Date(conv.messages[0].created_at).getTime() > convObj.last_msg_time_client;
@@ -1469,23 +1518,50 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         console.log(this.roomsInAConv);
     }
 
-    convTimingActionsInterval(convId: any) {
+    async convTimingActionsInterval(convId: any) {
         const convObj = this.roomsInAConv[convId];
 
+        // property chat_inactive_log_handled will only insert if join. & if not log handled store it
         if (convObj.hasOwnProperty('chat_inactive_log_handled') && !convObj.chat_inactive_log_handled) {
-            if (new Date().getTime() > convObj.last_msg_time_client + 2 * 60 * 1000) {
-                console.log('chat inactive stored');
+            if (new Date().getTime() > convObj.last_msg_time_client + 10 * 60 * 1000) {
+                const createdLog = await this.prisma.message.create({
+                    data: {
+                        msg: 'chat_inactive',
+                        message_type: 'log',
+                        conversation: { connect: { id: convId } },
+                        subscriber: { connect: { id: convObj.sub_id } },
+                    },
+                    include: {
+                        conversation: {
+                            include: {
+                                conversation_sessions: {
+                                    include: {
+                                        socket_session: { include: { user: { include: { user_meta: true } } } },
+                                    },
+                                },
+                                chat_department: true,
+                            },
+                        },
+                    },
+                });
+
+                this.sendToSocketRooms(
+                    this.usersRoomBySubscriberId(convObj.sub_id, false),
+                    'ec_msg_from_client',
+                    createdLog,
+                );
+
+                this.sendToSocketRoom(this.clientRoomFromConv(convObj), 'ec_msg_to_client', createdLog);
+
                 convObj.chat_inactive_log_handled = true;
+
+                console.log('chat inactive stored');
             }
         }
+    }
 
-        // console.log(
-        //     convId,
-        //     convObj.hasOwnProperty('chat_inactive_log_handled'),
-        //     convObj.chat_inactive_log_handled,
-        //     convObj.last_msg_time_client,
-        //     new Date().getTime() < convObj.last_msg_time_client + 2 * 60 * 1000,
-        // );
+    clientRoomFromConv(conv: any) {
+        return conv.room_ids.filter((room: any) => this.normalClientsInARoom[room]?.sub_id === conv.sub_id);
     }
 
     async handleConnection(client: Socket, ...args: any[]) {
