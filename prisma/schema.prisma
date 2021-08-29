@@ -438,7 +438,7 @@ model conversation_session {
   left_at            DateTime? @db.Timestamp(6)
 
   type            String?
-  info            Json?
+  info            Json? // check before update or insert so that other data can stay also
   additional_info Json?
 
   left_reason   String?

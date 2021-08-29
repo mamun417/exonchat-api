@@ -288,6 +288,7 @@ export class ConversationsService {
                 },
                 data: {
                     joined_at: new Date(),
+                    updated_at: new Date(),
                     left_at: null,
                 },
                 include: {
@@ -329,6 +330,7 @@ export class ConversationsService {
             },
             data: {
                 left_at: new Date(),
+                updated_at: new Date(),
             },
         });
 
