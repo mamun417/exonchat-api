@@ -445,6 +445,7 @@ model conversation_session {
   closed_reason String?
 
   can_send_message Boolean @default(true) // it's only now for group or channel. true then can send msg else only see
+  can_see_message Boolean @default(true) // it's only now for group or channel. true then can see msg else hidden
   active           Boolean @default(true) // it's now for group or channel so that user remove can happen but msg history kept
 
   created_at DateTime @default(now()) @db.Timestamp(6)
