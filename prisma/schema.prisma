@@ -436,8 +436,13 @@ model conversation_session {
   joined_at          DateTime? @db.Timestamp(6)
   last_msg_seen_time DateTime? @db.Timestamp(6)
   left_at            DateTime? @db.Timestamp(6)
-  left_reason        String?
-  closed_reason      String?
+
+  type            String?
+  info            Json?
+  additional_info Json?
+
+  left_reason   String?
+  closed_reason String?
 
   can_send_message Boolean @default(true) // it's only now for group or channel. true then can send msg else only see
   active           Boolean @default(true) // it's now for group or channel so that user remove can happen but msg history kept
@@ -459,11 +464,11 @@ model conversation_session {
 model conversation_channel {
   id String @id @default(cuid())
 
-  tag          String
-  display_name String
-  subtitle     String
-  info         Json?
-  other_info   Json?
+  tag             String
+  display_name    String
+  subtitle        String
+  info            Json?
+  additional_info Json?
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -479,9 +484,11 @@ model conversation_channel {
 model message {
   id String @id @default(cuid())
 
-  msg          String?           @db.Text
+  msg String? @db.Text
+
   message_type message_type_enum @default(message)
   sender_type  String?
+  info         Json?
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -760,6 +767,7 @@ enum socket_session_use_for_enum {
 enum message_type_enum {
   log
   message
+  hidden
 }
 
 enum conversation_type_enum {
