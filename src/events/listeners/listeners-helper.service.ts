@@ -184,7 +184,7 @@ export class ListenersHelperService {
     }
 
     clientRoomFromConv(clientsRoom: any, conv: any) {
-        return conv.room_ids.filter((room: any) => clientsRoom[room]?.sub_id === conv.sub_id);
+        return conv.client_room_id;
     }
 
     sendToSocketRoom(server, roomId: string, emitName: string, emitObj: any) {

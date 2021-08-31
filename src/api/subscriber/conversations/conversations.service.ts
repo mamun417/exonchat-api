@@ -245,7 +245,7 @@ export class ConversationsService {
             },
         });
 
-        if (convSes && !convSes.left_at)
+        if (convSes && !convSes.left_at && convSes.joined_at)
             throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
 
         await this.prisma.conversation.update({
