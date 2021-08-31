@@ -84,6 +84,7 @@ export class ChatTransferService {
             this.listenerHelpers.sendToSocketClient(client, 'ec_chat_transfer', {
                 from: 'own',
                 status: 'success',
+                conv_id: convObj.conv_id
             });
 
             for (const agentSesId of transferredToAgents) {
@@ -108,6 +109,9 @@ export class ChatTransferService {
                         // left_at: null, // test without updating it
                         updated_at: new Date(),
                         type: 'chat_transfer',
+                        info: {
+                            transfer_from: socketRes.agent_info || socketRes.client_info,
+                        },
                     },
                     include: {
                         socket_session: {
@@ -124,8 +128,49 @@ export class ChatTransferService {
                     client_info: socketRes.client_info,
                     reason: socketRes.reason,
                     conv_ses_obj: upsertData,
-                    from: socketRes.notify_to_dep ? 'agent' : 'client',
+                    from: socketRes.notify_to_dep || socketRes.notify_to ? 'agent' : 'client',
+                    action: 'chat_transfer_sent',
                 });
+            }
+        } else if (socketRes.action === 'reject') {
+            const updatedConvSes = await this.prisma.conversation_session.update({
+                where: {
+                    conv_ses_identifier: {
+                        conversation_id: socketRes.conv_id,
+                        socket_session_id: socketRes.ses_user.socket_session.id,
+                    },
+                },
+                data: {
+                    type: null,
+                    updated_at: new Date(),
+                },
+                include: {
+                    socket_session: {
+                        include: {
+                            user: { include: { user_meta: true } },
+                        },
+                    },
+                },
+            });
+
+            if (updatedConvSes) {
+                console.log('reject called');
+                this.listenerHelpers.sendToSocketRooms(
+                    server,
+                    this.listenerHelpers.usersRoomBySubscriberId(
+                        usersRoom,
+                        socketRes.ses_user.socket_session.subscriber_id,
+                    ),
+                    'ec_chat_transfer',
+                    { conv_ses_obj: updatedConvSes, action: 'chat_transfer_rejected', conv_id: socketRes.conv_id },
+                );
+            } else {
+                // if this block fire then check owner etc
+                return this.listenerHelpers.sendError(
+                    client,
+                    'ec_chat_transfer',
+                    'Somehow chat reject not possible. Reload your browser',
+                );
             }
         }
 

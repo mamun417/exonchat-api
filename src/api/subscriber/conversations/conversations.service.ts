@@ -290,6 +290,8 @@ export class ConversationsService {
                     joined_at: new Date(),
                     updated_at: new Date(),
                     left_at: null,
+                    info: null, // later merge info without transfer_from object key
+                    type: 'normal',
                 },
                 include: {
                     socket_session: {
