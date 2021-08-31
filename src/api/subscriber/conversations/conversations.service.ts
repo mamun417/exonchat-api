@@ -779,16 +779,33 @@ export class ConversationsService {
     }
 
     async clientPreviousConversations(req: any, query: any) {
+        const conv: any = await this.findOneWithException(
+            query.before_conversation || '',
+            {},
+            {
+                include: {
+                    conversation_sessions: {
+                        where: { socket_session: { user_id: null } },
+                        include: { socket_session: true },
+                    },
+                },
+            },
+        );
+
+        // for now we know client exists must
+        const clientEmail = conv.conversation_sessions[0]?.socket_session?.init_email;
+
         return this.prisma.conversation.findMany({
             where: {
                 subscriber_id: req.user.data.subscriber_id,
                 users_only: false,
+                created_at: { lt: new Date(conv.created_at) },
                 // closed_by_id: null, // uncomment if needed
                 messages: { some: {} },
                 conversation_sessions: {
                     some: {
                         socket_session: {
-                            OR: [{ init_email: query.email }], // other field or field email check
+                            OR: [{ init_email: clientEmail }], // other field or field email check.
                             user_id: null,
                         },
                     },
@@ -796,6 +813,7 @@ export class ConversationsService {
             },
             include: {
                 messages: {
+                    where: { message_type: 'message' },
                     take: 1,
                     orderBy: {
                         updated_at: 'asc',
