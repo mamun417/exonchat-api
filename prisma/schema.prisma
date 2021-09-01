@@ -364,8 +364,12 @@ model conversation {
   users_only     Boolean?
   type           conversation_type_enum @default(user_to_user_chat)
   ai_is_replying Boolean                @default(false)
-  other_info     Json?
-  closed_at      DateTime?              @db.Timestamp(6)
+
+  info            Json?
+  additional_info Json?
+  other_info      Json?
+
+  closed_at DateTime? @db.Timestamp(6)
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -433,14 +437,20 @@ model conversation_rating {
 model conversation_session {
   id String @id @default(cuid())
 
-  joined_at          DateTime? @db.Timestamp(6)
-  last_msg_seen_time DateTime? @db.Timestamp(6)
-  left_at            DateTime? @db.Timestamp(6)
-  left_reason        String?
-  closed_reason      String?
+  joined_at DateTime? @db.Timestamp(6)
+  left_at   DateTime? @db.Timestamp(6)
 
-  can_send_message Boolean @default(true) // it's only now for group or channel. true then can send msg else only see
-  active           Boolean @default(true) // it's now for group or channel so that user remove can happen but msg history kept
+  type            String?
+  info            Json? // check before update or insert so that other data can stay also
+  additional_info Json?
+
+  left_reason   String?
+  closed_reason String?
+
+  last_msg_seen_time DateTime? @db.Timestamp(6)
+  can_send_message   Boolean   @default(true) // it's only now for group or channel. true then can send msg else only see
+  can_see_message    Boolean   @default(true) // it's only now for group or channel. true then can see msg else hidden
+  active             Boolean   @default(true) // it's now for group or channel so that user remove can happen but msg history kept
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -459,11 +469,11 @@ model conversation_session {
 model conversation_channel {
   id String @id @default(cuid())
 
-  tag          String
-  display_name String
-  subtitle     String
-  info         Json?
-  other_info   Json?
+  tag             String
+  display_name    String
+  subtitle        String
+  info            Json?
+  additional_info Json?
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -479,9 +489,11 @@ model conversation_channel {
 model message {
   id String @id @default(cuid())
 
-  msg          String?           @db.Text
+  msg String? @db.Text
+
   message_type message_type_enum @default(message)
   sender_type  String?
+  info         Json?
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -499,10 +511,14 @@ model message {
 model offline_chat_req {
   id String @id @default(cuid())
 
-  name     String
-  email    String
-  subject  String
-  message  String
+  name    String
+  email   String
+  subject String
+  message String
+
+  info            Json?
+  additional_info Json?
+
   priority String? @default("normal")
 
   created_at DateTime @default(now()) @db.Timestamp(6)
@@ -760,6 +776,9 @@ enum socket_session_use_for_enum {
 enum message_type_enum {
   log
   message
+  me_only_log
+  me_only_message
+  hidden
 }
 
 enum conversation_type_enum {
@@ -767,6 +786,11 @@ enum conversation_type_enum {
   user_to_user_chat
   group_chat
   channel_chat
+}
+
+enum conversation_session_type_enum {
+  normal
+  chat_transfer
 }
 
 enum intent_action_type {

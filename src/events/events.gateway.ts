@@ -20,6 +20,8 @@ import { WsJwtGuard } from 'src/auth/guards/ws-auth.guard';
 import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from '../prisma.service';
 import { Helper } from '../helper/helper';
+import { ChatTransferService } from './listeners/chat-transfer.service';
+import { ListenersHelperService } from './listeners/listeners-helper.service';
 
 @WebSocketGateway({
     serveClient: false,
@@ -37,6 +39,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         private authService: AuthService,
         private prisma: PrismaService,
         private helper: Helper,
+        private listenersHelperService: ListenersHelperService,
+        private chatTransferService: ChatTransferService,
     ) {}
 
     @WebSocketServer()
@@ -61,6 +65,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     convObjSkeleton = {
         conv_id: {
             room_ids: [],
+            client_room_id: 'client_ses_id', // its imp. cz if client goes offline normalClientsInARoom does not contain the session
             sub_id: 'subscriber_id',
             users_only: 'bool',
             ai_is_replying: 'bool',
@@ -124,14 +129,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     sendToConvClient(conv: any, socketRes: any, emitName: any, emitObj: any) {
-        const ownClients = Object.keys(this.normalClientsInARoom).filter(
-            (roomId: any) =>
-                this.normalClientsInARoom[roomId]?.sub_id === socketRes.ses_user.socket_session.subscriber_id,
-        );
-
-        const convClients = conv.room_ids.filter((roomId: any) => ownClients.includes(roomId));
-
-        this.sendToSocketRooms(convClients, emitName, emitObj);
+        this.sendToSocketRoom(conv.client_room_id, emitName, emitObj);
     }
 
     sendToAllUsersWithout(socketRes: any, onlyOnlineUsers = true, exceptRoomIds = [], emitName: any, emitObj: any) {
@@ -424,7 +422,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             status: 'success',
         });
 
-        console.log('Rooms In Conversations => ', this.roomsInAConv);
+        // console.log('Rooms In Conversations => ', this.roomsInAConv);
 
         return;
     }
@@ -503,6 +501,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.roomsInAConv[conv_id] = {
                 conv_id: conv_id,
                 room_ids: [roomName],
+                client_room_id: roomName,
                 ai_is_replying: conv_data.ai_is_replying,
                 chat_department: conv_data.chat_department.tag,
                 routing_policy: conv_data.routing_policy,
@@ -573,7 +572,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         // send back to the client
         this.sendToSocketRoom(roomName, 'ec_conv_initiated_to_client', { data: sendRes, status: 'success' });
 
-        console.log('Rooms In Conversations => ', this.roomsInAConv);
+        // console.log('Rooms In Conversations => ', this.roomsInAConv);
 
         return;
     }
@@ -582,6 +581,84 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @SubscribeMessage('ec_join_conversation')
     async joinConversation(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<any> {
         if (!(await this.sysHasConvAndSocketSessionRecheck(data, client))) return;
+
+        const roomName = data.ses_user.socket_session.id;
+        const subsId = data.ses_user.socket_session.subscriber_id;
+
+        if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
+            if (this.roomsInAConv[data.conv_id].room_ids.includes(roomName)) {
+                return this.sendError(client, 'ec_join_conversation', 'Already joined to this conversation');
+            }
+        }
+
+        if (data.hasOwnProperty('chat_transfer_request_from') && data.chat_transfer_request_from) {
+            // clone before remove so that we have all rooms to inform
+            const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
+
+            _.remove(this.roomsInAConv[data.conv_id].room_ids, (item: any) => this.convClientRoom(data) !== item);
+
+            const joinedAgents = roomsInAConvCopy[data.conv_id].room_ids.filter(
+                (roomId: any) => roomId !== roomsInAConvCopy[data.conv_id].client_room_id,
+            );
+
+            for (const room of joinedAgents) {
+                try {
+                    const leftRes: any = await this.httpService
+                        .post(
+                            `http://localhost:3000/conversations/${data.conv_id}/leave`,
+                            { socket_session_id: room, do_log: false },
+                            { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
+                        )
+                        .toPromise();
+
+                    this.sendToAllUsers(
+                        data,
+                        false,
+                        'ec_is_leaved_from_conversation',
+                        {
+                            data: { conv_ses_data: leftRes.data },
+                            status: 'success',
+                        },
+                        true,
+                        roomsInAConvCopy[data.conv_id],
+                    );
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+
+            const makeMsg = `transfer_${roomName}`;
+
+            const transferMsg = await this.prisma.message.create({
+                data: {
+                    message_type: 'log',
+                    msg: makeMsg,
+                    conversation: { connect: { id: data.conv_id } },
+                    subscriber: { connect: { id: data.ses_user.socket_session.subscriber_id } },
+                    socket_session: { connect: { id: data.chat_transfer_request_from.socket_session.id } }, // it will be passed as conversation_session
+                },
+                include: {
+                    conversation: {
+                        include: {
+                            conversation_sessions: {
+                                include: {
+                                    socket_session: { include: { user: { include: { user_meta: true } } } },
+                                },
+                            },
+                            chat_department: true,
+                        },
+                    },
+                },
+            });
+
+            this.sendToSocketRooms(this.usersRoomBySubscriberId(subsId, false), 'ec_msg_from_user', transferMsg);
+
+            this.sendToSocketRoom(
+                this.clientRoomFromConv(this.roomsInAConv[data.conv_id]),
+                'ec_msg_to_client',
+                transferMsg,
+            );
+        }
 
         let conv_ses_data = null;
 
@@ -607,13 +684,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return this.sendError(client, 'ec_join_conversation', e.response.data);
         }
 
-        const roomName = data.ses_user.socket_session.id;
-
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             if (!this.roomsInAConv[data.conv_id].room_ids.includes(roomName)) {
                 this.roomsInAConv[data.conv_id].room_ids.push(roomName);
 
-                console.log('Rooms In Conversations => ', this.roomsInAConv);
+                // console.log('Rooms In Conversations => ', this.roomsInAConv);
             }
 
             // for now only checking if join is for first time. currently agents cant initiate client chat so 2 is ok
@@ -677,7 +752,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             return this.sendError(client, 'ec_leave_conversation', e.response.data);
         }
 
-        console.log('Rooms In Conversations => ', this.roomsInAConv);
+        // console.log('Rooms In Conversations => ', this.roomsInAConv);
 
         if (this.roomsInAConv.hasOwnProperty(data.conv_id)) {
             // clone before remove so that we have all rooms to inform
@@ -939,7 +1014,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             });
         } else {
             // it will contain single elm for now
-            const clientRooms = this.convClientRoom(data);
+            const clientRooms = [this.convClientRoom(data)];
 
             if (clientRooms.length) {
                 clientRooms.forEach((roomId: any) => {
@@ -1013,7 +1088,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             this.sendToAConvUsersWithoutMe(data, 'ec_msg_from_user', { ...createdMsg, temp_id: data.temp_id });
         } else {
             // it will contain single elm for now
-            const clientRooms = this.convClientRoom(data);
+            const clientRooms = [this.convClientRoom(data)];
 
             if (clientRooms.length) {
                 clientRooms.forEach((roomId: any) => {
@@ -1047,162 +1122,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_chat_transfer')
     async chatTransferFromUser(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<any> {
-        // emit data
-        // {
-        //      conv_id: must, notify_to: if_from_agent, agent_info: if_from_agent{agents_user_obj not ses/conv_ses},
-        //      notify_to_info: if notify to then must. it holds user info not session info
-        //      notify_except: if_from_client[ses_ids], client_info: client_socket_ses_obj, reason: transfer_reason,
-        //      notify_to_dep: department_name{not id}
-        // }
-        //for now notify_to will determine for whome this transfer
-
-        if (!(await this.sysHasConvAndSocketSessionRecheck(socketRes, client))) return;
-
-        const convObj = this.roomsInAConv[socketRes.conv_id];
-        let isTransferred = false;
-
-        // if notify to then transfer manually
-        if (socketRes.notify_to) {
-            if (convObj.room_ids.includes(socketRes.notify_to)) {
-                return this.sendError(
-                    client,
-                    'ec_chat_transfer_from_user',
-                    'Agent is already connected with this chat',
-                );
-            } else {
-                convObj.notify_again = true;
-                convObj.notify_to = socketRes.notify_to;
-
-                this.sendToSocketRoom(socketRes.notify_to, 'ec_chat_transfer', {
-                    conv_id: socketRes.conv_id,
-                    agent_info: socketRes.agent_info,
-                    from: 'agent',
-                });
-
-                isTransferred = true;
-
-                console.log('Rooms In Conversations => ', this.roomsInAConv);
-            }
-        } else {
-            // notify_to_dep is string for now. later can be array. y? think yourself
-            // now only supports to all online agents to that dep
-            const to_chat_dep = socketRes.notify_to_dep || convObj.chat_department; // to_chat_dep? then from agent else can be from anywhere
-
-            // take this department's agents, except the one chatting. for future except is array omit all joined
-            // for now if agents are online, send to them only
-            const agents = this.usersRoom(socketRes).filter((roomId: any) => {
-                return (
-                    this.userClientsInARoom[roomId].chat_departments?.includes(to_chat_dep) &&
-                    (!socketRes.notify_except || !socketRes.notify_except.includes(roomId)) &&
-                    // test this line
-                    (!to_chat_dep || !convObj.room_ids.includes(roomId)) // to_chat_dep ? then from agent so omit joined agents
-                );
-            });
-
-            if (!agents.length) {
-                return this.sendError(
-                    client,
-                    'ec_chat_transfer_from_user',
-                    'Chat transfer not possible. Department is not online',
-                );
-            }
-
-            this.sendToSocketRooms(agents, 'ec_chat_transfer', {
-                conv_id: socketRes.conv_id,
-                client_info: socketRes.client_info,
-                reason: socketRes.reason,
-                from: 'client',
-            });
-
-            isTransferred = true;
-        }
-
-        // leave joined agents
-        if (isTransferred) {
-            if (this.roomsInAConv.hasOwnProperty(socketRes.conv_id)) {
-                // clone before remove so that we have all rooms to inform
-                const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
-
-                _.remove(
-                    this.roomsInAConv[socketRes.conv_id].room_ids,
-                    (item: any) => !this.convClientRoom(socketRes).includes(item),
-                );
-
-                const joinedAgents = roomsInAConvCopy[socketRes.conv_id].room_ids.filter(
-                    (roomId: any) => !this.normalClientsInARoom.hasOwnProperty(roomId),
-                );
-
-                for (const room of joinedAgents) {
-                    let conv_ses_data = null;
-
-                    try {
-                        const convSesRes: any = await this.httpService
-                            .post(
-                                `http://localhost:3000/conversations/${socketRes.conv_id}/leave`,
-                                { socket_session_id: room, do_log: false },
-                                { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
-                            )
-                            .toPromise();
-
-                        conv_ses_data = convSesRes.data;
-
-                        this.sendToAllUsers(
-                            socketRes,
-                            false,
-                            'ec_is_leaved_from_conversation',
-                            {
-                                data: { conv_ses_data },
-                                status: 'success',
-                            },
-                            true,
-                            roomsInAConvCopy[socketRes.conv_id],
-                        );
-                    } catch (e) {
-                        console.log(e);
-                    }
-                }
-
-                if (socketRes.notify_to) {
-                    const makeMsg = `transfer_${socketRes.notify_to}_${socketRes.notify_to.user_meta.display_name}`;
-
-                    const transferMsg = await this.prisma.message.create({
-                        data: {
-                            message_type: 'log',
-                            msg: makeMsg,
-                            conversation: { connect: { id: socketRes.conv_id } },
-                            subscriber: { connect: { id: convObj.sub_id } },
-                            socket_session: { connect: { id: socketRes.ses_user.socket_session.id } },
-                        },
-                        include: {
-                            conversation: {
-                                include: {
-                                    conversation_sessions: {
-                                        include: {
-                                            socket_session: { include: { user: { include: { user_meta: true } } } },
-                                        },
-                                    },
-                                    chat_department: true,
-                                },
-                            },
-                        },
-                    });
-
-                    this.sendToSocketRooms(
-                        this.usersRoomBySubscriberId(convObj.sub_id, false),
-                        'ec_msg_from_user',
-                        transferMsg,
-                    );
-
-                    this.sendToSocketRoom(this.clientRoomFromConv(convObj), 'ec_msg_to_client', transferMsg);
-                }
-            }
-        }
-
-        this.sendToSocketClient(client, 'ec_chat_transfer_res', {
-            conv_id: socketRes.conv_id,
-            data: socketRes,
-        });
-
+        await this.chatTransferService.call(
+            this.server,
+            client,
+            socketRes,
+            this.roomsInAConv,
+            this.userClientsInARoom,
+            this.normalClientsInARoom,
+        );
         return;
     }
 
@@ -1236,7 +1163,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 if (!this.roomsInAConv.hasOwnProperty(convRes.data.id)) {
                     this.roomsInAConv[convRes.data.id] = {
                         conv_id: convRes.data.id,
-                        room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
+                        room_ids: _.map(
+                            convRes.data.conversation_sessions.filter(
+                                (convSes: any) => convSes.joined_at && !convSes.left_at,
+                            ),
+                            'socket_session_id',
+                        ),
                         ai_is_replying: convRes.data.ai_is_replying,
                         routing_policy: convRes.data.routing_policy || 'manual', // check from other_info also
                         sub_id: convRes.data.subscriber_id,
@@ -1246,6 +1178,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         users_only: conv_data.users_only,
                         chat_type: conv_data.chat_type,
                     };
+
+                    this.roomsInAConv[convId].client_room_id = _.find(
+                        convRes.data.conversation_sessions,
+                        (conv_ses: any) => !conv_ses.socket_session.user,
+                    )?.socket_session_id;
 
                     if (convRes.data.other_info) {
                         this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
@@ -1312,7 +1249,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
                 }
 
-                console.log('Rooms In Conversations => ', this.roomsInAConv);
+                // console.log('Rooms In Conversations => ', this.roomsInAConv);
 
                 return convRes.data;
             }
@@ -1347,9 +1284,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     convClientRoom(data: any) {
-        return this.ownConvObj(data).room_ids.filter(
-            (roomId: any) => this.normalClientsInARoom[roomId]?.sub_id === data.ses_user.socket_session.subscriber_id,
-        );
+        return this.ownConvObj(data).client_room_id;
     }
 
     sendToAllUsersWithoutMe(data: any, client: any, emitName: any, dataObj: any) {
@@ -1383,8 +1318,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     convRoomsHasSession(data: any, client: any, emitError = false) {
         if (
             this.checkConvId(data, client, emitError) &&
-            this.sysHasConv(data, client, emitError) &&
-            this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id)
+            this.sysHasConv(data, client, emitError)
+            // this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id) // this check is faulty
         )
             return true;
 
@@ -1428,8 +1363,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             } else {
                 if (!this.roomsInAConv.hasOwnProperty(convId)) {
                     this.roomsInAConv[convId] = {
-                        room_ids: _.map(convRes.data.conversation_sessions, 'socket_session_id'),
+                        room_ids: _.map(
+                            convRes.data.conversation_sessions.filter(
+                                (convSes: any) => convSes.joined_at && !convSes.left_at,
+                            ),
+                            'socket_session_id',
+                        ),
                     };
+
+                    this.roomsInAConv[convId].client_room_id = _.find(
+                        convRes.data.conversation_sessions,
+                        (conv_ses: any) => !conv_ses.socket_session.user,
+                    )?.socket_session_id;
 
                     this.roomsInAConv[convId].conv_id = convId;
 
@@ -1507,7 +1452,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
                 }
 
-                console.log('Rooms In Conversations => ', this.roomsInAConv);
+                // console.log('Rooms In Conversations => ', this.roomsInAConv);
 
                 return true;
             }
@@ -1556,10 +1501,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             if (!this.roomsInAConv.hasOwnProperty(convId)) {
                 this.roomsInAConv[convId] = {
                     room_ids: _.map(
-                        conv.conversation_sessions.filter((convSes: any) => !convSes.left_at),
+                        conv.conversation_sessions.filter((convSes: any) => !convSes.left_at && convSes.joined_at),
                         'socket_session_id',
                     ),
                 };
+
+                this.roomsInAConv[convId].client_room_id = _.find(
+                    conv.conversation_sessions,
+                    (conv_ses: any) => !conv_ses.socket_session.user,
+                )?.socket_session_id;
 
                 this.roomsInAConv[convId].conv_id = conv.id;
 
@@ -1635,7 +1585,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        console.log(this.roomsInAConv);
+        // console.log(this.roomsInAConv);
     }
 
     async convTimingActionsInterval(convId: any) {
@@ -1675,13 +1625,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                 convObj.chat_inactive_log_handled = true;
 
-                console.log('chat inactive stored');
+                // console.log('chat inactive stored');
             }
         }
     }
 
     clientRoomFromConv(conv: any) {
-        return conv.room_ids.filter((room: any) => this.normalClientsInARoom[room]?.sub_id === conv.sub_id);
+        return conv.client_room_id;
     }
 
     async handleConnection(client: Socket, ...args: any[]) {
@@ -1754,9 +1704,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         client.join(roomName);
 
-        console.log('User Clients => ', this.userClientsInARoom);
-        console.log('Normal Clients => ', this.normalClientsInARoom);
-        console.log('Rooms In Conversations => ', this.roomsInAConv);
+        // console.log('User Clients => ', this.userClientsInARoom);
+        // console.log('Normal Clients => ', this.normalClientsInARoom);
+        // console.log('Rooms In Conversations => ', this.roomsInAConv);
     }
 
     handleDisconnect(client: Socket) {
@@ -1830,9 +1780,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        console.log('User Clients => ', this.userClientsInARoom);
-        console.log('Normal Clients => ', this.normalClientsInARoom);
-        console.log('Rooms In Conversations => ', this.roomsInAConv);
+        // console.log('User Clients => ', this.userClientsInARoom);
+        // console.log('Normal Clients => ', this.normalClientsInARoom);
+        // console.log('Rooms In Conversations => ', this.roomsInAConv);
     }
 
     sendError(client: any, step: string, msg: string | any = 'you are doing something wrong', extra = {}) {

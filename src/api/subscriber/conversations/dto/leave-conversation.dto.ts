@@ -8,4 +8,8 @@ export class LeaveConversationDto {
     @IsString()
     @IsOptional()
     socket_session_id: string;
+
+    @IsString()
+    @IsOptional()
+    updated_at: string;
 }

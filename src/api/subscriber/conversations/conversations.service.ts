@@ -245,7 +245,7 @@ export class ConversationsService {
             },
         });
 
-        if (convSes && !convSes.left_at)
+        if (convSes && !convSes.left_at && convSes.joined_at)
             throw new HttpException(`Already joined to this conversation`, HttpStatus.CONFLICT);
 
         await this.prisma.conversation.update({
@@ -288,7 +288,10 @@ export class ConversationsService {
                 },
                 data: {
                     joined_at: new Date(),
+                    updated_at: new Date(),
                     left_at: null,
+                    info: null, // later merge info without transfer_from object key
+                    type: 'normal',
                 },
                 include: {
                     socket_session: {
@@ -329,6 +332,7 @@ export class ConversationsService {
             },
             data: {
                 left_at: new Date(),
+                updated_at: new Date(),
             },
         });
 
