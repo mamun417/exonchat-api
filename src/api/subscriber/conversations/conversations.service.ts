@@ -805,7 +805,7 @@ export class ConversationsService {
                 users_only: false,
                 created_at: { lt: new Date(conv.created_at) },
                 // closed_by_id: null, // uncomment if needed
-                messages: { some: {} },
+                messages: { some: { message_type: 'message' } },
                 conversation_sessions: {
                     some: {
                         socket_session: {
