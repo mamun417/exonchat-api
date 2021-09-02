@@ -1410,7 +1410,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     }
 
                     // for now we are checking agents were joined
-                    if (convRes.data.conversation_sessions.length > 1) {
+                    if (convRes.data.conversation_sessions.length > 1 && !convRes.data.users_only) {
                         const lastAgentMsg = await this.prisma.message.findFirst({
                             where: {
                                 message_type: { not: 'log' },
