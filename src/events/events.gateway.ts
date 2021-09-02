@@ -1173,7 +1173,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         routing_policy: convRes.data.routing_policy || 'manual', // check from other_info also
                         sub_id: convRes.data.subscriber_id,
                         notify_to: convRes.data.other_info?.notify_to || null,
-                        chat_department: convRes.data.chat_department.tag,
+                        chat_department: convRes.data.chat_department?.tag,
                         created_at: conv_data.created_at,
                         users_only: conv_data.users_only,
                         chat_type: conv_data.chat_type,
@@ -1385,7 +1385,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
                     this.roomsInAConv[convId].routing_policy = convRes.data.routing_policy || 'manual';
                     this.roomsInAConv[convId].sub_id = convRes.data.subscriber_id;
-                    this.roomsInAConv[convId].chat_department = convRes.data.chat_department.tag;
+                    this.roomsInAConv[convId].chat_department = convRes.data.chat_department?.tag;
 
                     if (convRes.data.other_info) {
                         this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
@@ -1520,7 +1520,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[convId].ai_is_replying = conv.ai_is_replying;
                 this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual'; // or check conv.other_info.routing_policy
                 this.roomsInAConv[convId].sub_id = conv.subscriber_id;
-                this.roomsInAConv[convId].chat_department = conv.chat_department.tag;
+                this.roomsInAConv[convId].chat_department = conv.chat_department?.tag;
 
                 if (conv.other_info) {
                     this.roomsInAConv[convId].notify_to = conv.other_info?.notify_to || null;
