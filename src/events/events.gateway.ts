@@ -1207,7 +1207,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     }
 
                     // for now we are checking agents were joined
-                    if (convRes.data.conversation_sessions.length > 1) {
+                    if (convRes.data.conversation_sessions.length > 1 && !convRes.data.users_only) {
                         const lastAgentMsg = await this.prisma.message.findFirst({
                             where: {
                                 message_type: { not: 'log' },
@@ -1592,7 +1592,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         const convObj = this.roomsInAConv[convId];
 
         // property chat_inactive_log_handled will only insert if join. & if not log handled store it
-        if (convObj.hasOwnProperty('chat_inactive_log_handled') && !convObj.chat_inactive_log_handled) {
+        if (
+            convObj.hasOwnProperty('chat_inactive_log_handled') &&
+            !convObj.chat_inactive_log_handled &&
+            !convObj.users_only
+        ) {
             if (new Date().getTime() > convObj.last_msg_time_client + 10 * 60 * 1000) {
                 const createdLog = await this.prisma.message.create({
                     data: {
