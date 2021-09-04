@@ -1,7 +1,7 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 export class JoinConversationDto {
-    @IsString()
+    @IsBoolean()
     @IsOptional()
     from_chat_transfer_request: boolean;
 }
