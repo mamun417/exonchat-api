@@ -591,7 +591,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        if (data.hasOwnProperty('chat_transfer_request_from') && data.chat_transfer_request_from) {
+        const fromChatTransferRequest = !!(
+            data.hasOwnProperty('chat_transfer_request_from') && data.chat_transfer_request_from
+        );
+
+        // name is meant to from_chat_transfer_request
+        if (fromChatTransferRequest) {
             // clone before remove so that we have all rooms to inform
             const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
 
@@ -666,7 +671,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             const convSesRes: any = await this.httpService
                 .post(
                     `http://localhost:3000/conversations/${data.conv_id}`,
-                    {},
+                    { from_chat_transfer_request: fromChatTransferRequest },
                     { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
                 )
                 .toPromise();
@@ -713,12 +718,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[data.conv_id].notify_to = '';
             }
 
+            // from_chat_transfer_request check in frontend for now. later it will refactored
+            // if this key found update this conversations conversation_session type to normal
+            // so that for now extra query can be saved
             this.sendToAllUsers(
                 data,
                 false,
                 'ec_is_joined_from_conversation',
                 {
-                    data: { conv_ses_data },
+                    data: { conv_ses_data, from_chat_transfer_request: fromChatTransferRequest },
                     status: 'success',
                 },
                 true,

@@ -7,6 +7,7 @@ import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
 import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
+import { JoinConversationDto } from './dto/join-conversation.dto';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -139,8 +140,8 @@ export class ConversationsController {
 
     @UseGuards(JwtAuthGuard)
     @Post(':id')
-    async join(@Param('id') id: string, @Request() req: any) {
-        return await this.conversationsService.join(id, req);
+    async join(@Param('id') id: string, @Request() req: any, @Body() joinConversationDto: JoinConversationDto) {
+        return await this.conversationsService.join(id, req, joinConversationDto);
     }
 
     @UseGuards(JwtAuthGuard)

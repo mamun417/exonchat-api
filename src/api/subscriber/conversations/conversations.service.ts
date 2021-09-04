@@ -15,6 +15,7 @@ import { CloseConversationDto } from './dto/close-conversation.dto';
 
 import * as _l from 'lodash';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
+import { JoinConversationDto } from './dto/join-conversation.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -232,7 +233,7 @@ export class ConversationsService {
         return conversation;
     }
 
-    async join(id: string, req: any) {
+    async join(id: string, req: any, joinConversationDto: JoinConversationDto) {
         const subscriberId = req.user.data.subscriber_id;
         const socketSessionId = req.user.data.socket_session.id;
 
@@ -299,6 +300,20 @@ export class ConversationsService {
                             user: { include: { user_meta: true } },
                         },
                     },
+                },
+            });
+        }
+
+        if (joinConversationDto.from_chat_transfer_request && joinConversationDto.from_chat_transfer_request === true) {
+            // update all other chat request to normal after the join if this join was from chat transfer request
+            await this.prisma.conversation_session.updateMany({
+                where: {
+                    conversation_id: conversation.id,
+                    type: 'chat_transfer',
+                    subscriber_id: subscriberId,
+                },
+                data: {
+                    type: 'normal',
                 },
             });
         }
