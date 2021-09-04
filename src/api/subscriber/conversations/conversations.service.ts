@@ -829,6 +829,7 @@ export class ConversationsService {
                         },
                     },
                 },
+
             },
             include: {
                 messages: {
@@ -839,6 +840,7 @@ export class ConversationsService {
                     },
                 },
             },
+            orderBy: {created_at: 'asc'}
         });
     }
 
