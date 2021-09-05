@@ -1081,6 +1081,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 )
                 .toPromise();
 
+            this.roomsInAConv[data.conv_id].last_msg_time_agent = new Date(msgRes.data.created_at).getTime();
+
+            // update chat_inactive_log_handled if only this property has. cz inactivity check happens only after join
+            // so if joined then update to false so that new log can be inserted
+            if (
+                !this.roomsInAConv[data.conv_id].users_only &&
+                this.roomsInAConv[data.conv_id].hasOwnProperty('chat_inactive_log_handled')
+            ) {
+                this.roomsInAConv[data.conv_id].chat_inactive_log_handled = false;
+            }
+
             createdMsg = msgRes.data;
         } catch (e) {
             this.server.to(client.id).emit('ec_error', {
@@ -1251,7 +1262,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                         convObj.chat_inactive_log_handled =
                             chatInactiveLog &&
-                            new Date(chatInactiveLog.created_at).getTime() > convObj.last_msg_time_client;
+                            (new Date(chatInactiveLog.created_at).getTime() > convObj.last_msg_time_client ||
+                                (convObj.last_msg_time_agent !== null &&
+                                    new Date(chatInactiveLog.created_at) > convObj.last_msg_time_agent));
                     }
 
                     convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
@@ -1452,9 +1465,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                             orderBy: { created_at: 'desc' },
                         });
 
+                        const lastMsgTime =
+                            convObj.last_msg_time_agent !== null &&
+                            convObj.last_msg_time_agent > convObj.last_msg_time_client
+                                ? convObj.last_msg_time_agent
+                                : convObj.last_msg_time_client;
+
                         convObj.chat_inactive_log_handled =
-                            chatInactiveLog &&
-                            new Date(chatInactiveLog.created_at).getTime() > convObj.last_msg_time_client;
+                            chatInactiveLog && new Date(chatInactiveLog.created_at).getTime() > lastMsgTime;
                     }
 
                     convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
@@ -1578,15 +1596,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     );
 
                     // store join time if client msg was before join. so that inactivity count starts from join
-                    if (new Date(firstJoin.created_at).getTime() > convObj.last_msg_time_client) {
+                    if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
                         convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
                     }
 
                     // assign key only when if any joins happen.
-                    // true if has log & log is newer then client msg &
+                    // true if has log & log is newer then client msg || agent msg
+                    const lastMsgTime =
+                        convObj.last_msg_time_agent !== null &&
+                        convObj.last_msg_time_agent > convObj.last_msg_time_client
+                            ? convObj.last_msg_time_agent
+                            : convObj.last_msg_time_client;
+
                     convObj.chat_inactive_log_handled =
-                        !!conv.messages.length &&
-                        new Date(conv.messages[0].created_at).getTime() > convObj.last_msg_time_client;
+                        !!conv.messages.length && // conv.messages can only contain chat inactive log msg
+                        new Date(conv.messages[0].created_at).getTime() > lastMsgTime;
                 }
 
                 convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
@@ -1598,6 +1622,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     async convTimingActionsInterval(convId: any) {
         const convObj = this.roomsInAConv[convId];
+        const intervalTime = 1 * 60 * 1000;
 
         // property chat_inactive_log_handled will only insert if join. & if not log handled store it
         if (
@@ -1605,7 +1630,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             !convObj.chat_inactive_log_handled &&
             !convObj.users_only
         ) {
-            if (new Date().getTime() > convObj.last_msg_time_client + 10 * 60 * 1000) {
+            const lastMsgTime =
+                convObj.last_msg_time_agent !== null && convObj.last_msg_time_agent > convObj.last_msg_time_client
+                    ? convObj.last_msg_time_agent
+                    : convObj.last_msg_time_client;
+
+            if (new Date().getTime() > lastMsgTime + intervalTime) {
                 const createdLog = await this.prisma.message.create({
                     data: {
                         msg: 'chat_inactive',
