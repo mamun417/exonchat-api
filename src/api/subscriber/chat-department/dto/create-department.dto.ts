@@ -5,6 +5,10 @@ export class CreateDepartmentDto {
     @IsNotEmpty()
     tag: string;
 
+    @IsString()
+    @IsNotEmpty()
+    display_name: string;
+
     @IsOptional()
     @IsArray()
     @ArrayNotEmpty()

@@ -44,6 +44,7 @@ export class ChatDepartmentService {
         return this.prisma.chat_department.create({
             data: {
                 tag: createDepartmentDto.tag,
+                display_name: createDepartmentDto.display_name,
                 subscriber: { connect: { id: subscriberId } },
                 ...userConnector,
             },
@@ -74,6 +75,8 @@ export class ChatDepartmentService {
                 id: id,
             },
             data: {
+                tag: updateDepartmentDto.tag,
+                display_name: updateDepartmentDto.display_name,
                 ...usersRelationUpdater,
             },
             include: { users: true },
