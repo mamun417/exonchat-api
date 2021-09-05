@@ -59,7 +59,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     // but only data.ses_user.subscriber_id. it's only for user end. if you don't get the data that means
     // your ses is not for user
 
-    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [], online_status: 'online/offline/invisible'}}
+    public userClientsInARoom: any = {}; // users/agents {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_departments: [...ids], online_status: 'online/offline/invisible'}}
     private normalClientsInARoom: any = {}; // normal clients from site web-chat {ses_id: {socket_client_ids: [], sub_id: subscriber_id, chat_status: active/inactive}}
 
     convObjSkeleton = {
@@ -69,7 +69,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             sub_id: 'subscriber_id',
             users_only: 'bool',
             ai_is_replying: 'bool',
-            chat_department: '',
+            chat_department: '', // chat_department id
             routing_policy: 'manual/...',
             notify_again: 'bool',
             notify_to: 'ses_id',
@@ -456,7 +456,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         const matchedDepartmentalAgents = this.usersRoom(socketRes).filter((roomId: any) => {
-            return this.userClientsInARoom[roomId].chat_departments?.includes(socketRes.department_tag);
+            return this.userClientsInARoom[roomId].chat_departments?.includes(socketRes.department_id);
         });
 
         if (!matchedDepartmentalAgents.length) {
@@ -503,7 +503,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 room_ids: [roomName],
                 client_room_id: roomName,
                 ai_is_replying: conv_data.ai_is_replying,
-                chat_department: conv_data.chat_department.tag,
+                chat_department: conv_data.chat_department.id,
                 routing_policy: conv_data.routing_policy,
                 sub_id: conv_data.subscriber_id,
                 created_at: conv_data.created_at,
@@ -1192,7 +1192,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         routing_policy: convRes.data.routing_policy || 'manual', // check from other_info also
                         sub_id: convRes.data.subscriber_id,
                         notify_to: convRes.data.other_info?.notify_to || null,
-                        chat_department: convRes.data.chat_department?.tag,
+                        chat_department: convRes.data.chat_department?.id,
                         created_at: conv_data.created_at,
                         users_only: conv_data.users_only,
                         chat_type: conv_data.chat_type,
@@ -1406,7 +1406,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
                     this.roomsInAConv[convId].routing_policy = convRes.data.routing_policy || 'manual';
                     this.roomsInAConv[convId].sub_id = convRes.data.subscriber_id;
-                    this.roomsInAConv[convId].chat_department = convRes.data.chat_department?.tag;
+                    this.roomsInAConv[convId].chat_department = convRes.data.chat_department?.id;
 
                     if (convRes.data.other_info) {
                         this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
@@ -1546,7 +1546,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.roomsInAConv[convId].ai_is_replying = conv.ai_is_replying;
                 this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual'; // or check conv.other_info.routing_policy
                 this.roomsInAConv[convId].sub_id = conv.subscriber_id;
-                this.roomsInAConv[convId].chat_department = conv.chat_department?.tag;
+                this.roomsInAConv[convId].chat_department = conv.chat_department?.id;
 
                 if (conv.other_info) {
                     this.roomsInAConv[convId].notify_to = conv.other_info?.notify_to || null;
@@ -1716,7 +1716,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             if (queryParams.client_type === 'user') {
                 if (chat_departments && chat_departments.length) {
-                    this.userClientsInARoom[roomName].chat_departments = _.map(chat_departments, 'tag');
+                    this.userClientsInARoom[roomName].chat_departments = _.map(chat_departments, 'id');
                     this.userClientsInARoom[roomName].online_status =
                         queryParams.online_status || decodedToken.online_status;
                 }
