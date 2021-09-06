@@ -8,6 +8,7 @@ export class AuthService {
     constructor(private jwtService: JwtService, private prisma: PrismaService) {}
 
     async validateUserForLogin(login_info: any, pass: string): Promise<any> {
+        // cookie size 4 kb, so include what we need
         const user: any = await this.prisma.user.findFirst({
             where: {
                 email: login_info.email,
@@ -19,8 +20,9 @@ export class AuthService {
             },
             include: {
                 user_meta: {
-                    include: {
-                        attachment: true,
+                    select: {
+                        display_name: true,
+                        full_name: true,
                     },
                 },
                 user_secret: true,
@@ -52,8 +54,21 @@ export class AuthService {
                         },
                     },
                 },
-                socket_session: true,
-                chat_departments: true,
+                socket_session: {
+                    select: {
+                        id: true,
+                        init_email: true,
+                        init_ip: true,
+                        subscriber_id: true,
+                        user_id: true,
+                    },
+                },
+                chat_departments: {
+                    select: {
+                        id: true,
+                        tag: true,
+                    },
+                },
             },
         });
 
@@ -75,7 +90,7 @@ export class AuthService {
         }
 
         // const bearerToken = this.createToken(user, 60 * 5);
-        const bearerToken = this.createToken(user, 60 * 5 * 60);
+        const bearerToken = this.createToken(user);
 
         const refreshToken = this.signRefreshToken({
             bearerToken: bearerToken,
@@ -90,7 +105,7 @@ export class AuthService {
         });
     }
 
-    createToken(data: any, expires = 60 * 5) {
+    createToken(data: any, expires = 60 * 60 * 24) {
         return this.jwtService.sign(
             {
                 data,

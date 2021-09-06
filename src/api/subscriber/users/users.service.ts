@@ -539,7 +539,12 @@ export class UsersService {
                 },
             },
             include: {
-                chat_departments: true,
+                chat_departments: {
+                    select: {
+                        id: true,
+                        tag: true,
+                    },
+                },
             },
         });
     }

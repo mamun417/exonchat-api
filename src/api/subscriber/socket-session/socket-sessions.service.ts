@@ -34,6 +34,7 @@ export class SocketSessionsService {
 
     async createSocketSession(createSocketSessionDto: CreateSocketSessionDto, req: any, clientIp: any) {
         const subscriber = await this.subscriberService.findOneByApiKeyWithException(createSocketSessionDto.api_key);
+        const expireTime = 60 * 60 * 24 * 30 * 3; // 15 day
 
         let userConnector: any = {};
 
@@ -47,6 +48,13 @@ export class SocketSessionsService {
                 where: {
                     user_id: userConnector.id,
                 },
+                select: {
+                    id: true,
+                    init_email: true,
+                    init_ip: true,
+                    subscriber_id: true,
+                    user_id: true,
+                },
             });
 
             if (socket_session) {
@@ -57,7 +65,7 @@ export class SocketSessionsService {
                 };
 
                 return {
-                    bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 15),
+                    bearerToken: this.authService.createToken(dataForToken, expireTime),
                     data: dataForToken,
                     type: 'socket',
                 };
@@ -85,6 +93,13 @@ export class SocketSessionsService {
                 },
                 ...userConnector,
             },
+            select: {
+                id: true,
+                init_email: true,
+                init_ip: true,
+                subscriber_id: true,
+                user_id: true,
+            },
         });
 
         const dataForToken = {
@@ -94,7 +109,7 @@ export class SocketSessionsService {
         };
 
         return {
-            bearerToken: this.authService.createToken(dataForToken, 60 * 60 * 24 * 15),
+            bearerToken: this.authService.createToken(dataForToken, expireTime),
             data: dataForToken,
             type: 'socket',
         };
