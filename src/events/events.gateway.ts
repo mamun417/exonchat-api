@@ -1622,7 +1622,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     async convTimingActionsInterval(convId: any) {
         const convObj = this.roomsInAConv[convId];
-        const intervalTime = 1 * 60 * 1000;
+        const intervalTime = 10 * 60 * 1000;
 
         // property chat_inactive_log_handled will only insert if join. & if not log handled store it
         if (
