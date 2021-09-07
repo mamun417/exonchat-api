@@ -48,13 +48,6 @@ export class SocketSessionsService {
                 where: {
                     user_id: userConnector.id,
                 },
-                select: {
-                    id: true,
-                    init_email: true,
-                    init_ip: true,
-                    subscriber_id: true,
-                    user_id: true,
-                },
             });
 
             if (socket_session) {
@@ -92,13 +85,6 @@ export class SocketSessionsService {
                     },
                 },
                 ...userConnector,
-            },
-            select: {
-                id: true,
-                init_email: true,
-                init_ip: true,
-                subscriber_id: true,
-                user_id: true,
             },
         });
 
