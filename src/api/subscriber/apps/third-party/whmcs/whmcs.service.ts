@@ -185,6 +185,12 @@ export class WHMCSService {
         return this.getResponse(req.user.data.subscriber_id, queryObj);
     }
 
+    login(req: any, body: any) {
+        const queryObj: any = { action: 'ValidateLogin', email: body.email, password: body.password };
+
+        return this.getResponse(req.user.data.subscriber_id, queryObj);
+    }
+
     async getResponse(subId: any, dynamicFields: any) {
         const whmcsApi = await this.prisma.setting.findMany({
             where: {
@@ -229,7 +235,7 @@ export class WHMCSService {
         } catch (e) {
             console.log(e.response);
 
-            throw new HttpException('WHMCS Bad Request', HttpStatus.BAD_REQUEST);
+            throw new HttpException(e.response?.data || 'WHMCS Bad Request', HttpStatus.BAD_REQUEST);
         }
     }
 }
