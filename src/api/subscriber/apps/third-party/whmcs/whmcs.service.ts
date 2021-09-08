@@ -7,6 +7,7 @@ import * as moment from 'moment';
 
 import { EventsGateway } from 'src/events/events.gateway';
 import { WhmcsOpenTicketDto } from './dto/whmcs-open-ticket.dto';
+import { WhmcsLoginDto } from './dto/whmcs-login.dto';
 
 @Injectable()
 export class WHMCSService {
@@ -185,10 +186,16 @@ export class WHMCSService {
         return this.getResponse(req.user.data.subscriber_id, queryObj);
     }
 
-    login(req: any, body: any) {
-        const queryObj: any = { action: 'ValidateLogin', email: body.email, password: body.password };
+    async login(req: any, whmcsLoginDto: WhmcsLoginDto) {
+        const queryObj: any = {
+            action: 'ValidateLogin',
+            email: whmcsLoginDto.email,
+            password2: whmcsLoginDto.password,
+        };
 
-        return this.getResponse(req.user.data.subscriber_id, queryObj);
+        const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
     }
 
     async getResponse(subId: any, dynamicFields: any) {
@@ -233,8 +240,6 @@ export class WHMCSService {
 
             return res.data;
         } catch (e) {
-            console.log(e.response);
-
             throw new HttpException(e.response?.data || 'WHMCS Bad Request', HttpStatus.BAD_REQUEST);
         }
     }
