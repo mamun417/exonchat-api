@@ -25,6 +25,7 @@
         "db:drop": "npx prisma db push --preview-feature --force-reset --accept-data-loss",
         "db:seed": "npx prisma db seed --preview-feature",
         "db:drop:seed": "npm run db:drop; npm run db:seed",
+        "prisma:format": "npx prisma format",
         "studio": "npx prisma studio -b none"
     },
     "dependencies": {
