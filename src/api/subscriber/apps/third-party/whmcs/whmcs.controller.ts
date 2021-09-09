@@ -3,6 +3,7 @@ import { WHMCSService } from './whmcs.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PrismaService } from 'src/prisma.service';
 import { WhmcsOpenTicketDto } from './dto/whmcs-open-ticket.dto';
+import { WhmcsLoginDto } from './dto/whmcs-login.dto';
 
 @Controller('apps/whmcs')
 export class WHMCSController {
@@ -41,5 +42,17 @@ export class WHMCSController {
     @Post('client-details')
     getClientDetails(@Request() req: any, @Body() body: any) {
         return this.WHMCSService.getClientDetails(req, body);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('login')
+    login(@Request() req: any, @Body() whmcsLoginDto: WhmcsLoginDto) {
+        return this.WHMCSService.login(req, whmcsLoginDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('client-products')
+    getClientsProducts(@Request() req: any, @Query() query: any) {
+        return this.WHMCSService.getClientServices(req, query);
     }
 }

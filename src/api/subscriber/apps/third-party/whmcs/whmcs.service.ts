@@ -7,6 +7,7 @@ import * as moment from 'moment';
 
 import { EventsGateway } from 'src/events/events.gateway';
 import { WhmcsOpenTicketDto } from './dto/whmcs-open-ticket.dto';
+import { WhmcsLoginDto } from './dto/whmcs-login.dto';
 
 @Injectable()
 export class WHMCSService {
@@ -185,6 +186,43 @@ export class WHMCSService {
         return this.getResponse(req.user.data.subscriber_id, queryObj);
     }
 
+    async login(req: any, whmcsLoginDto: WhmcsLoginDto) {
+        const queryObj: any = {
+            action: 'ValidateLogin',
+            email: whmcsLoginDto.email,
+            password2: whmcsLoginDto.password,
+        };
+
+        const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        if (loginRes.result === 'error') {
+            throw new HttpException(loginRes.message, HttpStatus.BAD_REQUEST);
+        }
+
+        return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
+    }
+
+    async getClientServices(req: any, query: any) {
+        const queryObj: any = {
+            action: 'GetClientsProducts',
+            clientid: query.clientid,
+            stats: true,
+        };
+
+        const response: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        const services = response.products ? response.products?.product : [];
+
+        if (!services.length) {
+            return services;
+        }
+
+        return services.filter(
+            (service: any) =>
+                service.status === 'Active' || service.status === 'Pending' || service.status === 'Suspended',
+        );
+    }
+
     async getResponse(subId: any, dynamicFields: any) {
         const whmcsApi = await this.prisma.setting.findMany({
             where: {
@@ -227,9 +265,7 @@ export class WHMCSService {
 
             return res.data;
         } catch (e) {
-            console.log(e.response);
-
-            throw new HttpException('WHMCS Bad Request', HttpStatus.BAD_REQUEST);
+            throw new HttpException(e.response?.data || 'WHMCS Bad Request', HttpStatus.BAD_REQUEST);
         }
     }
 }
