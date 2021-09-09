@@ -700,12 +700,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             // not property chat_inactive_log_handled check means its first time also
             // room_ids does not mean actual joins. its for current status. if all left then room_ids is without client
             // so server restarts chat_inactive_log_handled checks. if not then dont worry
-            if (
-                this.roomsInAConv[data.conv_id].room_ids.length === 2 &&
-                !this.roomsInAConv[data.conv_id].hasOwnProperty('chat_inactive_log_handled')
-            ) {
-                this.roomsInAConv[data.conv_id].chat_inactive_log_handled = false;
-                this.roomsInAConv[data.conv_id].last_msg_time_client = new Date(conv_ses_data.created_at).getTime();
+            if (this.roomsInAConv[data.conv_id].room_ids.length === 2) {
+                this.roomsInAConv[data.conv_id].last_msg_time_agent = new Date(conv_ses_data.created_at).getTime();
+
+                if (!this.roomsInAConv[data.conv_id].hasOwnProperty('chat_inactive_log_handled')) {
+                    this.roomsInAConv[data.conv_id].chat_inactive_log_handled = false;
+                }
             }
 
             // don't move this condition upward. we need after push
@@ -1247,8 +1247,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                             [(convSes) => moment(convSes.created_at).format('x')],
                         );
 
-                        if (new Date(firstJoin.created_at).getTime() > convObj.last_msg_time_client) {
-                            convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
+                        if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
+                            convObj.last_msg_time_client = new Date(firstJoin[0].created_at).getTime();
                         }
 
                         const chatInactiveLog = await this.prisma.message.findFirst({
@@ -1452,8 +1452,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                             [(convSes) => moment(convSes.created_at).format('x')],
                         );
 
-                        if (new Date(firstJoin.created_at).getTime() > convObj.last_msg_time_client) {
-                            convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
+                        if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
+                            convObj.last_msg_time_client = new Date(firstJoin[0].created_at).getTime();
                         }
 
                         const chatInactiveLog = await this.prisma.message.findFirst({
@@ -1597,7 +1597,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
                     // store join time if client msg was before join. so that inactivity count starts from join
                     if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
-                        convObj.last_msg_time_client = new Date(firstJoin.created_at).getTime();
+                        convObj.last_msg_time_client = new Date(firstJoin[0].created_at).getTime();
                     }
 
                     // assign key only when if any joins happen.
@@ -1623,6 +1623,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     async convTimingActionsInterval(convId: any) {
         const convObj = this.roomsInAConv[convId];
         const intervalTime = 10 * 60 * 1000;
+        const convCloseIntervalTime = 60 * 60 * 1000;
+
+        const lastMsgTime =
+            convObj.last_msg_time_agent !== null && convObj.last_msg_time_agent > convObj.last_msg_time_client
+                ? convObj.last_msg_time_agent
+                : convObj.last_msg_time_client;
 
         // property chat_inactive_log_handled will only insert if join. & if not log handled store it
         if (
@@ -1630,11 +1636,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             !convObj.chat_inactive_log_handled &&
             !convObj.users_only
         ) {
-            const lastMsgTime =
-                convObj.last_msg_time_agent !== null && convObj.last_msg_time_agent > convObj.last_msg_time_client
-                    ? convObj.last_msg_time_agent
-                    : convObj.last_msg_time_client;
-
             if (new Date().getTime() > lastMsgTime + intervalTime) {
                 const createdLog = await this.prisma.message.create({
                     data: {
@@ -1668,6 +1669,84 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 convObj.chat_inactive_log_handled = true;
 
                 // console.log('chat inactive stored');
+            }
+        }
+
+        // close conversation interval action. do this last. in join chat_inactive_log_handled check is making it safe
+        if (
+            new Date().getTime() > lastMsgTime + convCloseIntervalTime &&
+            convObj.last_msg_time_agent !== null // that means agents were joined
+        ) {
+            console.log('conv close candidate', convId);
+
+            const updateCount = await this.prisma.conversation.updateMany({
+                where: {
+                    id: convId,
+                    users_only: false,
+                    closed_at: null,
+                    subscriber_id: convObj.sub_id,
+                },
+                data: {
+                    closed_at: new Date(),
+                    closed_reason: 'Chat is closed due to inactivity',
+                },
+            });
+
+            if (updateCount.count === 1) {
+                const conv_data: any = await this.prisma.conversation.findUnique({
+                    where: { id: convId },
+                    include: {
+                        closed_by: {
+                            include: {
+                                user: { include: { user_meta: true } },
+                            },
+                        },
+                        conversation_sessions: {
+                            include: {
+                                socket_session: {
+                                    include: {
+                                        user: { include: { user_meta: true } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                });
+
+                conv_data.log_message = await this.prisma.message.create({
+                    data: {
+                        msg: 'closed',
+                        message_type: 'log',
+                        conversation: { connect: { id: convId } },
+                        subscriber: { connect: { id: convObj.sub_id } },
+                    },
+                });
+
+                // before clone remove interval check
+                clearInterval(this.roomsInAConv[convId].timing_actions_interval);
+
+                // clone before remove so that we can inform client. it can be simplified
+                const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
+
+                delete this.roomsInAConv[convId];
+
+                this.listenersHelperService.sendToSocketRooms(
+                    this.server,
+                    this.listenersHelperService.usersRoomBySubscriberId(
+                        this.userClientsInARoom,
+                        roomsInAConvCopy[convId].sub_id,
+                    ),
+                    'ec_is_closed_from_conversation',
+                    {
+                        data: { conv_data, conv_id: convId },
+                        status: 'success',
+                    },
+                );
+
+                this.sendToSocketRoom(convObj.client_room_id, 'ec_is_closed_from_conversation', {
+                    data: { conv_data, conv_id: convId },
+                    status: 'success',
+                });
             }
         }
     }
