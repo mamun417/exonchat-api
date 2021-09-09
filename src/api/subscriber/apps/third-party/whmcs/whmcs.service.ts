@@ -195,7 +195,32 @@ export class WHMCSService {
 
         const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
 
+        if (loginRes.result === 'error') {
+            throw new HttpException(loginRes.message, HttpStatus.BAD_REQUEST);
+        }
+
         return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
+    }
+
+    async getClientServices(req: any, query: any) {
+        const queryObj: any = {
+            action: 'GetClientsProducts',
+            clientid: query.clientid,
+            stats: true,
+        };
+
+        const response: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        const services = response.products ? response.products?.product : [];
+
+        if (!services.length) {
+            return services;
+        }
+
+        return services.filter(
+            (service: any) =>
+                service.status === 'Active' || service.status === 'Pending' || service.status === 'Suspended',
+        );
     }
 
     async getResponse(subId: any, dynamicFields: any) {

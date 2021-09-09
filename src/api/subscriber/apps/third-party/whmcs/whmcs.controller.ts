@@ -46,7 +46,13 @@ export class WHMCSController {
 
     @UseGuards(JwtAuthGuard)
     @Post('login')
-    login(@Request() req: any, @Body() @Body() whmcsLoginDto: WhmcsLoginDto) {
+    login(@Request() req: any, @Body() whmcsLoginDto: WhmcsLoginDto) {
         return this.WHMCSService.login(req, whmcsLoginDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('client-products')
+    getClientsProducts(@Request() req: any, @Query() query: any) {
+        return this.WHMCSService.getClientServices(req, query);
     }
 }
