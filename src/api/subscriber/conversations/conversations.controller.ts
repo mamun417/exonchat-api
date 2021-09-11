@@ -8,6 +8,7 @@ import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
+import { WsJwtGuard } from '../../../auth/guards/ws-auth.guard';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -153,4 +154,10 @@ export class ConversationsController {
     ) {
         return await this.conversationsService.updateLastMsgSeenTime(id, req, updateLastMsgSeenTimeDto);
     }
+
+    // @UseGuards(WsJwtGuard)
+    // @Get('send-transcript/:id')
+    // async sendTranscript(@Param('id') id: string, @Request() req: any) {
+    //     return await this.conversationsService.sendTranscript(id, req);
+    // }
 }

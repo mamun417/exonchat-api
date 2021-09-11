@@ -829,7 +829,6 @@ export class ConversationsService {
                         },
                     },
                 },
-
             },
             include: {
                 messages: {
@@ -840,7 +839,7 @@ export class ConversationsService {
                     },
                 },
             },
-            orderBy: {created_at: 'asc'}
+            orderBy: { created_at: 'asc' },
         });
     }
 
@@ -1219,6 +1218,24 @@ export class ConversationsService {
             },
         });
     }
+
+    // async sendTranscript(id: string, req: any) {
+    //     return await this.prisma.conversation.findUnique({
+    //         where: { id },
+    //         include: {
+    //             messages: {
+    //                 include: { attachments: true },
+    //                 orderBy: { created_at: 'desc' },
+    //             },
+    //             conversation_sessions: {
+    //                 include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+    //             },
+    //             chat_department: true,
+    //             closed_by: { include: { user: { include: { user_meta: true } } } },
+    //             conversation_rating: true,
+    //         },
+    //     });
+    // }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {
     //     return `This action updates a #${id} conversation`;
