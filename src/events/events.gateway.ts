@@ -1164,7 +1164,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     // it's only for support if system restart happens
-    // OR all connected conv relation are cleaned when user|client closed from this conv
     async clientConvFromSession(data: any, client: any) {
         try {
             const convRes: any = await this.httpService
@@ -1415,7 +1414,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                     const convObj = this.roomsInAConv[convId];
 
                     convObj.last_msg_time_client = 0;
-                    convObj.last_msg_time_agent = null;
+                    convObj.last_msg_time_agent = null; // important for interval
 
                     const lastClientMsg = await this.prisma.message.findFirst({
                         where: {
@@ -1674,6 +1673,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         // close conversation interval action. do this last. in join chat_inactive_log_handled check is making it safe
         if (
+            !convObj.users_only &&
             new Date().getTime() > lastMsgTime + convCloseIntervalTime &&
             convObj.last_msg_time_agent !== null // that means agents were joined
         ) {

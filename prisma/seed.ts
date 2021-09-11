@@ -83,13 +83,17 @@ async function main() {
     }
 
     const subscriptions = await Promise.all([
-        await prisma.subscription.create({
-            data: {
+        await prisma.subscription.upsert({
+            where: {
+                slug: 'free',
+            },
+            create: {
                 slug: 'free',
                 display_name: 'Free',
                 one_day_price: 0,
                 active: true,
             },
+            update: {}
         }),
     ]);
 
@@ -367,6 +371,15 @@ async function main() {
         {
             slug: 'apps_whmcs_identifier_key',
             display_name: 'Identifier Key',
+            category: 'app',
+            sub_category: 'whmcs',
+            default_value: '',
+            user_type: 'subscriber',
+        },
+
+        {
+            slug: 'apps_whmcs_api_url',
+            display_name: 'API URL',
             category: 'app',
             sub_category: 'whmcs',
             default_value: '',

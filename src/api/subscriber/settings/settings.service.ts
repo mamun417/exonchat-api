@@ -118,7 +118,7 @@ export class SettingsService {
 
         for (const setting of updateAppSettingsDto.app_settings) {
             if (!_l.isPlainObject(setting) || !setting.name || !setting.value)
-                throw new HttpException(`UI Settings update structure not good`, HttpStatus.BAD_REQUEST);
+                throw new HttpException(`Please fill up the form`, HttpStatus.BAD_REQUEST);
 
             const temp: any = await this.findOneWithException(setting.name, req);
 

@@ -242,11 +242,13 @@ export class WHMCSService {
             throw new HttpException('WHMCS API is not active', HttpStatus.FORBIDDEN);
         }
 
-        ['apps_whmcs_identifier_key', 'apps_whmcs_secret_key', 'apps_whmcs_enable'].forEach((tag: any) => {
-            if (!_l.find(whmcsApi, ['slug', tag]) || !_l.find(whmcsApi, ['slug', tag]).user_settings_value.length) {
-                throw new HttpException('WHMCS API values are empty', HttpStatus.FORBIDDEN);
-            }
-        });
+        ['apps_whmcs_api_url', 'apps_whmcs_identifier_key', 'apps_whmcs_secret_key', 'apps_whmcs_enable'].forEach(
+            (tag: any) => {
+                if (!_l.find(whmcsApi, ['slug', tag]) || !_l.find(whmcsApi, ['slug', tag]).user_settings_value.length) {
+                    throw new HttpException('WHMCS API values are empty', HttpStatus.FORBIDDEN);
+                }
+            },
+        );
 
         const params = new URLSearchParams({
             // username: '3tuMBl8jtZ6xYgiZDUqfiHpFuroPu0Ch',
@@ -258,10 +260,10 @@ export class WHMCSService {
             ...dynamicFields,
         });
 
+        const apiUrl = _l.find(whmcsApi, ['slug', 'apps_whmcs_api_url']).user_settings_value[0].value;
+
         try {
-            const res: any = await this.httpService
-                .post('https://dev.exonhost.com/includes/api.php', params.toString())
-                .toPromise();
+            const res: any = await this.httpService.post(apiUrl, params.toString()).toPromise();
 
             return res.data;
         } catch (e) {
