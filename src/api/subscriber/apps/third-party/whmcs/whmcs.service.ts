@@ -181,7 +181,7 @@ export class WHMCSService {
     }
 
     getClientDetails(req: any, body: any) {
-        const queryObj: any = { action: 'GetClientsDetails', clientid: body.clientid, email: body.email };
+        const queryObj: any = { action: 'GetClientsDetails', clientid: body.clientid || '', email: body.email };
 
         return this.getResponse(req.user.data.subscriber_id, queryObj);
     }
@@ -203,9 +203,11 @@ export class WHMCSService {
     }
 
     async getClientServices(req: any, query: any) {
+        const clientDetails = await this.getClientDetails(req, { email: query.email });
+
         const queryObj: any = {
             action: 'GetClientsProducts',
-            clientid: query.clientid,
+            clientid: clientDetails.userid,
             stats: true,
         };
 

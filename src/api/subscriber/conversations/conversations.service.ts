@@ -16,6 +16,8 @@ import { CloseConversationDto } from './dto/close-conversation.dto';
 import * as _l from 'lodash';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
+import { MailService } from '../../../mail/mail.service';
+import SendTranscriptMaker from '../../../mail/templates/send-transcript';
 
 @Injectable()
 export class ConversationsService {
@@ -25,6 +27,7 @@ export class ConversationsService {
         private settingsService: SettingsService,
         private socketSessionService: SocketSessionsService,
         private chatDepartmentService: ChatDepartmentService,
+        private mailService: MailService,
     ) {}
 
     async create(req: any, createConversationDto: CreateConversationDto) {
@@ -1219,23 +1222,48 @@ export class ConversationsService {
         });
     }
 
-    // async sendTranscript(id: string, req: any) {
-    //     return await this.prisma.conversation.findUnique({
-    //         where: { id },
-    //         include: {
-    //             messages: {
-    //                 include: { attachments: true },
-    //                 orderBy: { created_at: 'desc' },
-    //             },
-    //             conversation_sessions: {
-    //                 include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
-    //             },
-    //             chat_department: true,
-    //             closed_by: { include: { user: { include: { user_meta: true } } } },
-    //             conversation_rating: true,
-    //         },
-    //     });
-    // }
+    async sendTranscript(conv_id: string, req: any) {
+        if (!conv_id) throw new HttpException(`Invalid conversation`, HttpStatus.BAD_REQUEST);
+
+        const convWithMessages = await this.prisma.conversation.findFirst({
+            where: {
+                id: conv_id,
+                users_only: false,
+                subscriber_id: req.user.data.socket_session.subscriber_id,
+            },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+                conversation_rating: true,
+                messages: {
+                    where: { message_type: 'message' },
+                    include: { attachments: true },
+                    orderBy: { created_at: 'asc' },
+                    take: 100,
+                },
+            },
+        });
+
+        if (!convWithMessages) {
+            throw new HttpException(
+                `Send transcript for this conversation not possible. This conversation not not found`,
+                HttpStatus.CONFLICT,
+            );
+        }
+
+        const mailHtml = SendTranscriptMaker(convWithMessages);
+
+        try {
+            await this.mailService.sendTranscript('mamun@getnada.com', mailHtml);
+
+            return { status: 'success' };
+        } catch (e: any) {
+            console.log(e);
+            throw new HttpException(e.response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {
     //     return `This action updates a #${id} conversation`;

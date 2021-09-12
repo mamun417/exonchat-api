@@ -11,9 +11,11 @@ import { UsersService } from '../users/users.service';
 import { MailModule } from 'src/mail/mail.module';
 import { EventsModule } from 'src/events/events.module';
 import { SettingsService } from '../settings/settings.service';
+import { AuthModule } from '../../../auth/auth.module';
 
 @Module({
-    imports: [SocketSessionsModule, EventsModule, MailModule],
+    imports: [SocketSessionsModule, EventsModule, MailModule, AuthModule],
+
     controllers: [ConversationsController],
     providers: [PrismaService, DataHelper, ConversationsService, ChatDepartmentService, UsersService, SettingsService],
 })

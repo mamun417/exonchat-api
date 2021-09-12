@@ -86,4 +86,15 @@ export class MailService {
                 '    </div>',
         });
     }
+
+    async sendTranscript(emailTo: string, mailHtml: string) {
+        await this.mailerService.sendMail({
+            to: emailTo,
+            from: this.from,
+            subject: 'Send Transcript',
+            html: mailHtml,
+        });
+
+        console.log('send email');
+    }
 }

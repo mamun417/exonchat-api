@@ -155,9 +155,9 @@ export class ConversationsController {
         return await this.conversationsService.updateLastMsgSeenTime(id, req, updateLastMsgSeenTimeDto);
     }
 
-    // @UseGuards(WsJwtGuard)
-    // @Get('send-transcript/:id')
-    // async sendTranscript(@Param('id') id: string, @Request() req: any) {
-    //     return await this.conversationsService.sendTranscript(id, req);
-    // }
+    @UseGuards(JwtAuthGuard)
+    @Get('send-transcript/:conv_id')
+    async sendTranscript(@Param('conv_id') conv_id: string, @Request() req: any) {
+        return await this.conversationsService.sendTranscript(conv_id, req);
+    }
 }
