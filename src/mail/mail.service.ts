@@ -89,7 +89,7 @@ export class MailService {
 
     async sendTranscript(emailTo: string, mailHtml: string) {
         await this.mailerService.sendMail({
-            to: 'mamun@getnada.com',
+            to: emailTo,
             from: this.from,
             subject: 'Send Transcript',
             html: mailHtml,
