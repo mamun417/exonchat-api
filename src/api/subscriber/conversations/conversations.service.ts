@@ -1255,8 +1255,10 @@ export class ConversationsService {
 
         const mailHtml = SendTranscriptMaker(convWithMessages);
 
+        const client = _l.find(convWithMessages.conversation_sessions, (cv: any) => !cv.socket_session.user);
+
         try {
-            await this.mailService.sendTranscript('mamun@getnada.com', mailHtml);
+            await this.mailService.sendTranscript(client.socket_session.init_email, mailHtml);
 
             return { status: 'success' };
         } catch (e: any) {
