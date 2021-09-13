@@ -45,6 +45,8 @@ model subscriber {
   settings              setting[]
   attachments           attachment[]
   offline_chat_requests offline_chat_req[]
+  facebook_integrations facebook_integration[]
+  facebook_pages        facebook_page[]
 }
 
 model subscriber_secret {
@@ -325,6 +327,64 @@ model extra_permission {
   permission_id String
   user          user?       @relation(fields: [user_id], references: [id])
   user_id       String? // if empty for the subscriber
+}
+
+model facebook_integration {
+  id String @id @default(cuid())
+
+  user_id         String // userId after facebook login
+  user_info       Json?
+  additional_info Json?
+
+  active Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
+  subscriber_id String
+
+  facebook_secrets facebook_secret[]
+  facebook_pages   facebook_page[]
+}
+
+model facebook_secret {
+  id String @id @default(cuid())
+
+  long_lived_access_token            String?
+  long_lived_access_token_expired_in Int     @default(0) @db.Integer
+
+  active Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  facebook_integration    facebook_integration? @relation(fields: [facebook_integration_id], references: [id])
+  facebook_integration_id String?
+}
+
+model facebook_page {
+  id String @id @default(cuid())
+
+  page_id         String
+  page_name       String
+  page_info       Json?
+  additional_info Json?
+
+  long_lived_access_token            String?
+  long_lived_access_token_expired_in Int     @default(0) @db.Integer
+
+  active Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  facebook_integration    facebook_integration? @relation(fields: [facebook_integration_id], references: [id])
+  facebook_integration_id String?
+  subscriber              subscriber            @relation(fields: [subscriber_id], references: [id])
+  subscriber_id           String
+
+  chat_departments chat_department[]
 }
 
 model socket_session {
@@ -735,6 +795,7 @@ model chat_department {
   chat_templates        chat_template[]
   conversations         conversation[]
   offline_chat_requests offline_chat_req[]
+  facebook_pages        facebook_page[]
 
   @@unique(fields: [tag, subscriber_id], name: "tag_identifier")
 }
