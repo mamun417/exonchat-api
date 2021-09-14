@@ -87,12 +87,13 @@ export class MailService {
         });
     }
 
-    async sendTranscript(emailTo: string, mailHtml: string) {
+    async sendTranscript(emailTo: string, mailHtml: string, mailAttachments: any) {
         await this.mailerService.sendMail({
             to: emailTo,
             from: this.from,
             subject: 'Send Transcript',
             html: mailHtml,
+            attachments: mailAttachments,
         });
 
         console.log('send email');
