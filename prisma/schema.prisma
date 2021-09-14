@@ -332,7 +332,10 @@ model extra_permission {
 model facebook_integration {
   id String @id @default(cuid())
 
-  user_id         String // userId after facebook login
+  // userId after facebook login. it's not unique cz a page can be assigned to multiple subscribers
+  // i am thinking about restrit the facebook page from assigning to same subscriber
+  // otherwise it will be a problem cz a message will go to both subscriber panel
+  user_id         String
   user_info       Json?
   additional_info Json?
 
@@ -344,17 +347,21 @@ model facebook_integration {
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
   subscriber_id String
 
-  facebook_secrets facebook_secret[]
-  facebook_pages   facebook_page[]
+  facebook_secret facebook_secret?
+
+  facebook_pages facebook_page[]
+
+  @@unique(fields: [user_id, subscriber_id], name: "facebook_integration_identifier")
 }
 
 model facebook_secret {
   id String @id @default(cuid())
 
   long_lived_access_token            String?
-  long_lived_access_token_expired_in Int     @default(0) @db.Integer
+  long_lived_access_token_expires_in Int     @default(0) @db.Integer
 
-  active Boolean @default(true)
+  token_timeout Boolean @default(false) // if invalid token by api call then make active to false also so that we know the reason
+  active        Boolean @default(true)
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -371,10 +378,10 @@ model facebook_page {
   page_info       Json?
   additional_info Json?
 
-  long_lived_access_token            String?
-  long_lived_access_token_expired_in Int     @default(0) @db.Integer
+  long_lived_access_token String?
 
-  active Boolean @default(true)
+  token_timeout Boolean @default(false) // if invalid token by api call then make active to false also so that we know the reason
+  active        Boolean @default(true)
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -385,6 +392,8 @@ model facebook_page {
   subscriber_id           String
 
   chat_departments chat_department[]
+
+  @@unique(fields: [page_id, subscriber_id], name: "facebook_pages_identifier")
 }
 
 model socket_session {

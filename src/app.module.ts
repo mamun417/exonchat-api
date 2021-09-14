@@ -28,6 +28,8 @@ import { MulterModule } from '@nestjs/platform-express';
 
 import { SettingsModule } from './api/subscriber/settings/settings.module';
 import { WHMCSModule } from './api/subscriber/apps/third-party/whmcs/whmcs.module';
+import { FacebookModule } from './api/subscriber/apps/third-party/facebook/facebook.module'; // its with setting but not fully manages setting
+
 import { ProfileModule } from './api/profile/profile.module';
 import { AttachmentsModule } from './api/subscriber/attachments/attachments.module';
 import { PasswordModule } from './api/password/password.module';
@@ -73,6 +75,7 @@ import { RatingModule } from './api/rating/ratings.module';
         SettingsModule,
 
         WHMCSModule,
+        FacebookModule,
 
         ProfileModule,
 
