@@ -131,5 +131,5 @@ function messageMaker(message) {
 }
 
 function attachmentMaker(attachment) {
-    return `<img src="cid:${attachment.id}" alt='' style='border: 0; display: block; max-height: 150px; max-width: 150px'/>`;
+    return `<img src="cid:${attachment.id}" alt='' style='border: 0; display: block; max-height: 150px; max-width: 150px; margin-bottom: 4px'/>`;
 }
