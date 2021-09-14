@@ -18,6 +18,7 @@ import { LeaveConversationDto } from './dto/leave-conversation.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
 import { MailService } from '../../../mail/mail.service';
 import SendTranscriptMaker from '../../../mail/templates/send-transcript';
+import { extname, join } from 'path';
 
 @Injectable()
 export class ConversationsService {
@@ -1255,16 +1256,38 @@ export class ConversationsService {
 
         const mailHtml = SendTranscriptMaker(convWithMessages);
 
+        const mailAttachments = this.transcriptEmbeddedAttachment(convWithMessages);
+
         const client = _l.find(convWithMessages.conversation_sessions, (cv: any) => !cv.socket_session.user);
 
         try {
-            await this.mailService.sendTranscript(client.socket_session.init_email, mailHtml);
+            await this.mailService.sendTranscript(client.socket_session.init_email, mailHtml, mailAttachments);
 
             return { status: 'success' };
         } catch (e: any) {
             console.log(e);
             throw new HttpException(e.response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    transcriptEmbeddedAttachment(convWithMessages: any) {
+        const attachments = [];
+
+        convWithMessages.messages.forEach((message: any) => {
+            message.attachments.forEach((attachment: any) => {
+                const ext = extname(attachment.original_name);
+
+                attachments.push({
+                    filename: attachment.original_name + ext,
+                    path: `${join(process.cwd(), 'uploads')}/attachments/${attachment.subscriber_id}/${
+                        attachment.socket_session_id
+                    }/${attachment.id}${ext}`,
+                    cid: attachment.id,
+                });
+            });
+        });
+
+        return attachments;
     }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {

@@ -14,7 +14,7 @@ export default function (convWithMessages: any) {
         );
     });
 
-    return `<div style='background-color: rgb(240 240 234); margin-top: 10px;padding: 20px 0; font-family: Arial,Helvetica,sans-serif'>
+    return `<div style='background-color: rgb(240, 240, 234); padding: 20px 0; font-family: Arial,Helvetica,sans-serif'>
         <div style='max-width: 600px; background-color: white; margin: auto; color: rgb(84, 77, 68)'>
             <div style='height: 12px; background-color: #40bc3d'></div>
             <div>
@@ -110,17 +110,19 @@ function messageMaker(message) {
         ? message.conversation_session?.socket_session?.user?.user_meta?.display_name
         : message.conversation_session?.socket_session?.init_name;
 
-    return `<div style='background-color:  ${
+    return `<div style="background-color: ${
         message.conversation_session?.socket_session?.user ? '#ffffff' : '#f0f5f8'
-    }; padding: 10px 20px; border-top: 1px solid rgb(221 221 221)'>
-        <div style='display: flex; justify-content: space-between; margin-bottom: 5px'>
-            <div style='color: rgb(188, 186, 184); font-size: 12px'>${name}</div>
-            <div style='color: rgb(188, 186, 184); font-size: 10px'>
+    }; padding: 10px 20px;">
+        <div style='display: table; margin-bottom: 5px'>
+            <div style='color: rgb(188, 186, 184); font-size: 12px; display: table-cell; width: 100%'>${name}</div>
+            <div style='color: rgb(188, 186, 184); font-size: 10px; display: table-cell; width: 100%; white-space: nowrap'>
                 ${moment(message.created_at).format('ddd, D/M/YY h:mm:ss a')}
             </div>
         </div>
         <div>
-            <div style='${message.attachments.length ? 'margin-bottom: 5px' : ''}'>${message.msg}</div>
+            <div style="${message.attachments.length ? 'margin-bottom: 5px' : ''}; font-size: 16px ">
+                ${message.msg}
+            </div>
             <div>
                 ${message.attachments.map(attachmentMaker).join('')}
             </div>
@@ -129,23 +131,5 @@ function messageMaker(message) {
 }
 
 function attachmentMaker(attachment) {
-    try {
-        const ext = extname(attachment.original_name);
-
-        const fie = fs
-            .readFileSync(
-                `${join(process.cwd(), 'uploads')}/attachments/${attachment.subscriber_id}/${
-                    attachment.socket_session_id
-                }/${attachment.id}${ext}`,
-            )
-            .toString('base64');
-
-        return `<img
-        src='data:image/${ext};base64,${fie}'
-        style='border: 0; display: block; max-height: 150px; max-width: 150px'
-        alt=''
-    />`;
-    } catch (e) {
-        return '';
-    }
+    return `<img src="cid:${attachment.id}" alt='' style='border: 0; display: block; max-height: 150px; max-width: 150px'/>`;
 }
