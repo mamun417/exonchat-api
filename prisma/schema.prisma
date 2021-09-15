@@ -381,7 +381,7 @@ model facebook_page {
   long_lived_access_token String?
 
   token_timeout Boolean @default(false) // if invalid token by api call then make active to false also so that we know the reason
-  active        Boolean @default(true)
+  active        Boolean @default(false)
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)

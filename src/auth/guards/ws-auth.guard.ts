@@ -1,6 +1,4 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { WsException } from '@nestjs/websockets';
-import { use } from 'passport';
 import { AuthService } from '../auth.service';
 
 @Injectable()
