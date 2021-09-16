@@ -5,8 +5,8 @@ import { Injectable } from '@nestjs/common';
 export class MailService {
     constructor(private mailerService: MailerService) {}
 
-    from = '"ExonHost Chat" <chat@exonhost.com>';
-    regards = 'ExonHost Chat';
+    from = '"ExonHost LiveChat" <chat@exonhost.com>';
+    regards = 'ExonHost LiveChat';
 
     async sendUserInvitation(emailTo: string, invitation: any) {
         const url = `${process.env.CLIENT_URL}/auth/user-activate/${invitation.id}`;
@@ -94,7 +94,5 @@ export class MailService {
             html: mailHtml,
             attachments: mailAttachments,
         });
-
-        console.log('send email');
     }
 }

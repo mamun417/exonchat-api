@@ -14,7 +14,7 @@ export default function (convWithMessages: any) {
         );
     });
 
-    return `<div style='background-color: rgb(240, 240, 234); padding: 20px 0; font-family: Arial,Helvetica,sans-serif'>
+    return `<div style='background-color: rgb(240, 240, 234); padding: 20px 0; font-family: "Noto Sans", sans-serif'>
         <div style='max-width: 600px; background-color: white; margin: auto; color: rgb(84, 77, 68)'>
             <div style='height: 12px; background-color: #40bc3d'></div>
             <div>
@@ -27,7 +27,7 @@ export default function (convWithMessages: any) {
                 </div>
                 <div style='text-align: center'>
                     <p style='font-size: 28px; color: rgb(84, 77, 68); margin-bottom: 30px; font-weight: bold'>
-                        Chat transcript
+                        Chat Transcript
                     </p>
                 </div>
 
@@ -120,7 +120,7 @@ function messageMaker(message) {
             </div>
         </div>
         <div>
-            <div style="${message.attachments.length ? 'margin-bottom: 5px' : ''}; font-size: 16px ">
+            <div style="${message.attachments.length ? 'margin-bottom: 5px' : ''}; font-size: 14px ">
                 ${message.msg}
             </div>
             <div>
