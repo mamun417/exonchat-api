@@ -532,7 +532,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 data: { ...sendRes, notify: true },
             });
 
-            this.sendToAllUsersWithout(socketRes, true, matchedDepartmentalAgents, 'ec_conv_initiated_from_client', {
+            this.sendToAllUsersWithout(socketRes, false, matchedDepartmentalAgents, 'ec_conv_initiated_from_client', {
                 data: { ...sendRes, notify: false },
             });
         } else {

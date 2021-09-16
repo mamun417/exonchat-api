@@ -1,4 +1,3 @@
-import { subscriber } from '@prisma/client';
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
 
@@ -6,8 +5,8 @@ import { Injectable } from '@nestjs/common';
 export class MailService {
     constructor(private mailerService: MailerService) {}
 
-    from = '"Support Team" <support@example.com>';
-    regards = 'Exonchat';
+    from = '"ExonHost LiveChat" <chat@exonhost.com>';
+    regards = 'ExonHost LiveChat';
 
     async sendUserInvitation(emailTo: string, invitation: any) {
         const url = `${process.env.CLIENT_URL}/auth/user-activate/${invitation.id}`;
@@ -87,14 +86,13 @@ export class MailService {
         });
     }
 
-    async sendTranscript(emailTo: string, mailHtml: string) {
+    async sendTranscript(emailTo: string, mailHtml: string, mailAttachments: any) {
         await this.mailerService.sendMail({
-            to: 'mamun@getnada.com',
+            to: emailTo,
             from: this.from,
-            subject: 'Send Transcript',
+            subject: 'Chat Transcript',
             html: mailHtml,
+            attachments: mailAttachments,
         });
-
-        console.log('send email');
     }
 }
