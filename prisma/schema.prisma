@@ -379,6 +379,7 @@ model facebook_page {
   additional_info Json?
 
   long_lived_access_token String?
+  temp_user_id            String // it's for unique field search
 
   token_timeout Boolean @default(false) // if invalid token by api call then make active to false also so that we know the reason
   active        Boolean @default(false)
@@ -393,7 +394,7 @@ model facebook_page {
 
   chat_departments chat_department[]
 
-  @@unique(fields: [page_id, subscriber_id], name: "facebook_pages_identifier")
+  @@unique(fields: [page_id, temp_user_id, subscriber_id], name: "facebook_pages_identifier")
 }
 
 model socket_session {

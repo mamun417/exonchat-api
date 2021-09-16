@@ -1,9 +1,10 @@
-import { Controller, Request, Get, Post, Body, UseGuards, Param, Res, Query } from "@nestjs/common";
+import { Controller, Request, Get, Post, Body, UseGuards, Param, Res, Query } from '@nestjs/common';
 import { FacebookService } from './facebook.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PrismaService } from 'src/prisma.service';
 import { FacebookConnectDto } from './dto/facebook-connect.dto';
 import { FacebookPageConnectionDto } from './dto/facebook-page-connection.dto';
+import { Response } from 'express';
 
 @Controller('apps/facebook')
 export class FacebookController {
@@ -44,21 +45,21 @@ export class FacebookController {
     }
 
     @Get('webhook')
-    facebookWebhook(@Request() req: any, @Res() res: any, @Query() query: any) {
+    facebookWebhook(@Request() req: any, @Res() res: Response, @Query() query: any) {
         // Your verify token. Should be a random string.
-        let VERIFY_TOKEN = "12345"
+        let VERIFY_TOKEN = '12345';
 
         // Parse the query params
         let mode = query['hub.mode'];
         let token = query['hub.verify_token'];
         let challenge = query['hub.challenge'];
 
+        console.log(query);
+
         // Checks if a token and mode is in the query string of the request
         if (mode && token) {
-
             // Checks the mode and token sent is correct
             if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-
                 // Responds with the challenge token from the request
                 console.log('WEBHOOK_VERIFIED');
                 res.status(200).send(challenge);
@@ -66,6 +67,14 @@ export class FacebookController {
             }
         }
 
-        res.sendStatus(403);
+        res.status(403).send();
+    }
+
+    @Post('webhook')
+    facebookWebhookPost(@Request() req: any, @Res() res: Response, @Body() body: any) {
+        console.log('called from webhook');
+        console.log(body);
+
+        res.status(200).send();
     }
 }

@@ -27,9 +27,17 @@ export class FacebookService {
             },
         });
 
+        // remove facebook_pages for safety
+        await this.prisma.facebook_page.deleteMany({
+            where: {
+                subscriber_id: subscriberId,
+                temp_user_id: facebookConnectDto.auth_response.userID,
+            },
+        });
+
         const longLivedUserToken: any = await this.httpService
             .get(
-                `https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=629887308040741&client_secret=452e3db804a700102b70993214b7feb1&fb_exchange_token=${facebookConnectDto.auth_response.accessToken}`,
+                `https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=1033239004116693&client_secret=0c009fcfcc684b4360559a391efb5bab&fb_exchange_token=${facebookConnectDto.auth_response.accessToken}`,
             )
             .toPromise();
 
@@ -99,6 +107,7 @@ export class FacebookService {
                             page_id: page.id,
                             page_name: page.name,
                             long_lived_access_token: page.access_token,
+                            temp_user_id: facebookConnectDto.auth_response.userID,
                             page_info: {
                                 category: page.category,
                                 tasks: page.tasks,
@@ -124,6 +133,7 @@ export class FacebookService {
                             where: {
                                 facebook_pages_identifier: {
                                     page_id: page.id,
+                                    temp_user_id: facebookConnectDto.auth_response.userID,
                                     subscriber_id: subscriberId,
                                 },
                             },
@@ -131,6 +141,7 @@ export class FacebookService {
                                 page_id: page.id,
                                 page_name: page.name,
                                 long_lived_access_token: page.access_token,
+                                temp_user_id: facebookConnectDto.auth_response.userID,
                                 page_info: {
                                     category: page.category,
                                     tasks: page.tasks,
@@ -195,6 +206,24 @@ export class FacebookService {
             if (!department) {
                 throw new HttpException(`chat department by id ${departmentId} not found`, HttpStatus.NOT_FOUND);
             }
+        }
+
+        try {
+            // we can call get request to check permission. if not found then we can call this
+            const subscribed: any = await this.httpService
+                .post(
+                    `https://graph.facebook.com/v11.0/${page.page_id}/subscribed_apps?subscribed_fields=messages,message_deliveries,message_echoes,messaging_postbacks,message_reads&access_token=${page.long_lived_access_token}`,
+                )
+                .toPromise();
+
+            console.log(subscribed.data);
+
+            if (subscribed.data?.success !== true) {
+                throw new HttpException(`facebook page message subscription failed`, HttpStatus.NOT_FOUND);
+            }
+        } catch (e: any) {
+            console.log(e.response);
+            throw new HttpException(e.response.data?.error?.message, HttpStatus.NOT_FOUND);
         }
 
         await this.prisma.facebook_page.update({
