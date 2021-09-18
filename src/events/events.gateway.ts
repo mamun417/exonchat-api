@@ -1617,6 +1617,29 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         }
 
         // console.log(this.roomsInAConv);
+
+        // try {
+        //     console.log('graph api calling');
+        //     const sent: any = await this.httpService
+        //         .post(
+        //             `https://graph.facebook.com/v12.0/109876438101376/messages`,
+        //             {
+        //                 recipient: {
+        //                     id: '6076072989100802',
+        //                 },
+        //                 message: {
+        //                     text: 'ooooooooo',
+        //                 },
+        //                 access_token:
+        //                     'EAAOrubPO9tUBANoeyFDy6bKVPeem3Pbp5t9dL0sije6jZCVe4mT14DZAZCGEIktQF9ZBwlgKeIFnZBy6Jg6SWRZA57jIusBmOatiIoZABxmEM3vfUGJuEyM9lQi3TWXkRH3f7H7ydi5eC1Praj62ecnRO94fdJDsfezB34tGMeEwmaVqHiayR2nOh0oCwLv5C7qr2IUlVphqQZDZD',
+        //             },
+        //         )
+        //         .toPromise();
+        //
+        //     console.log(sent.data);
+        // } catch (e) {
+        //     console.log(e.response);
+        // }
     }
 
     async convTimingActionsInterval(convId: any) {

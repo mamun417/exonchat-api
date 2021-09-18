@@ -71,9 +71,12 @@ export class FacebookController {
     }
 
     @Post('webhook')
-    facebookWebhookPost(@Request() req: any, @Res() res: Response, @Body() body: any) {
-        console.log('called from webhook');
+    async facebookWebhookPost(@Request() req: any, @Res() res: Response, @Body() body: any) {
+        console.log('called from webhook ===========');
         console.log(body);
+        console.log('==========');
+
+        await this.facebookService.facebookWebhookPost(req, body);
 
         res.status(200).send();
     }

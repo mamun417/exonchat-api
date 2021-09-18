@@ -408,8 +408,10 @@ model socket_session {
   info            Json? // save like session related data
   user_info       Json? // save like user related info
   additional_info Json? // save other infos
-  use_for         String  @default("own_client") // own client/user / ai / fb / whatsapp /
-  use_for_info    Json?
+
+  use_for      String  @default("own_client") // own client/user / ai / fb / whatsapp /
+  use_for_id   String?
+  use_for_info Json?
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -522,6 +524,7 @@ model conversation_session {
   can_send_message   Boolean   @default(true) // it's only now for group or channel. true then can send msg else only see
   can_see_message    Boolean   @default(true) // it's only now for group or channel. true then can see msg else hidden
   active             Boolean   @default(true) // it's now for group or channel so that user remove can happen but msg history kept
+  archived           Boolean   @default(false)
 
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
@@ -859,6 +862,7 @@ enum conversation_type_enum {
   user_to_user_chat
   group_chat
   channel_chat
+  facebook_chat
 }
 
 enum conversation_session_type_enum {
