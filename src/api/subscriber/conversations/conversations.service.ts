@@ -682,6 +682,29 @@ export class ConversationsService {
             [
                 'p',
                 'pp',
+                { name: 'chat_department_id', type: 'equals' },
+                {
+                    name: 'rating',
+                    type: 'static_relation',
+                    relation: {
+                        conversation_rating: {
+                            rating: parseInt(query.rating),
+                        },
+                    },
+                },
+                {
+                    name: 'agent_id',
+                    type: 'static_relation',
+                    relation: {
+                        conversation_sessions: {
+                            some: {
+                                socket_session: {
+                                    user_id: query.agent_id,
+                                },
+                            },
+                        },
+                    },
+                },
                 {
                     name: 's',
                     type: 'static_relation',
@@ -699,11 +722,11 @@ export class ConversationsService {
                                     },
                                 },
                             },
-                            {
-                                chat_department: {
-                                    tag: relationContainsObj,
-                                },
-                            },
+                            // {
+                            //     chat_department: {
+                            //         tag: relationContainsObj,
+                            //     },
+                            // },
                         ],
                     },
                 },
