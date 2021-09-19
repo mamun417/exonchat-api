@@ -5,14 +5,14 @@ import { HttpService } from '@nestjs/axios';
 
 import * as _l from 'lodash';
 import { FacebookPageConnectionDto } from './dto/facebook-page-connection.dto';
+import { EventsGateway } from '../../../../../events/events.gateway';
 
 @Injectable()
 export class FacebookService {
-    constructor(private prisma: PrismaService, private httpService: HttpService) {}
+    constructor(private prisma: PrismaService, private httpService: HttpService, private ws: EventsGateway) {}
 
     async connect(req: any, facebookConnectDto: FacebookConnectDto) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
-        const socketSessionId = req.user.data.socket_session.id;
 
         // deactivate previous connected account if has for safe
         // later remove this block if you want multi account & page connection
@@ -163,7 +163,7 @@ export class FacebookService {
                 },
             },
             include: {
-                facebook_pages: { include: { chat_departments: true } },
+                facebook_pages: { include: { chat_department: true } },
                 facebook_secret: true,
             },
         });
@@ -171,7 +171,6 @@ export class FacebookService {
 
     async disconnect(req: any) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
-        const socketSessionId = req.user.data.socket_session.id;
 
         // for now disconnecting all. if multi then pass id here like other controller
         return await this.prisma.facebook_integration.updateMany({
@@ -190,7 +189,6 @@ export class FacebookService {
         // we have to store data so this is a huge problem
         // so try to limit by 1 for a page to be active
         const subscriberId = req.user.data.socket_session.subscriber_id;
-        const socketSessionId = req.user.data.socket_session.id;
 
         const page = await this.prisma.facebook_page.findUnique({
             where: { id: id },
@@ -200,23 +198,24 @@ export class FacebookService {
             throw new HttpException(`facebook page not found`, HttpStatus.NOT_FOUND);
         }
 
-        for (const departmentId of facebookPageConnectionDto.chat_department_ids) {
-            const department = await this.prisma.chat_department.findUnique({
-                where: {
-                    id: departmentId,
-                },
-            });
+        const department = await this.prisma.chat_department.findUnique({
+            where: {
+                id: facebookPageConnectionDto.chat_department_id,
+            },
+        });
 
-            if (!department) {
-                throw new HttpException(`chat department by id ${departmentId} not found`, HttpStatus.NOT_FOUND);
-            }
+        if (!department) {
+            throw new HttpException(
+                `chat department by id ${facebookPageConnectionDto.chat_department_id} not found`,
+                HttpStatus.NOT_FOUND,
+            );
         }
 
         try {
             // we can call get request to check permission. if not found then we can call this
             const subscribed: any = await this.httpService
                 .post(
-                    `https://graph.facebook.com/v11.0/${page.page_id}/subscribed_apps?subscribed_fields=messages,message_deliveries,message_echoes&access_token=${page.long_lived_access_token}`,
+                    `https://graph.facebook.com/v11.0/${page.page_id}/subscribed_apps?subscribed_fields=messages,message_echoes,message_deliveries,message_reads&access_token=${page.long_lived_access_token}`,
                 )
                 .toPromise();
 
@@ -235,10 +234,8 @@ export class FacebookService {
             data: {
                 active: true,
                 updated_at: new Date(),
-                chat_departments: {
-                    set: facebookPageConnectionDto.chat_department_ids.map((departmentId: any) => {
-                        return { id: departmentId };
-                    }),
+                chat_department: {
+                    connect: { id: facebookPageConnectionDto.chat_department_id },
                 },
             },
         });
@@ -249,14 +246,13 @@ export class FacebookService {
                 subscriber_id: subscriberId,
             },
             include: {
-                facebook_pages: { include: { chat_departments: true } },
+                facebook_pages: { include: { chat_department: true } },
             },
         });
     }
 
     async disconnectPage(id: any, req: any) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
-        const socketSessionId = req.user.data.socket_session.id;
 
         const page = await this.prisma.facebook_page.findUnique({
             where: { id: id },
@@ -279,14 +275,13 @@ export class FacebookService {
                 subscriber_id: subscriberId,
             },
             include: {
-                facebook_pages: { include: { chat_departments: true } },
+                facebook_pages: { include: { chat_department: true } },
             },
         });
     }
 
     async accounts(req: any) {
         const subscriberId = req.user.data.socket_session.subscriber_id;
-        const socketSessionId = req.user.data.socket_session.id;
 
         // for now it will return array with 1 entry. if you want multiple see connect comment
         return await this.prisma.facebook_integration.findMany({
@@ -295,7 +290,7 @@ export class FacebookService {
                 subscriber_id: subscriberId,
             },
             include: {
-                facebook_pages: { include: { chat_departments: true } },
+                facebook_pages: { include: { chat_department: true } },
             },
         });
     }
@@ -328,14 +323,18 @@ export class FacebookService {
     async messageParser(messageObj: any, pageId: any) {
         if (messageObj.message) {
             if (messageObj.message.is_echo) {
+                console.log(messageObj);
+
+                console.log(messageObj.message);
                 // message from page user. its for if the page agents send msg from page then store msg in this also
             } else {
                 const result = await this.createOrNotConversation(messageObj.recipient.id, messageObj.sender.id);
 
                 if (result) {
-                    this.prisma.message.create({
+                    const message: any = await this.prisma.message.create({
                         data: {
                             msg: messageObj.message.text,
+                            created_at: new Date(messageObj.timestamp),
                             subscriber: { connect: { id: result.conversation.subscriber_id } },
                             conversation: { connect: { id: result.conversation.id } },
                             socket_session: { connect: { id: result.socket_session.id } },
@@ -355,6 +354,15 @@ export class FacebookService {
                             },
                         },
                     });
+
+                    this.ws.sendToSocketRooms(
+                        this.ws.usersRoomBySubscriberId(message.subscriber_id, false),
+                        'ec_msg_from_client',
+                        {
+                            ...message,
+                            ai_is_replying: false,
+                        },
+                    );
                 }
             }
         } else {
@@ -372,6 +380,7 @@ export class FacebookService {
         });
 
         if (fbPage) {
+            // can use upsert
             let socketSession = await this.prisma.socket_session.findFirst({
                 where: {
                     use_for: 'fb',
@@ -394,6 +403,7 @@ export class FacebookService {
                 });
             }
 
+            // can use upsert
             let conversationSession = await this.prisma.conversation_session.findFirst({
                 where: {
                     subscriber_id: fbPage.subscriber_id,
@@ -413,6 +423,7 @@ export class FacebookService {
                             create: {
                                 users_only: false,
                                 type: 'facebook_chat',
+                                chat_department: { connect: { id: fbPage.chat_department_id } },
                                 created_by: { connect: { id: socketSession.id } },
                                 subscriber: { connect: { id: fbPage.subscriber_id } },
                             },
@@ -429,6 +440,16 @@ export class FacebookService {
                     conversation_sessions: { include: { socket_session: true } },
                 },
             });
+
+            if (!conversationSession) {
+                this.ws.sendToSocketRooms(
+                    this.ws.usersRoomBySubscriberId(conversation.subscriber_id, false),
+                    'ec_conv_initiated_from_client',
+                    {
+                        data: { conv_data: conversation, conv_id: conversation.id },
+                    },
+                );
+            }
 
             return {
                 conversation: conversation,

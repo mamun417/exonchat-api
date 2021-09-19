@@ -65,6 +65,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     convObjSkeleton = {
         conv_id: {
             room_ids: [],
+            chat_type: 'live_chat/facebook_chat/whatsapp',
             client_room_id: 'client_ses_id', // its imp. cz if client goes offline normalClientsInARoom does not contain the session
             sub_id: 'subscriber_id',
             users_only: 'bool',
@@ -81,9 +82,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     };
     // if notify_to that means it's only for this agent. it will also maintain for transfer chat
     // if a browser reload happens then send the agents departmental chat by that notify_to. if no notify_to then also it's for him
-    private roomsInAConv: any = {};
+    public roomsInAConv: any = {};
 
-    usersRoomBySubscriberId(subscriberId: any, onlineStatus = true) {
+    usersRoomBySubscriberId(subscriberId: string, onlineStatus = true) {
         return Object.keys(this.userClientsInARoom).filter(
             (roomId: any) =>
                 this.userClientsInARoom[roomId].sub_id === subscriberId &&
@@ -107,8 +108,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     // send to rooms
-    sendToSocketRooms(roomsId: any, emitName: string, emitObj: any) {
-        roomsId.forEach((roomId: any) => {
+    sendToSocketRooms(roomsIds: string[], emitName: string, emitObj: any) {
+        roomsIds.forEach((roomId: string) => {
             this.sendToSocketRoom(roomId, emitName, emitObj);
         });
     }
@@ -1068,6 +1069,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         let createdMsg: any = null;
 
+        if (this.roomsInAConv[data.conv_id].chat_type === 'facebook_chat') {
+        }
+
         try {
             const msgRes = await this.httpService
                 .post(
@@ -1656,7 +1660,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         if (
             convObj.hasOwnProperty('chat_inactive_log_handled') &&
             !convObj.chat_inactive_log_handled &&
-            !convObj.users_only
+            !convObj.users_only &&
+            convObj.chat_type !== 'facebook_chat'
         ) {
             if (new Date().getTime() > lastMsgTime + intervalTime) {
                 const createdLog = await this.prisma.message.create({
@@ -1698,7 +1703,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         if (
             !convObj.users_only &&
             new Date().getTime() > lastMsgTime + convCloseIntervalTime &&
-            convObj.last_msg_time_agent !== null // that means agents were joined
+            convObj.last_msg_time_agent !== null && // that means agents were joined
+            convObj.chat_type !== 'facebook_chat'
         ) {
             console.log('conv close candidate', convId);
 

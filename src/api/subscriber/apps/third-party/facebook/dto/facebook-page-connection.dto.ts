@@ -1,7 +1,7 @@
-import { IsArray, ArrayNotEmpty, IsBoolean, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty } from 'class-validator';
 
 export class FacebookPageConnectionDto {
-    @IsArray()
-    @ArrayNotEmpty()
-    chat_department_ids: string[];
+    @IsString()
+    @IsNotEmpty()
+    chat_department_id: string;
 }

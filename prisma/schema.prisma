@@ -387,12 +387,14 @@ model facebook_page {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
+  chat_department         chat_department?      @relation(fields: [chat_department_id], references: [id])
+  chat_department_id      String?
   facebook_integration    facebook_integration? @relation(fields: [facebook_integration_id], references: [id])
   facebook_integration_id String?
   subscriber              subscriber            @relation(fields: [subscriber_id], references: [id])
   subscriber_id           String
 
-  chat_departments chat_department[]
+  conversations conversation[]
 
   @@unique(fields: [page_id, temp_user_id, subscriber_id], name: "facebook_pages_identifier")
 }
@@ -455,6 +457,8 @@ model conversation {
   closed_by_id       String?
   chat_department    chat_department? @relation(fields: [chat_department_id], references: [id])
   chat_department_id String?
+  facebook_page      facebook_page?   @relation(fields: [facebook_page_id], references: [id])
+  facebook_page_id   String?
 
   conversation_rating  conversation_rating?
   conversation_channel conversation_channel?
