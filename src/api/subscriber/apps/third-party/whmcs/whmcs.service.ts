@@ -14,11 +14,12 @@ export class WHMCSService {
     constructor(private prisma: PrismaService, private httpService: HttpService, private ws: EventsGateway) {}
 
     async findAllTickets(req: any, query: any) {
-        const queryObj: any = { action: 'GetTickets' };
+        const clientDetails = await this.getClientDetails(req, { email: query.email });
 
-        if (query.email) {
-            queryObj.email = query.email;
-        }
+        const queryObj: any = {
+            action: 'GetTickets',
+            clientid: clientDetails.userid,
+        };
 
         return this.getResponse(req.user.data.subscriber_id, queryObj);
     }
