@@ -113,6 +113,18 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         });
     }
 
+    sendToAllWithAConvClient(subscriberId: string, ConversationId: string, emitName: string, emitObj: any) {
+        const rooms = this.usersRoomBySubscriberId(subscriberId, false);
+
+        const clientRoom = this.roomsInAConv[ConversationId]?.client_room_id;
+
+        if (clientRoom) {
+            rooms.push(clientRoom);
+        }
+
+        this.sendToSocketRooms(rooms, emitName, emitObj);
+    }
+
     sendToAllUsers(
         socketRes: any,
         onlyOnlineUsers = true,
