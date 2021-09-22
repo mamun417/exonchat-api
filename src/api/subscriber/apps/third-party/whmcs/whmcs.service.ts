@@ -13,34 +13,20 @@ import { WhmcsLoginDto } from './dto/whmcs-login.dto';
 export class WHMCSService {
     constructor(private prisma: PrismaService, private httpService: HttpService, private ws: EventsGateway) {}
 
-    async findAllTickets(req: any, query: any) {
-        const clientDetails = await this.getClientDetails(req, { email: query.email });
-
+    async login(req: any, whmcsLoginDto: WhmcsLoginDto) {
         const queryObj: any = {
-            action: 'GetTickets',
-            clientid: clientDetails.userid,
+            action: 'ValidateLogin',
+            email: whmcsLoginDto.email,
+            password2: whmcsLoginDto.password,
         };
 
-        return this.getResponse(req.user.data.subscriber_id, queryObj);
-    }
+        const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
 
-    // async validateUser(req: any, validateUserDto: ValidateUserDto) {
-    //     const params = {
-    //         action: 'ValidateLogin',
-    //         email: validateUserDto.email,
-    //         password2: validateUserDto.password,
-    //     };
+        if (loginRes.result === 'error') {
+            throw new HttpException(loginRes.message, HttpStatus.BAD_REQUEST);
+        }
 
-    //     return await this.getResponse(params);
-    // }
-
-    async findOneTicket(req: any, ticketId: any) {
-        const params = {
-            action: 'GetTicket',
-            ticketid: ticketId,
-        };
-
-        return await this.getResponse(req.user.data.subscriber_id, params);
+        return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
     }
 
     async ticketNotification(req: any, ticketId: any, subId: any) {
@@ -69,6 +55,29 @@ export class WHMCSService {
             });
 
         return {};
+    }
+
+    async findAllTickets(req: any, query: any) {
+        const clientDetails = await this.getClientDetails(req, { email: query.email });
+
+        const queryObj: any = {
+            action: 'GetTickets',
+            email: query.email,
+            clientid: clientDetails.userid,
+        };
+
+        const res: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        return res.tickets?.ticket || [];
+    }
+
+    async findOneTicket(req: any, ticketId: any) {
+        const params = {
+            action: 'GetTicket',
+            ticketid: ticketId,
+        };
+
+        return await this.getResponse(req.user.data.subscriber_id, params);
     }
 
     async openTicket(req: any, convId: any, openTicketDto: WhmcsOpenTicketDto) {
@@ -154,6 +163,10 @@ export class WHMCSService {
         });
 
         const client = _l.find(conv.conversation_sessions, (cv: any) => !cv.socket_session.user);
+        const email = client.socket_session.init_email;
+
+        // client details from WHMCS
+        const clientDetails = await this.getClientDetails(req, { email });
 
         const openTicketParams = {
             action: 'OpenTicket',
@@ -161,8 +174,9 @@ export class WHMCSService {
             subject: openTicketDto.subject,
             message: message,
             markdown: true,
+            clientid: clientDetails.userid,
             name: client.socket_session.init_name,
-            email: client.socket_session.init_email,
+            email,
         };
 
         return await this.getResponse(req.user.data.socket_session.subscriber_id, openTicketParams);
@@ -181,26 +195,20 @@ export class WHMCSService {
         return msg;
     }
 
+    async getSupportDepartments(req: any) {
+        const queryObj: any = {
+            action: 'GetSupportDepartments',
+        };
+
+        const res = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        return res.departments?.department || [];
+    }
+
     getClientDetails(req: any, body: any) {
         const queryObj: any = { action: 'GetClientsDetails', clientid: body.clientid || '', email: body.email };
 
         return this.getResponse(req.user.data.subscriber_id, queryObj);
-    }
-
-    async login(req: any, whmcsLoginDto: WhmcsLoginDto) {
-        const queryObj: any = {
-            action: 'ValidateLogin',
-            email: whmcsLoginDto.email,
-            password2: whmcsLoginDto.password,
-        };
-
-        const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
-
-        if (loginRes.result === 'error') {
-            throw new HttpException(loginRes.message, HttpStatus.BAD_REQUEST);
-        }
-
-        return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
     }
 
     async getClientServices(req: any, query: any) {

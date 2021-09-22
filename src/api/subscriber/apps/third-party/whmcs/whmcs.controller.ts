@@ -22,6 +22,12 @@ export class WHMCSController {
     // }
 
     @UseGuards(JwtAuthGuard)
+    @Get('support-departments')
+    getSupportDepartments(@Request() req: any) {
+        return this.WHMCSService.getSupportDepartments(req);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post('tickets/open/:conv_id')
     openTicket(@Request() req: any, @Param('conv_id') convId: string, @Body() openTicketDto: WhmcsOpenTicketDto) {
         return this.WHMCSService.openTicket(req, convId, openTicketDto);

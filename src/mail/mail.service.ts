@@ -14,7 +14,7 @@ export class MailService {
         await this.mailerService.sendMail({
             to: emailTo,
             from: this.from,
-            subject: 'Welcome to Nice App! Confirm your Email',
+            subject: 'Welcome to ExonHost LiveChat! Confirm your Email',
             html:
                 ' <div style="padding: 50px;max-width: 600px">\n' +
                 '        <b>Hello!</b>\n' +
