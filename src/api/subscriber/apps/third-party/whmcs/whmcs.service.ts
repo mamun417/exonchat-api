@@ -107,31 +107,6 @@ export class WHMCSService {
                 HttpStatus.CONFLICT,
             );
 
-        const getDepartmentsParams = {
-            action: 'GetSupportDepartments',
-        };
-
-        const whmcsDepartmentsRes = await this.getResponse(
-            req.user.data.socket_session.subscriber_id,
-            getDepartmentsParams,
-        );
-
-        const whmcsDepartments = {};
-
-        if (whmcsDepartmentsRes.departments?.department && whmcsDepartmentsRes.departments.department.length) {
-            whmcsDepartmentsRes.departments.department.forEach((d: any) => {
-                whmcsDepartments[d.name] = d.id;
-            });
-        } else {
-            throw new HttpException(`Support departments are not set in whmcs. Please notify`, HttpStatus.NOT_FOUND);
-        }
-
-        let mappedDep = Object.values(whmcsDepartments)[0];
-
-        if (Object.keys(whmcsDepartments).includes(conv.chat_department.tag)) {
-            mappedDep = whmcsDepartments[conv.chat_department.tag];
-        }
-
         let message = this.convInfoMaker(conv);
 
         conv.messages.forEach((msg: any) => {
@@ -170,9 +145,10 @@ export class WHMCSService {
 
         const openTicketParams = {
             action: 'OpenTicket',
-            deptid: mappedDep,
+            deptid: openTicketDto.department_id,
             subject: openTicketDto.subject,
             message: message,
+            priority: openTicketDto.priority,
             markdown: true,
             clientid: clientDetails.userid,
             name: client.socket_session.init_name,
@@ -180,8 +156,6 @@ export class WHMCSService {
         };
 
         return await this.getResponse(req.user.data.socket_session.subscriber_id, openTicketParams);
-
-        // return {};
     }
 
     convInfoMaker(conv) {

@@ -767,9 +767,6 @@ export class ConversationsService {
                         },
                     },
                     take: 1,
-                    orderBy: {
-                        updated_at: 'desc',
-                    },
                     include: { attachments: true },
                 },
                 chat_department: true,
