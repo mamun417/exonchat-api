@@ -1,4 +1,4 @@
-import { UseGuards } from '@nestjs/common';
+import { Inject, UseGuards } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import {
     MessageBody,
@@ -13,6 +13,9 @@ import {
 
 import { Server, Socket } from 'socket.io';
 
+import { InjectRedis } from '@liaoliaots/nestjs-redis';
+import { Redis } from 'ioredis';
+
 import * as _ from 'lodash';
 import * as moment from 'moment';
 
@@ -22,6 +25,7 @@ import { PrismaService } from '../prisma.service';
 import { Helper } from '../helper/helper';
 import { ChatTransferService } from './listeners/chat-transfer.service';
 import { ListenersHelperService } from './listeners/listeners-helper.service';
+import { ReJSON } from 'redis-modules-sdk';
 
 @WebSocketGateway({
     serveClient: false,
@@ -41,6 +45,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         private helper: Helper,
         private listenersHelperService: ListenersHelperService,
         private chatTransferService: ChatTransferService,
+        @InjectRedis('ws_db') private readonly redisClient: Redis, // its not using now
+        @Inject('reJSON') private reJSON: ReJSON,
     ) {}
 
     @WebSocketServer()
@@ -1506,7 +1512,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     }
 
     async afterInit(server: Server) {
-        console.log('Socket Gateway Initialized');
+        console.log(await this.reJSON.get('hi'));
+
+        console.log('Socket Gateway Initialized'); //
 
         // if for anyhow server restart happens load unhandled convs
         const allConvs = await this.prisma.conversation.findMany({
