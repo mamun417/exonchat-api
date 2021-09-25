@@ -155,6 +155,8 @@ export class WHMCSService {
             email,
         };
 
+        console.log({ openTicketParams });
+
         return await this.getResponse(req.user.data.socket_session.subscriber_id, openTicketParams);
     }
 
@@ -208,6 +210,32 @@ export class WHMCSService {
         );
     }
 
+    async getClientDomains(req: any, query: any) {
+        const clientDetails = await this.getClientDetails(req, { email: query.email });
+
+        const queryObj: any = {
+            action: 'GetClientsDomains',
+            clientid: clientDetails.userid,
+            stats: true,
+        };
+
+        const response: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        const domains = response.domains ? response.domains?.domain : [];
+
+        if (!domains.length) {
+            return domains;
+        }
+
+        return domains.filter(
+            (domain: any) =>
+                domain.status === 'Active' ||
+                domain.status === 'Pending' ||
+                domain.status === 'Pending Transfer' ||
+                domain.status === 'Grace',
+        );
+    }
+
     async getResponse(subId: any, dynamicFields: any) {
         const whmcsApi = await this.prisma.setting.findMany({
             where: {
@@ -236,14 +264,25 @@ export class WHMCSService {
         );
 
         const params = new URLSearchParams({
+            // Local
             // username: '3tuMBl8jtZ6xYgiZDUqfiHpFuroPu0Ch',
             // password: 'mp9FzClGBjvdEUzaBz3wBg9IlIHuwSwW',
+
+            // Live
+            // username: 'fENMPwEvlWIuuYV4bI12lI9MbssB7R46',
+            // password: 'vdOTnbvx2aafalXcJk5unoXhcnYrj3oS',
 
             username: _l.find(whmcsApi, ['slug', 'apps_whmcs_identifier_key']).user_settings_value[0].value,
             password: _l.find(whmcsApi, ['slug', 'apps_whmcs_secret_key']).user_settings_value[0].value,
             responsetype: 'json',
             ...dynamicFields,
         });
+
+        // Local
+        // const apiUrl = 'https://dev.exonhost.com/includes/api.php';
+
+        // Live
+        // const apiUrl = 'https://clients.exonhost.com/includes/api.php';
 
         const apiUrl = _l.find(whmcsApi, ['slug', 'apps_whmcs_api_url']).user_settings_value[0].value;
 

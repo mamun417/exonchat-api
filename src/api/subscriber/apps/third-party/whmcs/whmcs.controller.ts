@@ -61,4 +61,10 @@ export class WHMCSController {
     getClientsProducts(@Request() req: any, @Query() query: any) {
         return this.WHMCSService.getClientServices(req, query);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('client-domains')
+    getClientsDomains(@Request() req: any, @Query() query: any) {
+        return this.WHMCSService.getClientDomains(req, query);
+    }
 }
