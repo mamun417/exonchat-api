@@ -97,9 +97,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         );
     }
 
+    clientsRoomBySubscriberId(subscriberId: any, onlineStatus = true) {
+        return Object.keys(this.normalClientsInARoom).filter(
+            (roomId: any) =>
+                this.normalClientsInARoom[roomId].sub_id === subscriberId &&
+                (!onlineStatus || (onlineStatus && this.normalClientsInARoom[roomId].online_status === 'online')),
+        );
+    }
+
     // if onlineStatus true only true online users will filter else all other
     usersRoom(socketRes: any, onlineStatus = true) {
         return this.usersRoomBySubscriberId(socketRes.ses_user.socket_session.subscriber_id, onlineStatus);
+    }
+
+    clientsRoom(socketRes: any, onlineStatus = true) {
+        return this.clientsRoomBySubscriberId(socketRes.ses_user.socket_session.subscriber_id, onlineStatus);
     }
 
     // send to a tab/socket client instance
@@ -280,7 +292,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             // if emit needed then make dataSendObj
         }
 
-        if (Object.keys(dataSendObj).length) {
+        if (dataSendObj.online_status) {
             if (socketRes.status_for === 'user') {
                 // send to all users
                 this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_updated_socket_room_info_res', {
@@ -329,13 +341,103 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_page_visit_info_from_client')
     async pageVisitInfoFromClient(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
-        this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_page_visit_info_from_client', {
-            page_data: socketRes.page_data,
-            sent_at: socketRes.sent_at,
-            visiting: socketRes.visiting,
-            ses_id: socketRes.ses_user.socket_session.id,
-            ses_info: socketRes.ses_user.socket_session,
-        });
+        // we can improve this by not sending same url. only update if same url & visiting change
+        // at socket disconnect if last tab close happens then update final last stay time.
+        // in frontend if visiting true then calculate from first visit time to now
+        // later make a interval. time can be 5month. not less cz a socket sessions token expiry time now is 3month
+        // then check each sessions->visits->last_item->last_visit_time & delete this session from redis
+        // do that one by one check by awaiting 3 to 10 sec. cz no need to hurry. must use for...of loop for await
+
+        // for fine tune on site time create a key at root and assign first visit time then for each visiting true plus last visit time
+
+        const socketSessionId = socketRes.ses_user.socket_session.id;
+
+        const visitData = await this.reJSON.get(`ws_pv:${socketSessionId}`);
+
+        if (!visitData) {
+            const resReferrer = socketRes.page_data.referrer;
+            let referrer = 'Direct';
+
+            if (resReferrer && new URL(resReferrer).hostname !== new URL(socketRes.page_data.url).hostname) {
+                referrer = new URL(resReferrer).hostname;
+            }
+
+            await this.reJSON.set(
+                `ws_pv:${socketSessionId}`,
+                '.',
+                JSON.stringify({
+                    session_id: socketSessionId,
+                    referrer: referrer,
+                    visits: [
+                        {
+                            url: socketRes.page_data.url,
+                            title: socketRes.page_data.page_title,
+                            first_visit_time: socketRes.sent_at,
+                            last_stay_time: socketRes.sent_at,
+                            visiting: true, // if new we assume visiting
+                        },
+                    ],
+                }),
+            );
+        } else {
+            const parsedVisitData = JSON.parse(visitData);
+
+            // if length is 10 then remove first elm. cz we are keeping only last 10 visits
+            if (parsedVisitData.visits.length === 10)
+                await this.reJSON.arrpop(`ws_pv:${socketSessionId}`, 0, '.visits');
+
+            const lastVisit: any = _.last(parsedVisitData.visits);
+            const lastIndex: any = parsedVisitData.visits.length - 1;
+
+            if (lastVisit.url === socketRes.page_data.url) {
+                // remove last element so that i can update last data
+                await this.reJSON.arrpop(`ws_pv:${socketSessionId}`, lastIndex, '.visits');
+
+                lastVisit.last_stay_time = socketRes.sent_at;
+                lastVisit.visiting = socketRes.visiting;
+
+                await this.reJSON.arrappend(`ws_pv:${socketSessionId}`, [JSON.stringify(lastVisit)], '.visits');
+            } else {
+                await this.reJSON.arrappend(
+                    `ws_pv:${socketSessionId}`,
+                    [
+                        JSON.stringify({
+                            url: socketRes.page_data.url,
+                            title: socketRes.page_data.page_title,
+                            first_visit_time: socketRes.sent_at,
+                            last_stay_time: socketRes.sent_at,
+                            visiting: true, // if new we assume visiting
+                        }),
+                    ],
+                    '.visits',
+                );
+            }
+        }
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_get_clients_page_visit_info')
+    async getClientsPageVisitInfo(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
+        // its safe for now cz this many clients online is a dream
+        const clientsSocketSession = this.clientsRoom(socketRes, false).map((roomId: string) => `ws_pv:${roomId}`);
+
+        if (clientsSocketSession.length) {
+            const clients_visit_data = await this.reJSON.mget(clientsSocketSession, '.');
+
+            this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_get_clients_page_visit_info_res', {
+                data: {
+                    clients_visit_data: clients_visit_data.map((visitInfo: any) => JSON.parse(visitInfo)),
+                },
+            });
+        } else {
+            this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_get_clients_page_visit_info_res', {
+                data: {
+                    clients_visit_data: [],
+                },
+            });
+        }
 
         return;
     }
