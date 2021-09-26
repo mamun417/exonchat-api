@@ -232,31 +232,22 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return position === -1 ? null : position + 1;
     }
 
-    // I think no need for nw
-    // async updateConversationNotifyToValueInDB(client: any, convId: string, sesId: string) {
-    //     try {
-    //         const convRes: any = await this.httpService
-    //             .post(
-    //                 `http://localhost:3000/conversations/${convId}/other_info`,
-    //                 {
-    //                     notify_to_value: sesId,
-    //                 },
-    //                 { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
-    //             )
-    //             .toPromise();
-    //     } catch (e) {}
-    // }
+    sendUsersOnlineStatus(subscriberId: any) {
+        const usersRoom = this.usersRoomBySubscriberId(subscriberId, false);
+        const dataObj: any = {};
 
-    @UseGuards(WsJwtGuard)
-    @SubscribeMessage('ec_get_logged_users') // get users list when needed
-    async usersOnline(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
-        this.sendToSocketClient(client, 'ec_logged_users_res', {
-            users: this.usersRoom(socketRes, false).map((roomId: any) => {
-                return { ses_id: roomId, online_status: this.userClientsInARoom[roomId].online_status };
-            }), // true or false check first
+        usersRoom.forEach((roomId: string) => {
+            dataObj[roomId] = {
+                session_id: roomId,
+                online_status: this.userClientsInARoom[roomId]?.online_status,
+            };
         });
 
-        return;
+        this.sendToSocketRooms(usersRoom, 'ec_socket_rooms_info_res', {
+            action: 'online_status',
+            type: 'user',
+            data: dataObj,
+        });
     }
 
     @UseGuards(WsJwtGuard)
@@ -294,18 +285,26 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         if (dataSendObj.online_status) {
             if (socketRes.status_for === 'user') {
-                // send to all users
-                this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_updated_socket_room_info_res', {
-                    action: 'online_status',
-                    type: 'user',
-                    ses_id: roomName,
-                    data: dataSendObj,
-                });
+                this.sendUsersOnlineStatus(socketRes.ses_user.socket_session.subscriber_id);
             } else {
                 // no need to send to client for now
             }
         } else {
             // send error
+        }
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_get_socket_rooms_info') // update users status when needed
+    async getSocketRoomsInfo(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
+        // body = {
+        //      status_for = client/user
+        // }
+
+        if (socketRes.status_for !== 'client') {
+            this.sendUsersOnlineStatus(socketRes.ses_user.socket_session.subscriber_id);
         }
 
         return;
@@ -1922,22 +1921,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         queryParams.online_status || decodedToken.online_status;
                 }
 
-                const userRooms = Object.keys(this.userClientsInARoom).filter(
-                    (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
-                );
-
-                userRooms.forEach((roomId: any) => {
-                    this.server.in(roomId).emit('ec_user_logged_in', {
-                        ses_id: socket_session.id,
-                    }); // send to all other users
-
-                    this.server.in(roomId).emit('ec_updated_socket_room_info_res', {
-                        action: 'online_status',
-                        type: 'user',
-                        ses_id: roomName,
-                        data: { online_status: queryParams.online_status || decodedToken.online_status },
-                    });
-                });
+                this.sendUsersOnlineStatus(socket_session.subscriber_id);
             }
         }
 
@@ -2002,23 +1986,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 client.leave(roomName);
 
                 if (queryParams.client_type === 'user') {
-                    const userRooms = Object.keys(this.userClientsInARoom).filter(
-                        (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
-                    );
-
-                    userRooms.forEach((roomId: any) => {
-                        // remove this block after handle next block
-                        this.server.in(roomId).emit('ec_user_logged_out', {
-                            user_ses_id: socket_session.id,
-                        }); // send to all other users
-
-                        this.server.in(roomId).emit('ec_updated_socket_room_info_res', {
-                            action: 'online_status',
-                            type: 'user',
-                            ses_id: roomName,
-                            data: { online_status: 'offline' }, // before checking this first check if user has online status
-                        });
-                    });
+                    this.sendUsersOnlineStatus(socket_session.subscriber_id);
                 }
             }
         }
