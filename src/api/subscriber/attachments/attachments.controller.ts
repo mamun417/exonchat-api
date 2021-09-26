@@ -61,6 +61,8 @@ export class AttachmentsController {
                 src: `${process.env.SERVER_URL}/attachments/${attachmentId}`,
                 attachment_info: updateAttachment,
                 original_name: attachment.originalname,
+                temp_id: req.body.attachment_temp_id,
+                msg_temp_id: req.body.msg_temp_id,
             });
         }
 
