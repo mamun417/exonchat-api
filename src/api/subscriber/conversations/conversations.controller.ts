@@ -154,4 +154,16 @@ export class ConversationsController {
     async sendTranscript(@Param('conv_id') conv_id: string, @Request() req: any) {
         return await this.conversationsService.sendTranscript(conv_id, req);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('get-draft/:conv_id')
+    async getDraft(@Param('conv_id') conv_id: string, @Request() req: any) {
+        return await this.conversationsService.getDraft(conv_id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('save-draft/:conv_id')
+    async saveDraft(@Param('conv_id') conv_id: string, @Request() req: any, @Body() body: any) {
+        return await this.conversationsService.saveDraft(conv_id, req, body);
+    }
 }

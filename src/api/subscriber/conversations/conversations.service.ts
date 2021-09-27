@@ -1329,6 +1329,37 @@ export class ConversationsService {
         return attachments;
     }
 
+    async getDraft(conv_id: any, req: any) {
+        const socketSessionId = req.user.data.socket_session.id;
+
+        return this.prisma.conversation_session.findUnique({
+            where: {
+                conv_ses_identifier: {
+                    socket_session_id: socketSessionId,
+                    conversation_id: conv_id,
+                },
+            },
+        });
+    }
+
+    async saveDraft(conv_id: any, req: any, body: any) {
+        const socketSessionId = req.user.data.socket_session.id;
+
+        return await this.prisma.conversation_session.update({
+            where: {
+                conv_ses_identifier: {
+                    socket_session_id: socketSessionId,
+                    conversation_id: conv_id,
+                },
+            },
+            data: {
+                // send draft_messages key if msg or not msg && has attachment.
+                // we need null for other purpose
+                draft_message: body.hasOwnProperty('draft_message') ? body.draft_message : null,
+            },
+        });
+    }
+
     // update(id: number, updateConversationDto: UpdateConversationDto) {
     //     return `This action updates a #${id} conversation`;
     // }
