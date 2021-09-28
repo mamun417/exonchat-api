@@ -1087,19 +1087,30 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             }
         }
 
-        this.sendToAllUsers(socketRes, false, 'ec_msg_from_client', {
-            ...createdMsg,
-            temp_id: socketRes.temp_id,
-            ai_is_replying: false,
-            init_message_from_client: socketRes.hasOwnProperty('init_message_from_client'),
-        });
-
-        if (aiReplyMsg) {
-            this.sendToAllUsers(socketRes, false, 'ec_reply_from_ai', {
+        this.listenersHelperService.sendToSocketRooms(
+            this.server,
+            this.listenersHelperService.usersRoomBySubscriberId(this.userClientsInARoom, createdMsg.subscriber_id),
+            'ec_msg_from_client',
+            {
                 ...createdMsg,
                 temp_id: socketRes.temp_id,
-                ai_is_replying: !!(aiReplyMsg && !!aiReplyMsg.ai_resolved),
-            });
+                ai_is_replying: false,
+                init_message_from_client: socketRes.hasOwnProperty('init_message_from_client'),
+            },
+        );
+
+        if (aiReplyMsg) {
+            this.listenersHelperService.sendToSocketRooms(
+                this.server,
+                this.listenersHelperService.usersRoomBySubscriberId(this.userClientsInARoom, createdMsg.subscriber_id),
+                'ec_reply_from_ai',
+                {
+                    ...createdMsg,
+                    temp_id: socketRes.temp_id,
+                    ai_is_replying: false,
+                    init_message_from_client: socketRes.hasOwnProperty('init_message_from_client'),
+                },
+            );
 
             // send to the user
             this.sendToSocketRoom(ownRoomId, 'ec_reply_from_ai', {
