@@ -111,6 +111,9 @@ export class SocketSessionsService {
     // }
 
     async findOneClientConv(id: string, req: any) {
+        // we are creating client conv from a socket session that's y this query is possible.
+        // next conv will be with new socket session for client
+        // this route is using only for client event so that client does not have to pass conv id
         const socketSession: any = await this.prisma.socket_session.findFirst({
             where: {
                 id,
@@ -129,18 +132,36 @@ export class SocketSessionsService {
             include: {
                 conversation_sessions: {
                     include: {
-                        conversation: {
-                            include: {
-                                conversation_sessions: true, // this needed
-                            },
-                        },
+                        conversation: true,
                     },
                 },
             },
         });
 
         if (socketSession && socketSession.conversation_sessions.length === 1) {
-            const conversation: any = socketSession.conversation_sessions[0].conversation;
+            const conversation: any = await this.prisma.conversation.findFirst({
+                where: {
+                    id: socketSession.conversation_sessions[0].conversation.id,
+                    subscriber_id: req.user.data.socket_session.subscriber_id,
+                },
+                include: {
+                    closed_by: {
+                        include: {
+                            user: true,
+                        },
+                    },
+                    conversation_sessions: {
+                        include: {
+                            socket_session: {
+                                include: {
+                                    user: true,
+                                },
+                            },
+                        },
+                    },
+                    chat_department: true,
+                },
+            });
 
             let routingPolicy = 'manual';
             // if we face issue conversation.conversation_sessions.length === 1 then rethink the use

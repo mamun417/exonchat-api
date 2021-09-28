@@ -97,9 +97,21 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         );
     }
 
+    clientsRoomBySubscriberId(subscriberId: any, onlineStatus = true) {
+        return Object.keys(this.normalClientsInARoom).filter(
+            (roomId: any) =>
+                this.normalClientsInARoom[roomId].sub_id === subscriberId &&
+                (!onlineStatus || (onlineStatus && this.normalClientsInARoom[roomId].online_status === 'online')),
+        );
+    }
+
     // if onlineStatus true only true online users will filter else all other
     usersRoom(socketRes: any, onlineStatus = true) {
         return this.usersRoomBySubscriberId(socketRes.ses_user.socket_session.subscriber_id, onlineStatus);
+    }
+
+    clientsRoom(socketRes: any, onlineStatus = true) {
+        return this.clientsRoomBySubscriberId(socketRes.ses_user.socket_session.subscriber_id, onlineStatus);
     }
 
     // send to a tab/socket client instance
@@ -220,31 +232,22 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return position === -1 ? null : position + 1;
     }
 
-    // I think no need for nw
-    // async updateConversationNotifyToValueInDB(client: any, convId: string, sesId: string) {
-    //     try {
-    //         const convRes: any = await this.httpService
-    //             .post(
-    //                 `http://localhost:3000/conversations/${convId}/other_info`,
-    //                 {
-    //                     notify_to_value: sesId,
-    //                 },
-    //                 { headers: { Authorization: `Bearer ${client.handshake.query.token}` } },
-    //             )
-    //             .toPromise();
-    //     } catch (e) {}
-    // }
+    sendUsersOnlineStatus(subscriberId: any) {
+        const usersRoom = this.usersRoomBySubscriberId(subscriberId, false);
+        const dataObj: any = {};
 
-    @UseGuards(WsJwtGuard)
-    @SubscribeMessage('ec_get_logged_users') // get users list when needed
-    async usersOnline(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
-        this.sendToSocketClient(client, 'ec_logged_users_res', {
-            users: this.usersRoom(socketRes, false).map((roomId: any) => {
-                return { ses_id: roomId, online_status: this.userClientsInARoom[roomId].online_status };
-            }), // true or false check first
+        usersRoom.forEach((roomId: string) => {
+            dataObj[roomId] = {
+                session_id: roomId,
+                online_status: this.userClientsInARoom[roomId]?.online_status,
+            };
         });
 
-        return;
+        this.sendToSocketRooms(usersRoom, 'ec_socket_rooms_info_res', {
+            action: 'online_status',
+            type: 'user',
+            data: dataObj,
+        });
     }
 
     @UseGuards(WsJwtGuard)
@@ -280,20 +283,28 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
             // if emit needed then make dataSendObj
         }
 
-        if (Object.keys(dataSendObj).length) {
+        if (dataSendObj.online_status) {
             if (socketRes.status_for === 'user') {
-                // send to all users
-                this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_updated_socket_room_info_res', {
-                    action: 'online_status',
-                    type: 'user',
-                    ses_id: roomName,
-                    data: dataSendObj,
-                });
+                this.sendUsersOnlineStatus(socketRes.ses_user.socket_session.subscriber_id);
             } else {
                 // no need to send to client for now
             }
         } else {
             // send error
+        }
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_get_socket_rooms_info') // update users status when needed
+    async getSocketRoomsInfo(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
+        // body = {
+        //      status_for = client/user
+        // }
+
+        if (socketRes.status_for !== 'client') {
+            this.sendUsersOnlineStatus(socketRes.ses_user.socket_session.subscriber_id);
         }
 
         return;
@@ -329,13 +340,103 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_page_visit_info_from_client')
     async pageVisitInfoFromClient(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
-        this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_page_visit_info_from_client', {
-            page_data: socketRes.page_data,
-            sent_at: socketRes.sent_at,
-            visiting: socketRes.visiting,
-            ses_id: socketRes.ses_user.socket_session.id,
-            ses_info: socketRes.ses_user.socket_session,
-        });
+        // we can improve this by not sending same url. only update if same url & visiting change
+        // at socket disconnect if last tab close happens then update final last stay time.
+        // in frontend if visiting true then calculate from first visit time to now
+        // later make a interval. time can be 5month. not less cz a socket sessions token expiry time now is 3month
+        // then check each sessions->visits->last_item->last_visit_time & delete this session from redis
+        // do that one by one check by awaiting 3 to 10 sec. cz no need to hurry. must use for...of loop for await
+
+        // for fine tune on site time create a key at root and assign first visit time then for each visiting true plus last visit time
+
+        const socketSessionId = socketRes.ses_user.socket_session.id;
+
+        const visitData = await this.reJSON.get(`ws_pv:${socketSessionId}`);
+
+        if (!visitData) {
+            const resReferrer = socketRes.page_data.referrer;
+            let referrer = 'Direct';
+
+            if (resReferrer && new URL(resReferrer).hostname !== new URL(socketRes.page_data.url).hostname) {
+                referrer = new URL(resReferrer).hostname;
+            }
+
+            await this.reJSON.set(
+                `ws_pv:${socketSessionId}`,
+                '.',
+                JSON.stringify({
+                    session_id: socketSessionId,
+                    referrer: referrer,
+                    visits: [
+                        {
+                            url: socketRes.page_data.url,
+                            title: socketRes.page_data.page_title,
+                            first_visit_time: socketRes.sent_at,
+                            last_stay_time: socketRes.sent_at,
+                            visiting: true, // if new we assume visiting
+                        },
+                    ],
+                }),
+            );
+        } else {
+            const parsedVisitData = JSON.parse(visitData);
+
+            // if length is 10 then remove first elm. cz we are keeping only last 10 visits
+            if (parsedVisitData.visits.length === 10)
+                await this.reJSON.arrpop(`ws_pv:${socketSessionId}`, 0, '.visits');
+
+            const lastVisit: any = _.last(parsedVisitData.visits);
+            const lastIndex: any = parsedVisitData.visits.length - 1;
+
+            if (lastVisit.url === socketRes.page_data.url) {
+                // remove last element so that i can update last data
+                await this.reJSON.arrpop(`ws_pv:${socketSessionId}`, lastIndex, '.visits');
+
+                lastVisit.last_stay_time = socketRes.sent_at;
+                lastVisit.visiting = socketRes.visiting;
+
+                await this.reJSON.arrappend(`ws_pv:${socketSessionId}`, [JSON.stringify(lastVisit)], '.visits');
+            } else {
+                await this.reJSON.arrappend(
+                    `ws_pv:${socketSessionId}`,
+                    [
+                        JSON.stringify({
+                            url: socketRes.page_data.url,
+                            title: socketRes.page_data.page_title,
+                            first_visit_time: socketRes.sent_at,
+                            last_stay_time: socketRes.sent_at,
+                            visiting: true, // if new we assume visiting
+                        }),
+                    ],
+                    '.visits',
+                );
+            }
+        }
+
+        return;
+    }
+
+    @UseGuards(WsJwtGuard)
+    @SubscribeMessage('ec_get_clients_page_visit_info')
+    async getClientsPageVisitInfo(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<number> {
+        // its safe for now cz this many clients online is a dream
+        const clientsSocketSession = this.clientsRoom(socketRes, false).map((roomId: string) => `ws_pv:${roomId}`);
+
+        if (clientsSocketSession.length) {
+            const clients_visit_data = await this.reJSON.mget(clientsSocketSession, '.');
+
+            this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_get_clients_page_visit_info_res', {
+                data: {
+                    clients_visit_data: clients_visit_data.map((visitInfo: any) => JSON.parse(visitInfo)),
+                },
+            });
+        } else {
+            this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_get_clients_page_visit_info_res', {
+                data: {
+                    clients_visit_data: [],
+                },
+            });
+        }
 
         return;
     }
@@ -530,7 +631,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 last_msg_time_client: null,
                 last_msg_time_agent: null,
                 // dont store chat_inactive_log_handled key. cz only join can do that
-                timing_actions_interval: setInterval(() => this.convTimingActionsInterval(conv_id), 10000),
+                timing_actions_interval: setInterval(
+                    () =>
+                        this.listenersHelperService.convTimingActionsInterval(
+                            this.server,
+                            this.roomsInAConv,
+                            this.userClientsInARoom,
+                            this.normalClientsInARoom,
+                            conv_id,
+                        ),
+                    10000,
+                ),
             };
         } else {
             return this.sendError(client, 'ec_init_conv_from_client', 'conv id already exists');
@@ -849,19 +960,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
             delete this.roomsInAConv[data.conv_id];
 
-            // userRooms.forEach((room: any) => {
-            //     // filter agents
-            //     roomsInAConvCopy = roomsInAConvCopy.filter((copyRoom: any) => copyRoom !== room);
-            //
-            //     this.server.in(room).emit('ec_is_closed_from_conversation', {
-            //         data: {
-            //             conv_data,
-            //             conv_id,
-            //         },
-            //         status: 'success',
-            //     });
-            // });
-
             this.sendToAllUsers(
                 data,
                 false,
@@ -889,11 +987,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         let convId = this.convIdFromSession(data);
 
         if (!convId) {
-            const convObj = await this.clientConvFromSession(data, client);
+            const convId = await this.clientConvFromSession(data, client);
 
-            if (!convObj) return;
-
-            convId = convObj.id;
+            if (!convId) return;
         }
 
         // send to all connected users
@@ -927,11 +1023,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         const ownRoomId = socketRes.ses_user.socket_session.id;
 
         if (!convId) {
-            const convObj = await this.clientConvFromSession(socketRes, client);
+            const convId = await this.clientConvFromSession(socketRes, client);
 
-            if (!convObj) return;
-
-            convId = convObj.id;
+            if (!convId) return;
         }
 
         let createdMsg: any = null;
@@ -992,8 +1086,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 // if needed send to emitted user
             }
         }
-
-        const convObj = this.roomsInAConv[convId];
 
         this.sendToAllUsers(socketRes, false, 'ec_msg_from_client', {
             ...createdMsg,
@@ -1194,102 +1286,16 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 this.sendError(client, 'ec_client_conv_check', 'conversation no longer valid');
             } else {
                 const conv_data = convRes.data;
-                const convId = conv_data.id;
 
-                if (!this.roomsInAConv.hasOwnProperty(convRes.data.id)) {
-                    this.roomsInAConv[convRes.data.id] = {
-                        conv_id: convRes.data.id,
-                        room_ids: _.map(
-                            convRes.data.conversation_sessions.filter(
-                                (convSes: any) => convSes.joined_at && !convSes.left_at,
-                            ),
-                            'socket_session_id',
-                        ),
-                        ai_is_replying: convRes.data.ai_is_replying,
-                        routing_policy: convRes.data.routing_policy || 'manual', // check from other_info also
-                        sub_id: convRes.data.subscriber_id,
-                        notify_to: convRes.data.other_info?.notify_to || null,
-                        chat_department: convRes.data.chat_department?.id,
-                        created_at: conv_data.created_at,
-                        users_only: conv_data.users_only,
-                        chat_type: conv_data.chat_type,
-                    };
+                await this.listenersHelperService.addConvDataToInstanceIfNot(
+                    conv_data,
+                    this.roomsInAConv,
+                    this.server,
+                    this.userClientsInARoom,
+                    this.normalClientsInARoom,
+                );
 
-                    this.roomsInAConv[convId].client_room_id = _.find(
-                        convRes.data.conversation_sessions,
-                        (conv_ses: any) => !conv_ses.socket_session.user,
-                    )?.socket_session_id;
-
-                    if (convRes.data.other_info) {
-                        this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
-                    }
-
-                    const convObj = this.roomsInAConv[convId];
-
-                    convObj.last_msg_time_client = 0;
-                    convObj.last_msg_time_agent = null;
-
-                    const lastClientMsg = await this.prisma.message.findFirst({
-                        where: {
-                            message_type: { not: 'log' },
-                            conversation_id: convId,
-                            socket_session: { user_id: null },
-                        },
-                        orderBy: { created_at: 'desc' },
-                    });
-
-                    if (lastClientMsg) {
-                        convObj.last_msg_time_client = new Date(lastClientMsg.created_at).getTime();
-                    }
-
-                    // for now we are checking agents were joined
-                    if (convRes.data.conversation_sessions.length > 1 && !convRes.data.users_only) {
-                        const lastAgentMsg = await this.prisma.message.findFirst({
-                            where: {
-                                message_type: { not: 'log' },
-                                conversation_id: convId,
-                                socket_session: { user_id: { not: null } },
-                            },
-                            orderBy: { created_at: 'desc' },
-                        });
-
-                        if (lastAgentMsg) {
-                            convObj.last_msg_time_agent = new Date(lastAgentMsg.created_at).getTime();
-                        } else {
-                            convObj.last_msg_time_agent = 0;
-                        }
-
-                        const firstJoin = _.sortBy(
-                            convRes.data.conversation_sessions.filter((convSes: any) => convSes.socket_session.user_id),
-                            [(convSes) => moment(convSes.created_at).format('x')],
-                        );
-
-                        if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
-                            convObj.last_msg_time_client = new Date(firstJoin[0].created_at).getTime();
-                        }
-
-                        const chatInactiveLog = await this.prisma.message.findFirst({
-                            where: {
-                                msg: 'chat_inactive',
-                                message_type: 'log',
-                                conversation_id: convId,
-                            },
-                            orderBy: { created_at: 'desc' },
-                        });
-
-                        convObj.chat_inactive_log_handled =
-                            chatInactiveLog &&
-                            (new Date(chatInactiveLog.created_at).getTime() > convObj.last_msg_time_client ||
-                                (convObj.last_msg_time_agent !== null &&
-                                    new Date(chatInactiveLog.created_at) > convObj.last_msg_time_agent));
-                    }
-
-                    convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
-                }
-
-                // console.log('Rooms In Conversations => ', this.roomsInAConv);
-
-                return convRes.data;
+                return conv_data.id;
             }
         } catch (e) {
             this.sendError(client, 'ec_client_conv_check', e.response.data);
@@ -1343,36 +1349,15 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
     // it's only for support if system restart happens
     // OR all connected conv relation are cleaned when user|client closed from this conv
-    async sysHasConvAndSocketSessionRecheck(data: any, client: any) {
-        if (this.convRoomsHasSession(data, client)) return true;
-
-        if (await this.recheckSysHasConv(data, client)) return true;
-
-        this.sendError(client, 'ec_root', 'this conversation not found in the system');
-
-        return false;
-    }
-
-    convRoomsHasSession(data: any, client: any, emitError = false) {
-        if (
-            this.checkConvId(data, client, emitError) &&
-            this.sysHasConv(data, client, emitError)
-            // this.roomsInAConv[data.conv_id].room_ids.includes(data.ses_user.socket_session.id) // this check is faulty
-        )
-            return true;
-
-        if (emitError) this.sendError(client, 'ec_root', 'you are not connected with this conversation anymore');
-
-        return false;
-    }
-
-    // check if conv_id is passed through data
-    checkConvId(data: any, client: any, emitError = false) {
-        if (data.hasOwnProperty('conv_id') && data.conv_id) return data.conv_id;
-
-        if (emitError) this.sendError(client, 'ec_root', 'conversation id not present in the request');
-
-        return null;
+    async sysHasConvAndSocketSessionRecheck(socketRes: any, client: any) {
+        return await this.listenersHelperService.sysHasConversationsWithRecheck(
+            socketRes,
+            this.roomsInAConv,
+            this.userClientsInARoom,
+            this.normalClientsInARoom,
+            this.server,
+            client,
+        );
     }
 
     sysHasConv(data: any, client: any, emitError = false) {
@@ -1383,137 +1368,12 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         return false;
     }
 
-    // don't call it directly. call sysHasConvAndSocketSessionRecheck
-    async recheckSysHasConv(data: any, client: any) {
-        const convId = data.conv_id;
-
-        try {
-            const convRes: any = await this.httpService
-                .get(`http://localhost:3000/conversations/${convId}/sessions`, {
-                    headers: { Authorization: `Bearer ${client.handshake.query.token}` },
-                })
-                .toPromise();
-
-            if (!convRes.data) {
-                this.sendError(client, 'ec_recheck_conv', 'conversation not found');
-            } else if (convRes.data.closed_at) {
-                this.sendError(client, 'ec_recheck_conv', 'conversation is closed');
-            } else {
-                if (!this.roomsInAConv.hasOwnProperty(convId)) {
-                    this.roomsInAConv[convId] = {
-                        room_ids: _.map(
-                            convRes.data.conversation_sessions.filter(
-                                (convSes: any) => convSes.joined_at && !convSes.left_at,
-                            ),
-                            'socket_session_id',
-                        ),
-                    };
-
-                    this.roomsInAConv[convId].client_room_id = _.find(
-                        convRes.data.conversation_sessions,
-                        (conv_ses: any) => !conv_ses.socket_session.user,
-                    )?.socket_session_id;
-
-                    this.roomsInAConv[convId].conv_id = convId;
-
-                    this.roomsInAConv[convId].users_only = convRes.data.users_only;
-                    this.roomsInAConv[convId].chat_type = convRes.data.type;
-                    this.roomsInAConv[convId].created_at = convRes.data.created_at;
-
-                    this.roomsInAConv[convId].ai_is_replying = convRes.data.ai_is_replying;
-                    this.roomsInAConv[convId].routing_policy = convRes.data.routing_policy || 'manual';
-                    this.roomsInAConv[convId].sub_id = convRes.data.subscriber_id;
-                    this.roomsInAConv[convId].chat_department = convRes.data.chat_department?.id;
-
-                    if (convRes.data.other_info) {
-                        this.roomsInAConv[convId].notify_to = convRes.data.other_info?.notify_to || null;
-                    }
-
-                    const convObj = this.roomsInAConv[convId];
-
-                    convObj.last_msg_time_client = 0;
-                    convObj.last_msg_time_agent = null; // important for interval
-
-                    const lastClientMsg = await this.prisma.message.findFirst({
-                        where: {
-                            message_type: { not: 'log' },
-                            conversation_id: convId,
-                            socket_session: { user_id: null },
-                        },
-                        orderBy: { created_at: 'desc' },
-                    });
-
-                    if (lastClientMsg) {
-                        convObj.last_msg_time_client = new Date(lastClientMsg.created_at).getTime();
-                    }
-
-                    // for now we are checking agents were joined
-                    if (convRes.data.conversation_sessions.length > 1 && !convRes.data.users_only) {
-                        const lastAgentMsg = await this.prisma.message.findFirst({
-                            where: {
-                                message_type: { not: 'log' },
-                                conversation_id: convId,
-                                socket_session: { user_id: { not: null } },
-                            },
-                            orderBy: { created_at: 'desc' },
-                        });
-
-                        if (lastAgentMsg) {
-                            convObj.last_msg_time_agent = new Date(lastAgentMsg.created_at).getTime();
-                        } else {
-                            convObj.last_msg_time_agent = 0;
-                        }
-
-                        const firstJoin = _.sortBy(
-                            convRes.data.conversation_sessions.filter((convSes: any) => convSes.socket_session.user_id),
-                            [(convSes) => moment(convSes.created_at).format('x')],
-                        );
-
-                        if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
-                            convObj.last_msg_time_client = new Date(firstJoin[0].created_at).getTime();
-                        }
-
-                        const chatInactiveLog = await this.prisma.message.findFirst({
-                            where: {
-                                msg: 'chat_inactive',
-                                message_type: 'log',
-                                conversation_id: convId,
-                            },
-                            orderBy: { created_at: 'desc' },
-                        });
-
-                        const lastMsgTime =
-                            convObj.last_msg_time_agent !== null &&
-                            convObj.last_msg_time_agent > convObj.last_msg_time_client
-                                ? convObj.last_msg_time_agent
-                                : convObj.last_msg_time_client;
-
-                        convObj.chat_inactive_log_handled =
-                            chatInactiveLog && new Date(chatInactiveLog.created_at).getTime() > lastMsgTime;
-                    }
-
-                    convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
-                }
-
-                // console.log('Rooms In Conversations => ', this.roomsInAConv);
-
-                return true;
-            }
-        } catch (e) {
-            this.sendError(client, 'ec_recheck_conv', e.response.data);
-        }
-
-        return false;
-    }
-
     // don't call it directly
     convIsUserOnly(data: any) {
         return !!this.roomsInAConv[data.conv_id].users_only;
     }
 
     async afterInit(server: Server) {
-        console.log(await this.reJSON.get('hi'));
-
         console.log('Socket Gateway Initialized'); //
 
         // if for anyhow server restart happens load unhandled convs
@@ -1540,234 +1400,13 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         });
 
         for (const tempConv of allConvs) {
-            const conv: any = tempConv;
-            const convId = conv.id;
-
-            if (!this.roomsInAConv.hasOwnProperty(convId)) {
-                this.roomsInAConv[convId] = {
-                    room_ids: _.map(
-                        conv.conversation_sessions.filter((convSes: any) => !convSes.left_at && convSes.joined_at),
-                        'socket_session_id',
-                    ),
-                };
-
-                this.roomsInAConv[convId].client_room_id = _.find(
-                    conv.conversation_sessions,
-                    (conv_ses: any) => !conv_ses.socket_session.user,
-                )?.socket_session_id;
-
-                this.roomsInAConv[convId].conv_id = conv.id;
-
-                this.roomsInAConv[convId].users_only = conv.users_only;
-                this.roomsInAConv[convId].chat_type = conv.type;
-                this.roomsInAConv[convId].created_at = conv.created_at;
-
-                this.roomsInAConv[convId].ai_is_replying = conv.ai_is_replying;
-                this.roomsInAConv[convId].routing_policy = conv.routing_policy || 'manual'; // or check conv.other_info.routing_policy
-                this.roomsInAConv[convId].sub_id = conv.subscriber_id;
-                this.roomsInAConv[convId].chat_department = conv.chat_department?.id;
-
-                if (conv.other_info) {
-                    this.roomsInAConv[convId].notify_to = conv.other_info?.notify_to || null;
-                }
-
-                const convObj = this.roomsInAConv[convId];
-
-                // from this line upto last same type of conditions has more then 2 places
-                convObj.last_msg_time_client = 0;
-                convObj.last_msg_time_agent = null;
-
-                const lastClientMsg = await this.prisma.message.findFirst({
-                    where: {
-                        message_type: { not: 'log' },
-                        conversation_id: convId,
-                        socket_session: { user_id: null },
-                    },
-                    orderBy: { created_at: 'desc' },
-                });
-
-                if (lastClientMsg) {
-                    convObj.last_msg_time_client = new Date(lastClientMsg.created_at).getTime();
-                }
-
-                // for now we are checking agents were joined
-                // if joined start inactivity check
-                if (conv.conversation_sessions.length > 1) {
-                    const lastAgentMsg = await this.prisma.message.findFirst({
-                        where: {
-                            message_type: { not: 'log' },
-                            conversation_id: convId,
-                            socket_session: { user_id: { not: null } },
-                        },
-                        orderBy: { created_at: 'desc' },
-                    });
-
-                    if (lastAgentMsg) {
-                        convObj.last_msg_time_agent = new Date(lastAgentMsg.created_at).getTime();
-                    } else {
-                        convObj.last_msg_time_agent = 0;
-                    }
-
-                    // get first join for check clients msg before or after
-                    const firstJoin = _.sortBy(
-                        conv.conversation_sessions.filter((convSes: any) => convSes.socket_session.user_id),
-                        [(convSes) => moment(convSes.created_at).format('x')],
-                    );
-
-                    // store join time if client msg was before join. so that inactivity count starts from join
-                    if (new Date(firstJoin[0].created_at).getTime() > convObj.last_msg_time_client) {
-                        convObj.last_msg_time_client = new Date(firstJoin[0].created_at).getTime();
-                    }
-
-                    // assign key only when if any joins happen.
-                    // true if has log & log is newer then client msg || agent msg
-                    const lastMsgTime =
-                        convObj.last_msg_time_agent !== null &&
-                        convObj.last_msg_time_agent > convObj.last_msg_time_client
-                            ? convObj.last_msg_time_agent
-                            : convObj.last_msg_time_client;
-
-                    convObj.chat_inactive_log_handled =
-                        !!conv.messages.length && // conv.messages can only contain chat inactive log msg
-                        new Date(conv.messages[0].created_at).getTime() > lastMsgTime;
-                }
-
-                convObj.timing_actions_interval = setInterval(() => this.convTimingActionsInterval(convId), 10000);
-            }
-        }
-
-        // console.log(this.roomsInAConv);
-    }
-
-    async convTimingActionsInterval(convId: any) {
-        const convObj = this.roomsInAConv[convId];
-        const intervalTime = 10 * 60 * 1000;
-        const convCloseIntervalTime = 60 * 60 * 1000;
-
-        const lastMsgTime =
-            convObj.last_msg_time_agent !== null && convObj.last_msg_time_agent > convObj.last_msg_time_client
-                ? convObj.last_msg_time_agent
-                : convObj.last_msg_time_client;
-
-        // property chat_inactive_log_handled will only insert if join. & if not log handled store it
-        if (
-            convObj.hasOwnProperty('chat_inactive_log_handled') &&
-            !convObj.chat_inactive_log_handled &&
-            !convObj.users_only
-        ) {
-            if (new Date().getTime() > lastMsgTime + intervalTime) {
-                const createdLog = await this.prisma.message.create({
-                    data: {
-                        msg: 'chat_inactive',
-                        message_type: 'log',
-                        conversation: { connect: { id: convId } },
-                        subscriber: { connect: { id: convObj.sub_id } },
-                    },
-                    include: {
-                        conversation: {
-                            include: {
-                                conversation_sessions: {
-                                    include: {
-                                        socket_session: { include: { user: { include: { user_meta: true } } } },
-                                    },
-                                },
-                                chat_department: true,
-                            },
-                        },
-                    },
-                });
-
-                this.sendToSocketRooms(
-                    this.usersRoomBySubscriberId(convObj.sub_id, false),
-                    'ec_msg_from_client',
-                    createdLog,
-                );
-
-                this.sendToSocketRoom(this.clientRoomFromConv(convObj), 'ec_msg_to_client', createdLog);
-
-                convObj.chat_inactive_log_handled = true;
-
-                // console.log('chat inactive stored');
-            }
-        }
-
-        // close conversation interval action. do this last. in join chat_inactive_log_handled check is making it safe
-        if (
-            !convObj.users_only &&
-            new Date().getTime() > lastMsgTime + convCloseIntervalTime &&
-            convObj.last_msg_time_agent !== null // that means agents were joined
-        ) {
-            console.log('conv close candidate', convId);
-
-            const updateCount = await this.prisma.conversation.updateMany({
-                where: {
-                    id: convId,
-                    users_only: false,
-                    closed_at: null,
-                    subscriber_id: convObj.sub_id,
-                },
-                data: {
-                    closed_at: new Date(),
-                    closed_reason: 'Chat is closed due to inactivity',
-                },
-            });
-
-            if (updateCount.count === 1) {
-                const conv_data: any = await this.prisma.conversation.findUnique({
-                    where: { id: convId },
-                    include: {
-                        closed_by: {
-                            include: {
-                                user: { include: { user_meta: true } },
-                            },
-                        },
-                        conversation_sessions: {
-                            include: {
-                                socket_session: {
-                                    include: {
-                                        user: { include: { user_meta: true } },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                });
-
-                conv_data.log_message = await this.prisma.message.create({
-                    data: {
-                        msg: 'closed',
-                        message_type: 'log',
-                        conversation: { connect: { id: convId } },
-                        subscriber: { connect: { id: convObj.sub_id } },
-                    },
-                });
-
-                // before clone remove interval check
-                clearInterval(this.roomsInAConv[convId].timing_actions_interval);
-
-                // clone before remove so that we can inform client. it can be simplified
-                const roomsInAConvCopy = _.cloneDeep(this.roomsInAConv);
-
-                delete this.roomsInAConv[convId];
-
-                this.listenersHelperService.sendToSocketRooms(
-                    this.server,
-                    this.listenersHelperService.usersRoomBySubscriberId(
-                        this.userClientsInARoom,
-                        roomsInAConvCopy[convId].sub_id,
-                    ),
-                    'ec_is_closed_from_conversation',
-                    {
-                        data: { conv_data, conv_id: convId },
-                        status: 'success',
-                    },
-                );
-
-                this.sendToSocketRoom(convObj.client_room_id, 'ec_is_closed_from_conversation', {
-                    data: { conv_data, conv_id: convId },
-                    status: 'success',
-                });
-            }
+            await this.listenersHelperService.addConvDataToInstanceIfNot(
+                tempConv,
+                this.roomsInAConv,
+                server,
+                this.userClientsInARoom,
+                this.normalClientsInARoom,
+            );
         }
     }
 
@@ -1820,22 +1459,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                         queryParams.online_status || decodedToken.online_status;
                 }
 
-                const userRooms = Object.keys(this.userClientsInARoom).filter(
-                    (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
-                );
-
-                userRooms.forEach((roomId: any) => {
-                    this.server.in(roomId).emit('ec_user_logged_in', {
-                        ses_id: socket_session.id,
-                    }); // send to all other users
-
-                    this.server.in(roomId).emit('ec_updated_socket_room_info_res', {
-                        action: 'online_status',
-                        type: 'user',
-                        ses_id: roomName,
-                        data: { online_status: queryParams.online_status || decodedToken.online_status },
-                    });
-                });
+                this.sendUsersOnlineStatus(socket_session.subscriber_id);
             }
         }
 
@@ -1900,23 +1524,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 client.leave(roomName);
 
                 if (queryParams.client_type === 'user') {
-                    const userRooms = Object.keys(this.userClientsInARoom).filter(
-                        (roomId: any) => this.userClientsInARoom[roomId].sub_id === socket_session.subscriber_id,
-                    );
-
-                    userRooms.forEach((roomId: any) => {
-                        // remove this block after handle next block
-                        this.server.in(roomId).emit('ec_user_logged_out', {
-                            user_ses_id: socket_session.id,
-                        }); // send to all other users
-
-                        this.server.in(roomId).emit('ec_updated_socket_room_info_res', {
-                            action: 'online_status',
-                            type: 'user',
-                            ses_id: roomName,
-                            data: { online_status: 'offline' }, // before checking this first check if user has online status
-                        });
-                    });
+                    this.sendUsersOnlineStatus(socket_session.subscriber_id);
                 }
             }
         }
