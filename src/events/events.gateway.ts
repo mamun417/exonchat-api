@@ -349,6 +349,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
         // for fine tune on site time create a key at root and assign first visit time then for each visiting true plus last visit time
 
+        const socketSession = socketRes.ses_user.socket_session;
         const socketSessionId = socketRes.ses_user.socket_session.id;
 
         const visitData = await this.reJSON.get(`ws_pv:${socketSessionId}`);
@@ -366,6 +367,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 '.',
                 JSON.stringify({
                     session_id: socketSessionId,
+                    init_ip: socketSession.init_ip,
+                    init_location: socketSession.init_location?.country?.names?.en || 'unknown',
                     referrer: referrer,
                     visits: [
                         {
@@ -425,6 +428,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
         if (clientsSocketSession.length) {
             const clients_visit_data = await this.reJSON.mget(clientsSocketSession, '.');
 
+            // there may b null entry cz at the time of insert to redis this call can be happen
             this.sendToSocketRooms(this.usersRoom(socketRes, false), 'ec_get_clients_page_visit_info_res', {
                 data: {
                     clients_visit_data: clients_visit_data.map((visitInfo: any) => JSON.parse(visitInfo)),
