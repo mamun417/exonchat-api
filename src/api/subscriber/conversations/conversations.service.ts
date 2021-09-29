@@ -20,6 +20,7 @@ import { MailService } from '../../../mail/mail.service';
 import SendTranscriptMaker from '../../../mail/templates/send-transcript';
 import { extname, join } from 'path';
 import * as _l from 'lodash';
+import { CreateConversationV2Dto } from './dto/create-conversation-v2.dto';
 
 @Injectable()
 export class ConversationsService {
@@ -235,6 +236,163 @@ export class ConversationsService {
 
         conversation.routing_policy = routingPolicy;
         conversation.log_message = logMessage;
+
+        return conversation;
+    }
+
+    async createV2(req: any, createConversationDto: CreateConversationV2Dto) {
+        const subscriberId = req.user.data.socket_session.subscriber_id;
+        const socketSessionId = req.user.data.socket_session.id;
+        const socketSession = req.user.data.socket_session;
+
+        let chatDepartmentConnector = {};
+        let socketSessionsConnector = createConversationDto.session_ids || [];
+
+        socketSessionsConnector.push(socketSessionId);
+        socketSessionsConnector = _l.unique(socketSessionsConnector);
+
+        for (const ses_id of socketSessionsConnector.filter((ses_id: any) => ses_id !== socketSessionId)) {
+            await this.socketSessionService.findOneWithException(ses_id, req); // also check is user
+        }
+
+        if (socketSession.user_id) {
+            if (socketSessionsConnector.length <= 1)
+                throw new HttpException(`Doing something wrong`, HttpStatus.UNPROCESSABLE_ENTITY);
+
+            if (createConversationDto.chat_type === 'user_to_user_chat') {
+                const conv = await this.prisma.conversation.findFirst({
+                    where: {
+                        users_only: true,
+                        type: 'user_to_user_chat',
+                        subscriber_id: subscriberId,
+                        AND: socketSessionsConnector.map((ses_id: string) => {
+                            return {
+                                conversation_sessions: {
+                                    some: {
+                                        socket_session_id: ses_id,
+                                    },
+                                },
+                            };
+                        }),
+                    },
+                    include: {
+                        conversation_sessions: {
+                            include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                        },
+                        chat_department: true,
+                    },
+                });
+
+                if (conv) return conv;
+            } else {
+                throw new HttpException(`Not implemented Yet`, HttpStatus.NOT_IMPLEMENTED);
+            }
+        }
+
+        // // if client
+        if (!req.user.data.socket_session.user_id) {
+            const convBySesId = await this.prisma.conversation.findFirst({
+                where: {
+                    conversation_sessions: {
+                        some: {
+                            socket_session_id: socketSessionId,
+                        },
+                    },
+                },
+            });
+
+            if (convBySesId) throw new HttpException(`Already Created with this Session ID`, HttpStatus.CONFLICT);
+
+            await this.prisma.socket_session.update({
+                where: {
+                    id: socketSessionId,
+                },
+                data: {
+                    init_name: createConversationDto.name,
+                    init_email: createConversationDto.email,
+                    user_info: createConversationDto.user_info || {},
+                },
+            });
+        }
+
+        let ai_can_reply = false;
+        let routingPolicy = 'manual';
+
+        if (createConversationDto.chat_type === 'live_chat') {
+            await this.chatDepartmentService.findOneWithException(createConversationDto.department_id, req);
+
+            chatDepartmentConnector = { chat_department: { connect: { id: createConversationDto.department_id } } };
+
+            const aiReplySetting = await this.settingsService.findOne('ai_auto_reply_at_client_msg', req);
+
+            if (aiReplySetting) {
+                if (aiReplySetting && aiReplySetting.user_settings_value && aiReplySetting.user_settings_value.length) {
+                    ai_can_reply = aiReplySetting.user_settings_value[0].value === 'true';
+                } else {
+                    ai_can_reply = aiReplySetting.default_value === 'true';
+                }
+            }
+
+            // get by category & other info. send also routing info
+            const routingPolicySetting = await this.settingsService.findOne(
+                'conversation_at_initiate_notify_policy',
+                req,
+            );
+
+            if (routingPolicySetting) {
+                if (
+                    routingPolicySetting &&
+                    routingPolicySetting.user_settings_value &&
+                    routingPolicySetting.user_settings_value.length
+                ) {
+                    routingPolicy = routingPolicySetting.user_settings_value[0].value;
+                } else {
+                    routingPolicy = routingPolicySetting.default_value;
+                }
+            }
+        }
+
+        const conversation: any = await this.prisma.conversation.create({
+            data: {
+                users_only: createConversationDto.chat_type !== 'live_chat',
+                type: createConversationDto.chat_type,
+                ai_is_replying: ai_can_reply,
+                conversation_sessions: {
+                    create: socketSessionsConnector.map((ses_id: string) => ({
+                        joined_at: new Date(),
+                        socket_session: {
+                            connect: { id: ses_id },
+                        },
+                        subscriber: {
+                            connect: { id: subscriberId },
+                        },
+                    })),
+                },
+                messages: {
+                    create: {
+                        msg: 'initiate',
+                        message_type: 'log',
+                        socket_session: { connect: { id: socketSessionId } },
+                        subscriber: { connect: { id: subscriberId } },
+                    },
+                },
+                subscriber: {
+                    connect: { id: subscriberId },
+                },
+                created_by: {
+                    connect: { id: socketSessionId },
+                },
+                ...chatDepartmentConnector,
+            },
+            include: {
+                conversation_sessions: {
+                    include: { socket_session: { include: { user: { include: { user_meta: true } } } } },
+                },
+                chat_department: true,
+            },
+        });
+
+        conversation.routing_policy = routingPolicy;
 
         return conversation;
     }

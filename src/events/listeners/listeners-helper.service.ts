@@ -280,8 +280,16 @@ export class ListenersHelperService {
     }
 
     // only room ids
-    usersRoomBySubscriberId(usersRoom: any, subscriberId: any) {
+    usersRoomBySubscriberId(usersRoom: any, subscriberId: string) {
         return Object.keys(usersRoom).filter((roomId: any) => usersRoom[roomId].sub_id === subscriberId);
+    }
+
+    usersRoomBySubscriberIdAndDepartmentId(usersRoom: any, subscriberId: string, departmentId: string) {
+        const roomsBySubscriber = this.usersRoomBySubscriberId(usersRoom, subscriberId);
+
+        return roomsBySubscriber.filter((roomId: any) => {
+            return usersRoom[roomId].chat_departments?.includes(departmentId);
+        });
     }
 
     clientRoomFromConv(clientsRoom: any, conv: any) {
@@ -311,5 +319,20 @@ export class ListenersHelperService {
         });
 
         return false;
+    }
+
+    // make errors response with key and message
+    makeErrorMessagesFromApiRes(messages: any) {
+        if (_.isArray(messages)) {
+            const errorMessages: any = {};
+
+            messages.forEach((message: string) => {
+                const msgKey = message.split(' ')[0];
+
+                errorMessages[msgKey] = message;
+            });
+
+            return errorMessages;
+        }
     }
 }
