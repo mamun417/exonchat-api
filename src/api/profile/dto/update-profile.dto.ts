@@ -1,6 +1,10 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateIf } from 'class-validator';
 
 export class UpdateProfileDto {
+    @IsEmail()
+    @IsNotEmpty()
+    email: string;
+
     @IsString()
     @IsNotEmpty()
     full_name: string;

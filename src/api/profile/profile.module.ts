@@ -5,9 +5,10 @@ import { PrismaService } from 'src/prisma.service';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
 import { AttachmentsService } from '../subscriber/attachments/attachments.service';
+import { MailModule } from '../../mail/mail.module';
 
 @Module({
-    imports: [HttpModule],
+    imports: [HttpModule, MailModule],
     controllers: [ProfileController],
     providers: [PrismaService, ProfileService, DataHelper, AttachmentsService],
 })
