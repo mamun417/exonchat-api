@@ -310,11 +310,11 @@ export class UsersService {
 
         const chatDepartmentConnector: any = {};
 
-        if (invitation.additional_data) {
-            if (invitation.additional_data.chat_department_ids) {
+        if (invitation.additional_info) {
+            if (invitation.additional_info.chat_department_ids) {
                 chatDepartmentConnector.connect = [];
 
-                for (const chat_department_id of invitation.additional_data.chat_department_ids) {
+                for (const chat_department_id of invitation.additional_info.chat_department_ids) {
                     const department = await this.prisma.chat_department.findFirst({
                         where: {
                             subscriber_id: invitation.subscriber_id,
