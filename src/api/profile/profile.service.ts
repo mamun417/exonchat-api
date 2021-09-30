@@ -24,11 +24,11 @@ export class ProfileService {
             include: { user_meta: true },
         });
 
-        if (user.email !== updateProfileDto.email) {
-            await this.mailService.sendChangeEmailOtp(updateProfileDto.email);
-
-            return { send_otp: true };
-        }
+        // if (user.email !== updateProfileDto.email) {
+        //     await this.mailService.sendChangeEmailOtp(updateProfileDto.email);
+        //
+        //     return { send_otp: true };
+        // }
 
         const userInfo: any = user.user_meta.info || {};
 
@@ -51,7 +51,6 @@ export class ProfileService {
                         info: userInfo,
                     },
                 },
-                email: updateProfileDto.email,
             },
             include: {
                 user_meta: {
