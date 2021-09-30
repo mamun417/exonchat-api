@@ -988,7 +988,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_is_typing_from_client')
     async typingFromClient(@MessageBody() data: any, @ConnectedSocket() client: Socket): Promise<number> {
-        let convId = this.convIdFromSession(data);
+        const convId = this.convIdFromSession(data);
 
         if (!convId) {
             const convId = await this.clientConvFromSession(data, client);
@@ -1023,7 +1023,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
     @UseGuards(WsJwtGuard)
     @SubscribeMessage('ec_msg_from_client')
     async msgFromClient(@MessageBody() socketRes: any, @ConnectedSocket() client: Socket): Promise<any> {
-        let convId = this.convIdFromSession(socketRes);
+        const convId = this.convIdFromSession(socketRes);
         const ownRoomId = socketRes.ses_user.socket_session.id;
 
         if (!convId) {
@@ -1539,7 +1539,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
                 client.leave(roomName);
 
                 if (queryParams.client_type === 'user') {
-                    this.sendUsersOnlineStatus(socket_session.subscriber_id);
+                    setTimeout(() => {
+                        this.sendUsersOnlineStatus(socket_session.subscriber_id);
+                    }, 5000);
                 }
             }
         }

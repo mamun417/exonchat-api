@@ -1,5 +1,5 @@
 import { DataHelper } from '../../helper/data-helper';
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateAvatarAttachmentDto } from './dto/update-avatar-attachment.dto';
@@ -7,6 +7,7 @@ import { AttachmentsService } from '../subscriber/attachments/attachments.servic
 import { UpdateOnlineStatusDto } from './dto/update-online-status.dto';
 
 import { user } from '@prisma/client';
+import { MailService } from '../../mail/mail.service';
 
 @Injectable()
 export class ProfileService {
@@ -14,6 +15,7 @@ export class ProfileService {
         private prisma: PrismaService,
         private dataHelper: DataHelper,
         private attachmentService: AttachmentsService,
+        private mailService: MailService,
     ) {}
 
     async update(req: any, updateProfileDto: UpdateProfileDto) {
@@ -21,6 +23,12 @@ export class ProfileService {
             where: { id: req.user.data.id },
             include: { user_meta: true },
         });
+
+        if (user.email !== updateProfileDto.email) {
+            await this.mailService.sendChangeEmailOtp(updateProfileDto.email);
+
+            return { send_otp: true };
+        }
 
         const userInfo: any = user.user_meta.info || {};
 
@@ -43,6 +51,7 @@ export class ProfileService {
                         info: userInfo,
                     },
                 },
+                email: updateProfileDto.email,
             },
             include: {
                 user_meta: {

@@ -95,4 +95,22 @@ export class MailService {
             attachments: mailAttachments,
         });
     }
+
+    async sendChangeEmailOtp(emailTo: string) {
+        await this.mailerService.sendMail({
+            to: emailTo,
+            from: this.from,
+            subject: 'Change Email Address',
+            html: `<div style="padding: 50px; max-width: 600px">
+                <div style="margin-bottom: 8px; font-weight: bold">Your OTP is 282110</div>
+                <div style="margin-bottom: 12px">
+                    OTP will be expired in 5 minutes. Please use this OTP for your email update
+                    confirmation!
+                </div>
+                <p>Thank you.</p>
+                Regards,<br />
+                ${this.regards}
+            </div>`,
+        });
+    }
 }
