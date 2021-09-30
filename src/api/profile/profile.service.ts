@@ -51,6 +51,7 @@ export class ProfileService {
                         info: userInfo,
                     },
                 },
+                email: updateProfileDto.email,
             },
             include: {
                 user_meta: {
