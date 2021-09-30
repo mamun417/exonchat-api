@@ -13,33 +13,20 @@ import { WhmcsLoginDto } from './dto/whmcs-login.dto';
 export class WHMCSService {
     constructor(private prisma: PrismaService, private httpService: HttpService, private ws: EventsGateway) {}
 
-    async findAllTickets(req: any, query: any) {
-        const queryObj: any = { action: 'GetTickets' };
-
-        if (query.email) {
-            queryObj.email = query.email;
-        }
-
-        return this.getResponse(req.user.data.subscriber_id, queryObj);
-    }
-
-    // async validateUser(req: any, validateUserDto: ValidateUserDto) {
-    //     const params = {
-    //         action: 'ValidateLogin',
-    //         email: validateUserDto.email,
-    //         password2: validateUserDto.password,
-    //     };
-
-    //     return await this.getResponse(params);
-    // }
-
-    async findOneTicket(req: any, ticketId: any) {
-        const params = {
-            action: 'GetTicket',
-            ticketid: ticketId,
+    async login(req: any, whmcsLoginDto: WhmcsLoginDto) {
+        const queryObj: any = {
+            action: 'ValidateLogin',
+            email: whmcsLoginDto.email,
+            password2: whmcsLoginDto.password,
         };
 
-        return await this.getResponse(req.user.data.subscriber_id, params);
+        const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        if (loginRes.result === 'error') {
+            throw new HttpException(loginRes.message, HttpStatus.BAD_REQUEST);
+        }
+
+        return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
     }
 
     async ticketNotification(req: any, ticketId: any, subId: any) {
@@ -70,6 +57,29 @@ export class WHMCSService {
         return {};
     }
 
+    async findAllTickets(req: any, query: any) {
+        const clientDetails = await this.getClientDetails(req, { email: query.email });
+
+        const queryObj: any = {
+            action: 'GetTickets',
+            email: query.email,
+            clientid: clientDetails.userid,
+        };
+
+        const res: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        return res.tickets?.ticket || [];
+    }
+
+    async findOneTicket(req: any, ticketId: any) {
+        const params = {
+            action: 'GetTicket',
+            ticketid: ticketId,
+        };
+
+        return await this.getResponse(req.user.data.subscriber_id, params);
+    }
+
     async openTicket(req: any, convId: any, openTicketDto: WhmcsOpenTicketDto) {
         if (!convId) throw new HttpException(`Invalid conversation`, HttpStatus.BAD_REQUEST);
 
@@ -96,31 +106,6 @@ export class WHMCSService {
                 `Ticket open for this conversation not possible. This conversation is closed or not not found`,
                 HttpStatus.CONFLICT,
             );
-
-        const getDepartmentsParams = {
-            action: 'GetSupportDepartments',
-        };
-
-        const whmcsDepartmentsRes = await this.getResponse(
-            req.user.data.socket_session.subscriber_id,
-            getDepartmentsParams,
-        );
-
-        const whmcsDepartments = {};
-
-        if (whmcsDepartmentsRes.departments?.department && whmcsDepartmentsRes.departments.department.length) {
-            whmcsDepartmentsRes.departments.department.forEach((d: any) => {
-                whmcsDepartments[d.name] = d.id;
-            });
-        } else {
-            throw new HttpException(`Support departments are not set in whmcs. Please notify`, HttpStatus.NOT_FOUND);
-        }
-
-        let mappedDep = Object.values(whmcsDepartments)[0];
-
-        if (Object.keys(whmcsDepartments).includes(conv.chat_department.tag)) {
-            mappedDep = whmcsDepartments[conv.chat_department.tag];
-        }
 
         let message = this.convInfoMaker(conv);
 
@@ -153,20 +138,26 @@ export class WHMCSService {
         });
 
         const client = _l.find(conv.conversation_sessions, (cv: any) => !cv.socket_session.user);
+        const email = client.socket_session.init_email;
+
+        // client details from WHMCS
+        const clientDetails = await this.getClientDetails(req, { email });
 
         const openTicketParams = {
             action: 'OpenTicket',
-            deptid: mappedDep,
+            deptid: openTicketDto.department_id,
             subject: openTicketDto.subject,
             message: message,
+            priority: openTicketDto.priority,
             markdown: true,
+            clientid: clientDetails.userid,
             name: client.socket_session.init_name,
-            email: client.socket_session.init_email,
+            email,
         };
 
-        return await this.getResponse(req.user.data.socket_session.subscriber_id, openTicketParams);
+        console.log({ openTicketParams });
 
-        // return {};
+        return await this.getResponse(req.user.data.socket_session.subscriber_id, openTicketParams);
     }
 
     convInfoMaker(conv) {
@@ -180,26 +171,20 @@ export class WHMCSService {
         return msg;
     }
 
+    async getSupportDepartments(req: any) {
+        const queryObj: any = {
+            action: 'GetSupportDepartments',
+        };
+
+        const res = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        return res.departments?.department || [];
+    }
+
     getClientDetails(req: any, body: any) {
         const queryObj: any = { action: 'GetClientsDetails', clientid: body.clientid || '', email: body.email };
 
         return this.getResponse(req.user.data.subscriber_id, queryObj);
-    }
-
-    async login(req: any, whmcsLoginDto: WhmcsLoginDto) {
-        const queryObj: any = {
-            action: 'ValidateLogin',
-            email: whmcsLoginDto.email,
-            password2: whmcsLoginDto.password,
-        };
-
-        const loginRes: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
-
-        if (loginRes.result === 'error') {
-            throw new HttpException(loginRes.message, HttpStatus.BAD_REQUEST);
-        }
-
-        return await this.getClientDetails(req, { clientid: loginRes.userid, email: queryObj.email });
     }
 
     async getClientServices(req: any, query: any) {
@@ -222,6 +207,32 @@ export class WHMCSService {
         return services.filter(
             (service: any) =>
                 service.status === 'Active' || service.status === 'Pending' || service.status === 'Suspended',
+        );
+    }
+
+    async getClientDomains(req: any, query: any) {
+        const clientDetails = await this.getClientDetails(req, { email: query.email });
+
+        const queryObj: any = {
+            action: 'GetClientsDomains',
+            clientid: clientDetails.userid,
+            stats: true,
+        };
+
+        const response: any = await this.getResponse(req.user.data.subscriber_id, queryObj);
+
+        const domains = response.domains ? response.domains?.domain : [];
+
+        if (!domains.length) {
+            return domains;
+        }
+
+        return domains.filter(
+            (domain: any) =>
+                domain.status === 'Active' ||
+                domain.status === 'Pending' ||
+                domain.status === 'Pending Transfer' ||
+                domain.status === 'Grace',
         );
     }
 
@@ -253,14 +264,25 @@ export class WHMCSService {
         );
 
         const params = new URLSearchParams({
+            // Local
             // username: '3tuMBl8jtZ6xYgiZDUqfiHpFuroPu0Ch',
             // password: 'mp9FzClGBjvdEUzaBz3wBg9IlIHuwSwW',
+
+            // Live
+            // username: 'fENMPwEvlWIuuYV4bI12lI9MbssB7R46',
+            // password: 'vdOTnbvx2aafalXcJk5unoXhcnYrj3oS',
 
             username: _l.find(whmcsApi, ['slug', 'apps_whmcs_identifier_key']).user_settings_value[0].value,
             password: _l.find(whmcsApi, ['slug', 'apps_whmcs_secret_key']).user_settings_value[0].value,
             responsetype: 'json',
             ...dynamicFields,
         });
+
+        // Local
+        // const apiUrl = 'https://dev.exonhost.com/includes/api.php';
+
+        // Live
+        // const apiUrl = 'https://clients.exonhost.com/includes/api.php';
 
         const apiUrl = _l.find(whmcsApi, ['slug', 'apps_whmcs_api_url']).user_settings_value[0].value;
 

@@ -4,11 +4,9 @@ import { ConversationsService } from './conversations.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
-import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
 import { CloseConversationDto } from './dto/close-conversation.dto';
 import { LeaveConversationDto } from './dto/leave-conversation.dto';
 import { JoinConversationDto } from './dto/join-conversation.dto';
-import { WsJwtGuard } from '../../../auth/guards/ws-auth.guard';
 
 @Controller('conversations')
 export class ConversationsController {
@@ -147,17 +145,25 @@ export class ConversationsController {
 
     @UseGuards(JwtAuthGuard)
     @Post('update-last-message-seen-time/conversation-session/:id')
-    async updateLastMsgSeenTime(
-        @Param('id') id: string,
-        @Request() req: any,
-        @Body() updateLastMsgSeenTimeDto: UpdateLastMsgSeenTimeDto,
-    ) {
-        return await this.conversationsService.updateLastMsgSeenTime(id, req, updateLastMsgSeenTimeDto);
+    async updateLastMsgSeenTime(@Param('id') id: string) {
+        return await this.conversationsService.updateLastMsgSeenTime(id);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('send-transcript/:conv_id')
     async sendTranscript(@Param('conv_id') conv_id: string, @Request() req: any) {
         return await this.conversationsService.sendTranscript(conv_id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('get-draft/:conv_id')
+    async getDraft(@Param('conv_id') conv_id: string, @Request() req: any) {
+        return await this.conversationsService.getDraft(conv_id, req);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('save-draft/:conv_id')
+    async saveDraft(@Param('conv_id') conv_id: string, @Request() req: any, @Body() body: any) {
+        return await this.conversationsService.saveDraft(conv_id, req, body);
     }
 }

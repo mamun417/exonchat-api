@@ -3,22 +3,23 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { LeaveConversationDto } from './dto/leave-conversation.dto';
+import { JoinConversationDto } from './dto/join-conversation.dto';
+import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
+import { CloseConversationDto } from './dto/close-conversation.dto';
 
 import { conversation } from '@prisma/client';
 import { DataHelper } from 'src/helper/data-helper';
 import { SocketSessionsService } from '../socket-session/socket-sessions.service';
 import { ChatDepartmentService } from '../chat-department/department.service';
 import { SettingsService } from '../settings/settings.service';
-import { ConversationOtherInfoDto } from './dto/conversation-other-info.dto';
-import { UpdateLastMsgSeenTimeDto } from './dto/update-last-msg-seen-time-.dto';
-import { CloseConversationDto } from './dto/close-conversation.dto';
 
-import * as _l from 'lodash';
-import { LeaveConversationDto } from './dto/leave-conversation.dto';
-import { JoinConversationDto } from './dto/join-conversation.dto';
+import { EventsGateway } from '../../../events/events.gateway';
+
 import { MailService } from '../../../mail/mail.service';
 import SendTranscriptMaker from '../../../mail/templates/send-transcript';
 import { extname, join } from 'path';
+import * as _l from 'lodash';
 
 @Injectable()
 export class ConversationsService {
@@ -29,6 +30,7 @@ export class ConversationsService {
         private socketSessionService: SocketSessionsService,
         private chatDepartmentService: ChatDepartmentService,
         private mailService: MailService,
+        private ws: EventsGateway,
     ) {}
 
     async create(req: any, createConversationDto: CreateConversationDto) {
@@ -682,6 +684,29 @@ export class ConversationsService {
             [
                 'p',
                 'pp',
+                { name: 'chat_department_id', type: 'equals' },
+                {
+                    name: 'rating',
+                    type: 'static_relation',
+                    relation: {
+                        conversation_rating: {
+                            rating: parseInt(query.rating),
+                        },
+                    },
+                },
+                {
+                    name: 'agent_id',
+                    type: 'static_relation',
+                    relation: {
+                        conversation_sessions: {
+                            some: {
+                                socket_session: {
+                                    user_id: query.agent_id,
+                                },
+                            },
+                        },
+                    },
+                },
                 {
                     name: 's',
                     type: 'static_relation',
@@ -699,11 +724,11 @@ export class ConversationsService {
                                     },
                                 },
                             },
-                            {
-                                chat_department: {
-                                    tag: relationContainsObj,
-                                },
-                            },
+                            // {
+                            //     chat_department: {
+                            //         tag: relationContainsObj,
+                            //     },
+                            // },
                         ],
                     },
                 },
@@ -742,9 +767,6 @@ export class ConversationsService {
                         },
                     },
                     take: 1,
-                    orderBy: {
-                        updated_at: 'desc',
-                    },
                     include: { attachments: true },
                 },
                 chat_department: true,
@@ -1214,13 +1236,30 @@ export class ConversationsService {
         };
     }
 
-    async updateLastMsgSeenTime(id: string, req: any, updateLastMsgSeenTimeDto: UpdateLastMsgSeenTimeDto) {
-        return await this.prisma.conversation_session.update({
+    async updateLastMsgSeenTime(id: string) {
+        const conversationSession = await this.prisma.conversation_session.update({
             where: { id: id },
             data: {
-                last_msg_seen_time: updateLastMsgSeenTimeDto.last_msg_seen_time,
+                last_msg_seen_time: new Date(),
             },
         });
+
+        if (conversationSession) {
+            // use ec_conversation_session_updated emit for any update like join leave etc also. life will be easier
+            this.ws.sendToAllWithAConvClient(
+                conversationSession.subscriber_id,
+                conversationSession.conversation_id,
+                'ec_conversation_session_updated',
+                {
+                    data: {
+                        conversation_session: conversationSession,
+                    },
+                    status: 'success',
+                },
+            );
+        }
+
+        return conversationSession;
     }
 
     async sendTranscript(conv_id: string, req: any) {
@@ -1288,6 +1327,37 @@ export class ConversationsService {
         });
 
         return attachments;
+    }
+
+    async getDraft(conv_id: any, req: any) {
+        const socketSessionId = req.user.data.socket_session.id;
+
+        return this.prisma.conversation_session.findUnique({
+            where: {
+                conv_ses_identifier: {
+                    socket_session_id: socketSessionId,
+                    conversation_id: conv_id,
+                },
+            },
+        });
+    }
+
+    async saveDraft(conv_id: any, req: any, body: any) {
+        const socketSessionId = req.user.data.socket_session.id;
+
+        return await this.prisma.conversation_session.update({
+            where: {
+                conv_ses_identifier: {
+                    socket_session_id: socketSessionId,
+                    conversation_id: conv_id,
+                },
+            },
+            data: {
+                // send draft_messages key if msg or not msg && has attachment.
+                // we need null for other purpose
+                draft_message: body.hasOwnProperty('draft_message') ? body.draft_message : null,
+            },
+        });
     }
 
     // update(id: number, updateConversationDto: UpdateConversationDto) {

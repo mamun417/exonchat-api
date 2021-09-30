@@ -62,6 +62,8 @@ export class DataHelper {
                         finalObj.where[field.name] = query[field.name].toLowerCase() === 'true';
                     } else if (field.type === 'contains' && query[field.name]) {
                         finalObj.where[field.name] = { contains: query[field.name], mode: 'insensitive' };
+                    } else if (field.type === 'equals' && query[field.name]) {
+                        finalObj.where[field.name] = query[field.name];
                     }
                 }
             }

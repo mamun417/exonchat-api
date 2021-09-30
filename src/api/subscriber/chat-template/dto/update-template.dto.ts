@@ -2,7 +2,7 @@ import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateIf 
 
 export class UpdateTemplateDto {
     @IsString()
-    @IsOptional()
+    @IsNotEmpty()
     description: string;
 
     @ValidateIf((o) => !o.intent_id)

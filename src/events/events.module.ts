@@ -6,9 +6,10 @@ import { PrismaService } from '../prisma.service';
 import { Helper } from '../helper/helper';
 import { ChatTransferService } from './listeners/chat-transfer.service';
 import { ListenersHelperService } from './listeners/listeners-helper.service';
+import { ReJsonModule } from '../providers/redis/rejosn/rejson.module';
 
 @Module({
-    imports: [HttpModule, AuthModule],
+    imports: [HttpModule, AuthModule, ReJsonModule],
     providers: [EventsGateway, PrismaService, Helper, ListenersHelperService, ChatTransferService],
     exports: [EventsGateway],
 })

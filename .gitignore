@@ -4,6 +4,9 @@
 /node_modules
 /ip-location-db
 /uploads
+/production-build/*
+
+!/production-build/.gitkeep
 
 # Logs
 logs

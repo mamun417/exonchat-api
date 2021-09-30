@@ -530,6 +530,8 @@ model conversation_session {
   active             Boolean   @default(true) // it's now for group or channel so that user remove can happen but msg history kept
   archived           Boolean   @default(false)
 
+  draft_message String?
+
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 

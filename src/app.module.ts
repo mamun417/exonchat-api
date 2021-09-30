@@ -7,6 +7,8 @@ import { ConfigModule } from '@nestjs/config';
 import { EventsModule } from './events/events.module';
 
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { RedisModule } from '@liaoliaots/nestjs-redis';
+
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { AuthorizationModule } from './authorizarion/authorization.module';
@@ -35,6 +37,7 @@ import { AttachmentsModule } from './api/subscriber/attachments/attachments.modu
 import { PasswordModule } from './api/password/password.module';
 import { OfflineChatReq } from './api/subscriber/offline-chat-request/offline-chat-req.module';
 import { RatingModule } from './api/rating/ratings.module';
+import { ReJsonModule } from './providers/redis/rejosn/rejson.module';
 
 @Module({
     imports: [
@@ -46,6 +49,20 @@ import { RatingModule } from './api/rating/ratings.module';
             ttl: 60,
             limit: 1000,
         }),
+
+        RedisModule.forRoot({
+            closeClient: true,
+            readyLog: true,
+            config: [
+                {
+                    host: process.env.REDIS_HOST || '127.0.0.1',
+                    port: parseInt(process.env.REDIS_PORT) || 6379,
+                    password: process.env.REDIS_PASS || '',
+                    namespace: 'ws_db',
+                },
+            ],
+        }),
+        ReJsonModule,
 
         MulterModule.register({
             dest: './uploads',
