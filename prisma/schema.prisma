@@ -418,6 +418,8 @@ model socket_session {
   created_at DateTime @default(now()) @db.Timestamp(6)
   updated_at DateTime @default(now()) @db.Timestamp(6)
 
+  is_facebook_page Boolean @default(false)
+
   subscriber    subscriber @relation(fields: [subscriber_id], references: [id])
   subscriber_id String
   user          user?      @relation(fields: [user_id], references: [id])

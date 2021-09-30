@@ -27,7 +27,7 @@ export class FacebookService {
             },
         });
 
-        // remove facebook_pages for safety
+        // rethink this situation. cz its causing conversation new create with same client same page
         await this.prisma.facebook_page.deleteMany({
             where: {
                 subscriber_id: subscriberId,
@@ -229,6 +229,30 @@ export class FacebookService {
             throw new HttpException(e.response.data?.error?.message, HttpStatus.NOT_FOUND);
         }
 
+        // first generate a socket_session by the page id if not exists
+        const socketSession = await this.prisma.socket_session.findFirst({
+            where: {
+                subscriber_id: page.subscriber_id,
+                is_facebook_page: true,
+                use_for: 'fb',
+                use_for_id: page.page_id,
+            },
+        });
+
+        if (!socketSession) {
+            await this.prisma.socket_session.create({
+                data: {
+                    init_name: page.page_name,
+                    init_ip: 'fb',
+                    init_user_agent: 'fb',
+                    use_for: 'fb',
+                    use_for_id: page.page_id,
+                    is_facebook_page: true,
+                    subscriber: { connect: { id: page.subscriber_id } },
+                },
+            });
+        }
+
         await this.prisma.facebook_page.update({
             where: { id: id },
             data: {
@@ -306,29 +330,34 @@ export class FacebookService {
                             await this.messageParser(messageObj, pageId);
                         }
                     } else {
-                        console.log('Unknown type');
-                        console.log(body);
+                        console.log('Unknown type', body);
                     }
                 }
             } else {
-                console.log('Unknown type');
-                console.log(body);
+                console.log('Unknown type', body);
             }
         } else {
-            console.log('without page');
-            console.log(body);
+            console.log('without page', body);
         }
     }
 
     async messageParser(messageObj: any, pageId: any) {
         if (messageObj.message) {
             if (messageObj.message.is_echo) {
-                console.log(messageObj);
-
-                console.log(messageObj.message);
+                console.log('======is echo ====', messageObj);
+                // echo {
+                //     sender: { id: '109876438101376' },
+                //     recipient: { id: '6076072989100802' },
+                //     timestamp: 1632987769832,
+                //         message: {
+                //         mid: 'm_jmLtr07CL9cBucmYgcQyGDOVJ3z7jXIWGJe8nB23c9RsmzhiWR3TmVTb-5wfzwAn3ZQ7ZivrI2CD0r0odk-SbA',
+                //             is_echo: true,
+                //             text: 'ki hoise ki ehh',
+                //             app_id: 263902037430900
+                //     }
                 // message from page user. its for if the page agents send msg from page then store msg in this also
-            } else {
-                const result = await this.createOrNotConversation(messageObj.recipient.id, messageObj.sender.id);
+
+                const result = await this.conversationInitiatedCheck(messageObj.sender.id, messageObj.recipient.id);
 
                 if (result) {
                     const message: any = await this.prisma.message.create({
@@ -337,7 +366,62 @@ export class FacebookService {
                             created_at: new Date(messageObj.timestamp),
                             subscriber: { connect: { id: result.conversation.subscriber_id } },
                             conversation: { connect: { id: result.conversation.id } },
-                            socket_session: { connect: { id: result.socket_session.id } },
+                            socket_session: { connect: { id: result.fbPageConversationSession.socket_session.id } },
+                        },
+                        include: {
+                            attachments: true,
+                            conversation: {
+                                include: {
+                                    conversation_sessions: {
+                                        include: {
+                                            socket_session: { include: { user: { include: { user_meta: true } } } },
+                                        },
+                                    },
+                                    chat_department: true,
+                                    closed_by: { include: { user: { include: { user_meta: true } } } },
+                                },
+                            },
+                        },
+                    });
+
+                    this.ws.sendToSocketRooms(
+                        this.ws.usersRoomBySubscriberId(message.subscriber_id, false),
+                        'ec_msg_from_user',
+                        {
+                            ...message,
+                        },
+                    );
+                }
+            } else {
+                const result = await this.createOrNotConversation(messageObj.recipient.id, messageObj.sender.id);
+
+                if (result) {
+                    // msg with attachment {
+                    //     sender: { id: '6076072989100802' },
+                    //     recipient: { id: '109876438101376' },
+                    //     timestamp: 1633004893661,
+                    //         message: {
+                    //     mid: 'm_IEhf-3YrGmJJY-7765vRuTOVJ3z7jXIWGJe8nB23c9TQMquSEPBvmckzCxFsOC5McNwZCm8K0bbk9P61E2DP7w',
+                    //         text: 'cho',
+                    //         attachments: [ [Object] ]
+                    // }
+                    // } [
+                    //     {
+                    //         type: 'image',
+                    //         payload: {
+                    //             url: 'https://scontent.xx.fbcdn.net/v/t1.15752-9/242373856_402736624794611_2155155210394663206_n.png?_nc_cat=104&ccb=1-5&_nc_sid=58c789&_nc_ohc=MJ9kbWmMJpcAX9dNSdF&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&oh=75b0c4e3569133b55f7f3f916c2b55ea&oe=61797DC4'
+                    //         }
+                    //     }
+                    // ]
+
+                    console.log('saving new client msg', messageObj, messageObj.message.attachments);
+                    const message: any = await this.prisma.message.create({
+                        data: {
+                            msg: messageObj.message.text,
+                            created_at: new Date(messageObj.timestamp),
+                            subscriber: { connect: { id: result.conversation.subscriber_id } },
+                            conversation: { connect: { id: result.conversation.id } },
+                            socket_session: { connect: { id: result.clientConversationSession.socket_session.id } },
                         },
                         include: {
                             attachments: true,
@@ -366,10 +450,63 @@ export class FacebookService {
                 }
             }
         } else {
-            console.log('other_type fb msg');
+            // delivery from page res{
+            //     sender: { id: '6076072989100802' },
+            //     recipient: { id: '109876438101376' },
+            //     timestamp: 1632987770284,
+            //         delivery: {
+            //     mids: [
+            //         'm_jmLtr07CL9cBucmYgcQyGDOVJ3z7jXIWGJe8nB23c9RsmzhiWR3TmVTb-5wfzwAn3ZQ7ZivrI2CD0r0odk-SbA'
+            //     ],
+            //         watermark: 1632987769832
+            // }
+            // }
+
+            // if has read key then seen fired
+            // if has delivery then from page delivery fired
+            console.log('other_type fb msg', messageObj);
         }
     }
 
+    async conversationInitiatedCheck(pageId: string, clientId: string) {
+        const fbPage = await this.prisma.facebook_page.findFirst({
+            where: {
+                active: true,
+                page_id: pageId,
+            },
+            orderBy: { updated_at: 'desc' },
+        });
+
+        if (fbPage) {
+            let conversation: any = await this.prisma.conversation.findFirst({
+                where: {
+                    subscriber_id: fbPage.subscriber_id,
+                    facebook_page_id: fbPage.id,
+                    conversation_sessions: {
+                        some: {
+                            socket_session: {
+                                use_for_id: clientId,
+                            },
+                        },
+                    },
+                },
+                include: {
+                    conversation_sessions: { include: { socket_session: true } },
+                },
+            });
+
+            return {
+                conversation,
+                fbPageConversationSession: _l.find(conversation.conversation_sessions, (convSes: any) => {
+                    return !convSes.socket_session.user_id && convSes.socket_session.is_facebook_page;
+                }),
+            };
+        }
+
+        return null;
+    }
+
+    // usage from if client msg
     async createOrNotConversation(pageId: any, clientId: any) {
         const fbPage = await this.prisma.facebook_page.findFirst({
             where: {
@@ -380,68 +517,75 @@ export class FacebookService {
         });
 
         if (fbPage) {
-            // can use upsert
-            let socketSession = await this.prisma.socket_session.findFirst({
-                where: {
-                    use_for: 'fb',
-                    use_for_id: clientId,
-                    subscriber_id: fbPage.subscriber_id,
-                },
-            });
-
-            if (!socketSession) {
-                socketSession = await this.prisma.socket_session.create({
-                    data: {
-                        init_ip: 'fb',
-                        init_user_agent: '',
-                        use_for: 'fb',
-                        use_for_id: clientId,
-                        subscriber: {
-                            connect: { id: fbPage.subscriber_id },
-                        },
-                    },
-                });
-            }
-
-            // can use upsert
-            let conversationSession = await this.prisma.conversation_session.findFirst({
+            // get conversation by client id
+            let conversation: any = await this.prisma.conversation.findFirst({
                 where: {
                     subscriber_id: fbPage.subscriber_id,
-                    socket_session_id: socketSession.id,
-                    type: 'fb',
-                },
-            });
-
-            if (!conversationSession) {
-                conversationSession = await this.prisma.conversation_session.create({
-                    data: {
-                        type: 'fb',
-                        joined_at: new Date(),
-                        socket_session: { connect: { id: socketSession.id } },
-                        subscriber: { connect: { id: fbPage.subscriber_id } },
-                        conversation: {
-                            create: {
-                                users_only: false,
-                                type: 'facebook_chat',
-                                chat_department: { connect: { id: fbPage.chat_department_id } },
-                                created_by: { connect: { id: socketSession.id } },
-                                subscriber: { connect: { id: fbPage.subscriber_id } },
+                    facebook_page_id: fbPage.id,
+                    conversation_sessions: {
+                        some: {
+                            socket_session: {
+                                use_for_id: clientId,
                             },
                         },
                     },
-                });
-            }
-
-            const conversation = await this.prisma.conversation.findUnique({
-                where: {
-                    id: conversationSession.conversation_id,
                 },
                 include: {
                     conversation_sessions: { include: { socket_session: true } },
                 },
             });
 
-            if (!conversationSession) {
+            if (!conversation) {
+                // get fb page session id
+                const fbPageSession = await this.prisma.socket_session.findFirst({
+                    where: {
+                        subscriber_id: fbPage.subscriber_id,
+                        is_facebook_page: true,
+                        use_for: 'fb',
+                        use_for_id: fbPage.page_id,
+                    },
+                });
+
+                // create conversation session with client socket session
+                // create conversation session & connect fb page session
+                conversation = await this.prisma.conversation.create({
+                    data: {
+                        users_only: false,
+                        type: 'facebook_chat',
+                        chat_department: { connect: { id: fbPage.chat_department_id } },
+                        subscriber: { connect: { id: fbPage.subscriber_id } },
+                        facebook_page: { connect: { id: fbPage.id } },
+                        created_by: { connect: { id: fbPageSession.id } },
+                        conversation_sessions: {
+                            create: [
+                                {
+                                    type: 'fb',
+                                    joined_at: new Date(),
+                                    socket_session: {
+                                        create: {
+                                            init_ip: 'fb',
+                                            init_user_agent: '',
+                                            use_for: 'fb',
+                                            use_for_id: clientId,
+                                            subscriber: { connect: { id: fbPage.subscriber_id } },
+                                        },
+                                    },
+                                    subscriber: { connect: { id: fbPage.subscriber_id } },
+                                },
+                                {
+                                    type: 'fb',
+                                    joined_at: new Date(),
+                                    socket_session: { connect: { id: fbPageSession.id } },
+                                    subscriber: { connect: { id: fbPage.subscriber_id } },
+                                },
+                            ],
+                        },
+                    },
+                    include: {
+                        conversation_sessions: { include: { socket_session: true } },
+                    },
+                });
+
                 this.ws.sendToSocketRooms(
                     this.ws.usersRoomBySubscriberId(conversation.subscriber_id, false),
                     'ec_conv_initiated_from_client',
@@ -452,9 +596,10 @@ export class FacebookService {
             }
 
             return {
-                conversation: conversation,
-                conversation_session: conversationSession,
-                socket_session: socketSession,
+                conversation,
+                clientConversationSession: _l.find(conversation.conversation_sessions, (convSes: any) => {
+                    return !convSes.socket_session.user_id && !convSes.socket_session.is_facebook_page;
+                }),
             };
         }
 

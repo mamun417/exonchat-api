@@ -96,7 +96,8 @@ export class ListenersHelperService {
             }
 
             // for now we are checking agents were joined
-            if (convObj.conversation_sessions.length > 1) {
+            // facebook chat has some key which need to check
+            if (convObj.conversation_sessions.length > 1 && convObj.type !== 'facebook_chat') {
                 const lastAgentMsg = await this.prisma.message.findFirst({
                     where: {
                         message_type: { not: 'log' },
